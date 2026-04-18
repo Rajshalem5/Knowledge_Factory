@@ -1,0 +1,35 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { candidatesApi } from '../api/candidates';
+
+export function useCandidates(params?: Parameters<typeof candidatesApi.getAll>[0]) {
+  return useQuery({
+    queryKey: ['candidates', params],
+    queryFn: () => candidatesApi.getAll(params),
+  });
+}
+
+export function useCandidate(id: string) {
+  return useQuery({
+    queryKey: ['candidate', id],
+    queryFn: () => candidatesApi.getById(id),
+    enabled: !!id,
+  });
+}
+
+export function useMyCandidateProfile() {
+  return useQuery({
+    queryKey: ['candidate-me'],
+    queryFn: candidatesApi.getMe,
+  });
+}
+
+export function useUpdateCandidateStatus() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: string }) =>
+      candidatesApi.updateStatus(id, status),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['candidates'] });
+    },
+  });
+}
