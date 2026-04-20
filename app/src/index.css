@@ -54,9 +54,29 @@
     --text-secondary: #414853;
     --text-tertiary: #8c97a9;
     --border-ghost: rgba(196, 198, 208, 0.15);
+    --overlay: rgba(18, 28, 42, 0.4);
   }
 
   .dark {
+    /* Surface hierarchy */
+    --color-surface: #0e1419;
+    --color-surface-container-low: #141c24;
+    --color-surface-container-lowest: #1a2330;
+    --color-surface-bright: #e8eaed;
+
+    /* On-surface tokens */
+    --color-on-surface: #e1e3e8;
+    --color-on-surface-variant: #b0b8c8;
+
+    /* Surface variant */
+    --color-surface-variant: #2a3342;
+    --color-outline-variant: #3a4555;
+
+    /* Tertiary */
+    --color-tertiary: #6b7a8d;
+    --color-on-tertiary-container: #b0b8c8;
+
+    /* Custom semantic tokens */
     --bg-base: #0e1419;
     --bg-layer1: #141c24;
     --bg-layer2: #1a2330;
@@ -64,6 +84,7 @@
     --text-secondary: #b0b8c8;
     --text-tertiary: #6b7a8d;
     --border-ghost: rgba(255, 255, 255, 0.08);
+    --overlay: rgba(0, 0, 0, 0.5);
   }
 
   * {
@@ -88,6 +109,10 @@
   /* Ghost shadow for floating elements */
   .ghost-shadow {
     box-shadow: 0px 12px 32px rgba(18, 28, 42, 0.06);
+  }
+
+  .dark .ghost-shadow {
+    box-shadow: 0px 12px 32px rgba(0, 0, 0, 0.2);
   }
 
   /* Glassmorphism for floating elements */

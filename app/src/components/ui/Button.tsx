@@ -14,7 +14,7 @@ const variants: Record<Variant, string> = {
   primary: 'gradient-cta text-on-primary hover:brightness-110 active:brightness-90',
   secondary: 'bg-transparent border border-[var(--border-ghost)] text-secondary hover:bg-surface-container-low',
   ghost: 'bg-transparent text-on-surface-variant hover:bg-surface-container-low',
-  danger: 'bg-danger text-white hover:brightness-110 active:brightness-90',
+  danger: 'bg-danger text-on-primary hover:brightness-110 active:brightness-90',
 };
 
 const sizes: Record<Size, string> = {
