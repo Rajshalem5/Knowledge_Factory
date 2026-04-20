@@ -22,7 +22,7 @@ export function Toggle({ enabled, onChange, label, className }: ToggleProps) {
     >
       <span
         className={cn(
-          'inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform duration-200',
+          'inline-block h-3.5 w-3.5 rounded-full bg-surface-bright transition-transform duration-200',
           enabled ? 'translate-x-4' : 'translate-x-0.5',
         )}
       />

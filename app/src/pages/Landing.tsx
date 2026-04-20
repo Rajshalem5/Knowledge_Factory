@@ -1,7 +1,8 @@
 import { useNavigate } from 'react-router-dom';
-import { Factory, Brain, Shield, BarChart3, ArrowRight, Zap, Eye } from 'lucide-react';
+import { Factory, Brain, Shield, BarChart3, ArrowRight, Zap, Eye, Moon, Sun } from 'lucide-react';
 import { Button } from '../components/ui';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 
 const FEATURES = [
   {
@@ -29,6 +30,7 @@ const FEATURES = [
 export default function Landing() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   return (
     <div className="min-h-screen bg-[var(--bg-base)]">
@@ -39,6 +41,13 @@ export default function Landing() {
           <span className="font-bold text-sm">Knowledge Factory</span>
         </div>
         <div className="flex items-center gap-3">
+          <button
+            onClick={toggleTheme}
+            className="p-2 rounded-md text-tertiary hover:text-on-surface hover:bg-surface-container-low transition-colors"
+            aria-label="Toggle theme"
+          >
+            {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+          </button>
           {user ? (
             <Button size="sm" onClick={() => navigate('/portal')}>
               Dashboard
