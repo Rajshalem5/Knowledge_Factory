@@ -15,17 +15,15 @@ from app.core.rbac import require_roles
 
 router = APIRouter()
 
-
-# 🔹 ADMIN REGISTER (only ADMIN / SUPERADMIN)
 @router.post("/admin/register")
 def register_admin_route(
     data: RegisterRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(require_roles("ADMIN", "SUPERADMIN"))
 ):
     return register_admin(db, data)
 
 
-# 🔹 HR REGISTER (only ADMIN)
 @router.post("/hr/register")
 def register_hr_route(
     data: RegisterRequest,
@@ -35,7 +33,6 @@ def register_hr_route(
     return register_hr(db, data)
 
 
-# 🔹 CANDIDATE REGISTER (public)
 @router.post("/candidate/register")
 def register_candidate_route(
     data: RegisterRequest,
@@ -44,7 +41,6 @@ def register_candidate_route(
     return register_candidate(db, data)
 
 
-# 🔹 LOGIN (common)
 @router.post("/login")
 def login(
     data: LoginRequest,
@@ -53,7 +49,6 @@ def login(
     return login_user(db, data)
 
 
-# 🔹 GET CURRENT USER
 @router.get("/me")
 def get_me(current_user = Depends(get_current_user)):
     return {
