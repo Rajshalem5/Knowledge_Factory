@@ -1,0 +1,69 @@
+# Docker Compose for local development.
+#
+# Usage:
+#   docker compose up -d           # start all services
+#   docker compose logs -f api     # follow API logs
+#   docker compose down            # stop and remove containers
+#
+# The API hot-reloads on code changes via uvicorn --reload.
+
+services:
+  # ── PostgreSQL ──────────────────────────────────────────────────
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: kf_user
+      POSTGRES_PASSWORD: kf_password
+      POSTGRES_DB: knowledge_factory
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kf_user -d knowledge_factory"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis ───────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ── FastAPI Application ────────────────────────────────────────
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    env_file:
+      - ../.env.example
+    environment:
+      DATABASE_URL: postgresql+asyncpg://kf_user:kf_password@db:5432/knowledge_factory
+      REDIS_URL: redis://redis:6379/0
+    ports:
+      - "8000:8000"
+    volumes:
+      - ..:/app  # live-reload: mount source into container
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ── Judge0 Code Sandbox ────────────────────────────────────────
+  judge0:
+    image: judge0/judge0:latest
+    ports:
+      - "2358:2358"
+    # Judge0 requires its own PostgreSQL and Redis — see Judge0 docs
+    # for full docker-compose setup. This is a placeholder for now.
+
+volumes:
+  pgdata:
