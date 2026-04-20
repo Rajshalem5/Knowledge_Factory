@@ -10,5 +10,5 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     password_hash = Column(String, nullable=False)
     name = Column(String)
-    role = Column(String, default="ADMIN")
+    role = Column(String, nullable=False)   
     status = Column(String, default="ACTIVE")
