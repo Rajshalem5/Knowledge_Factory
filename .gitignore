@@ -1,0 +1,19 @@
+# Env files
+*.env
+*.env.*
+
+# Python env
+venv/
+.venv/
+backend/venv/
+backend/.venv/
+
+# Dependencies
+dependencies/
+backend/dependencies/
+
+# Optional (if frontend exists)
+node_modules/
+
+# Optional (if skills folder not needed)
+skills/
