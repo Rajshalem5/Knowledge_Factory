@@ -1,0 +1,1 @@
+"""Knowledge Factory backend application."""
