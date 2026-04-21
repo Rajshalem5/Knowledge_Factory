@@ -17,9 +17,22 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(() => {
     const stored = localStorage.getItem('kf_user');
-    return stored ? JSON.parse(stored) : null;
+    if (stored) return JSON.parse(stored);
+    // For development, set a mock candidate user to bypass login
+    if (import.meta.env.DEV) {
+      const mockUser: User = {
+        id: 'dev-candidate-1',
+        email: 'candidate@example.com',
+        name: 'Test Candidate',
+        role: 'candidate',
+      };
+      localStorage.setItem('kf_user', JSON.stringify(mockUser));
+      localStorage.setItem('kf_token', 'dev-token');
+      return mockUser;
+    }
+    return null;
   });
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem('kf_token'));
+  const [token, setToken] = useState<string | null>(() => localStorage.getItem('kf_token') || (import.meta.env.DEV ? 'dev-token' : null));
   const [isLoading, setIsLoading] = useState(false);
 
   const login = useCallback(async (email: string, password: string) => {

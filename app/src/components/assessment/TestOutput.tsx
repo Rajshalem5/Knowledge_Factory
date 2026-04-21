@@ -18,38 +18,80 @@ interface TestOutputProps {
 export function TestOutput({ results, className }: TestOutputProps) {
   if (results.length === 0) {
     return (
-      <div className={cn('p-4 text-sm text-tertiary', className)}>
-        Run your code to see test results
+      <div className={cn('p-6 text-center', className)}>
+        <div className="space-y-3">
+          <div className="w-12 h-12 rounded-full bg-surface-container-low mx-auto flex items-center justify-center">
+            <CheckCircle size={20} className="text-tertiary" />
+          </div>
+          <p className="text-tertiary text-sm">Run your code to see test results</p>
+        </div>
       </div>
     );
   }
 
+  const passedCount = results.filter(r => r.passed).length;
+  const failedCount = results.filter(r => !r.passed).length;
+
   return (
     <div className={cn('overflow-y-auto', className)}>
-      <div className="p-3 flex items-center gap-2">
-        <span className="text-[11px] font-medium text-tertiary uppercase tracking-architectural">
-          Test Results
-        </span>
-        <span className="text-xs text-secondary">{results.filter(r => r.passed).length} passed</span>
-        <span className="text-xs text-tertiary">/</span>
-        <span className="text-xs text-danger">{results.filter(r => !r.passed).length} failed</span>
-      </div>
-      <div>
-        {results.map((result, index) => (
-          <div key={index} className={cn('p-3 flex items-start gap-2', index % 2 !== 0 && 'bg-[var(--bg-layer1)]')}>
-            {result.passed ? (
-              <CheckCircle size={14} className="text-secondary mt-0.5 flex-shrink-0" />
-            ) : (
-              <XCircle size={14} className="text-danger mt-0.5 flex-shrink-0" />
+      <div className="p-4 border-b border-outline-variant/20">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-success"></div>
+              <span className="text-sm font-medium text-on-surface tracking-tight-display">Test Results</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-4 text-sm">
+            <div className="flex items-center gap-1">
+              <CheckCircle size={14} className="text-success" />
+              <span className="text-success font-medium">{passedCount} passed</span>
+            </div>
+            {failedCount > 0 && (
+              <div className="flex items-center gap-1">
+                <XCircle size={14} className="text-danger" />
+                <span className="text-danger font-medium">{failedCount} failed</span>
+              </div>
             )}
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-on-surface">{result.name}</p>
-              {!result.passed && (
-                <div className="mt-1 font-mono text-[10px] space-y-0.5">
-                  <div className="text-on-surface-variant">Expected: {result.expected}</div>
-                  {result.actual && <div className="text-danger">Got: {result.actual}</div>}
-                </div>
-              )}
+          </div>
+        </div>
+      </div>
+      <div className="divide-y divide-outline-variant/10">
+        {results.map((result, index) => (
+          <div key={index} className="p-4 hover:bg-surface-container-low/50 transition-colors">
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0 mt-1">
+                {result.passed ? (
+                  <div className="w-5 h-5 rounded-full bg-success/20 flex items-center justify-center">
+                    <CheckCircle size={12} className="text-success" />
+                  </div>
+                ) : (
+                  <div className="w-5 h-5 rounded-full bg-danger/20 flex items-center justify-center">
+                    <XCircle size={12} className="text-danger" />
+                  </div>
+                )}
+              </div>
+              <div className="flex-1 min-w-0 space-y-2">
+                <p className="text-sm font-medium text-on-surface">{result.name}</p>
+                {!result.passed && (
+                  <div className="space-y-2 font-mono text-xs">
+                    <div className="flex items-start gap-2">
+                      <span className="text-tertiary min-w-[60px]">Expected:</span>
+                      <code className="text-on-surface bg-surface-container-low px-2 py-1 rounded border">
+                        {result.expected}
+                      </code>
+                    </div>
+                    {result.actual && (
+                      <div className="flex items-start gap-2">
+                        <span className="text-tertiary min-w-[60px]">Got:</span>
+                        <code className="text-danger bg-danger/10 px-2 py-1 rounded border border-danger/20">
+                          {result.actual}
+                        </code>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         ))}
