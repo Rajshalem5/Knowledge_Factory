@@ -1,0 +1,50 @@
+"""
+Assessment schemas: Questions, Submissions, Scores.
+"""
+
+from uuid import UUID
+from datetime import datetime
+from typing import Any, Optional, Union
+from pydantic import BaseModel, Field
+
+from app.core.enums import AssessmentRound, AssessmentStatus, SubmissionSection
+
+
+class AssessmentStart(BaseModel):
+    round: AssessmentRound
+
+
+class AssessmentRead(BaseModel):
+    id: UUID
+    candidate_id: UUID
+    round: AssessmentRound
+    status: AssessmentStatus
+    questions_json: dict
+    link_token: str
+    link_expiry: datetime
+    started_at: Optional[datetime] = None
+    ended_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class SubmissionCreate(BaseModel):
+    assessment_id: UUID
+    section: SubmissionSection
+    content: dict # MCQ answers or Code string
+    time_spent_seconds: int
+
+
+class CodeExecutionRequest(BaseModel):
+    language: str
+    code: str
+    stdin: Optional[str] = None
+
+
+class CodeExecutionResponse(BaseModel):
+    stdout: str
+    stderr: str
+    exit_code: int
+    runtime_ms: int
+    memory_kb: int
