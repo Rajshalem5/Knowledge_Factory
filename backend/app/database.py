@@ -12,30 +12,47 @@ The session is automatically committed or rolled back depending on whether
 an exception propagates out of the request handler.
 """
 
-from typing import AsyncGenerator
+import uuid
+from typing import Any, AsyncGenerator
 
+from sqlalchemy import String
+from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.types import TypeDecorator
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
     create_async_engine,
 )
-from sqlalchemy.orm import DeclarativeBase
 
-from app.config import get_settings
+from app.config import settings
+
+
+# ── Portable UUID type (works on SQLite + PostgreSQL) ───────────────
+class PortableUUID(TypeDecorator):
+    """UUID stored as String(36) on all dialects, returned as Python uuid.UUID."""
+    impl = String(36)
+    cache_ok = True
+
+    def process_bind_param(self, value: Any, dialect=None):
+        return str(value) if value else None
+
+    def process_result_value(self, value: Any, dialect=None):
+        return uuid.UUID(value) if value else None
+
+
+# Convenience factory: PortableUUID(primary_key=True, default=uuid.uuid4)
+def portable_uuid_col(**kwargs):
+    return mapped_column(PortableUUID, **kwargs)
 
 
 # ── Engine ─────────────────────────────────────────────────────────
 # The engine is created once at module import time using settings from
 # config.py. asyncpg is the driver (fast, pure-Python async PostgreSQL).
-settings = get_settings()
+
 
 engine = create_async_engine(
     settings.DATABASE_URL,
-    pool_size=settings.DB_POOL_SIZE,
-    max_overflow=settings.DB_MAX_OVERFLOW,
     echo=settings.DB_ECHO,
-    # Prevent SQLAlchemy from logging parameterized queries in production
-    pool_pre_ping=True,  # verify connections before checkout
 )
 
 # ── Session Factory ────────────────────────────────────────────────
