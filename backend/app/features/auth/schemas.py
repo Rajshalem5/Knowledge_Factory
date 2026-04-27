@@ -1,6 +1,4 @@
-"""
-Authentication schemas: Login, Register, Tokens.
-"""
+"""Authentication schemas: Login, Register, Tokens, OTP."""
 
 from uuid import UUID
 from pydantic import BaseModel, EmailStr, Field
@@ -8,7 +6,8 @@ from pydantic import BaseModel, EmailStr, Field
 
 class Token(BaseModel):
     access_token: str
-    token_type: str
+    refresh_token: str
+    token_type: str = "bearer"
     user: "UserRead"
 
 
@@ -23,6 +22,31 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class RegisterResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+    user: "UserRead"
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+
+class OtpVerifyRequest(BaseModel):
+    email: EmailStr
+    otp: str = Field(..., min_length=6, max_length=6)
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    password: str = Field(..., min_length=8)
+
+
 class CandidateRegisterRequest(BaseModel):
     name: str = Field(..., min_length=2, max_length=255)
     email: EmailStr
@@ -31,7 +55,7 @@ class CandidateRegisterRequest(BaseModel):
     branch: str
     cgpa: float = Field(..., ge=0, le=10)
     passed_out_year: int
-    language_choice: str
+    language_choice: str = "english"
 
 
 class UserRead(BaseModel):
