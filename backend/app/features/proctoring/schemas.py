@@ -1,26 +1,20 @@
-"""
-Proctoring schemas: Events, Violations.
-"""
+"""Proctoring schemas."""
 
 from uuid import UUID
-from datetime import datetime
 from typing import Any, Optional
 from pydantic import BaseModel
-
-from app.core.enums import ProctoringEventType, ProctoringSeverity
 
 
 class ProctoringEventCreate(BaseModel):
     assessment_id: UUID
-    event_type: ProctoringEventType
-    severity: ProctoringSeverity
-    evidence_json: dict
-    timestamp: datetime
+    candidate_id: UUID
+    event_type: str  # tab_switch, face_not_detected, etc.
+    severity: str = "low"  # low, medium, high
+    timestamp: Optional[str] = None
+    evidence: dict[str, Any] = {}
 
 
-class ProctoringSummary(BaseModel):
-    assessment_id: UUID
-    candidate_name: str
-    violation_count: int
+class ProctoringEventResponse(BaseModel):
+    warning_count: int
     terminated: bool
-    last_event_at: Optional[datetime]
+    reason: str | None = None

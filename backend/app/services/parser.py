@@ -1,26 +1,38 @@
 import logging
 import tempfile
-import numpy as np
-import easyocr
-import torch
-import fitz
-from docling.document_converter import DocumentConverter
 
 logger = logging.getLogger(__name__)
 
+# Heavy deps loaded lazily so the server starts even if not installed
+_reader = None
 
-USE_GPU = torch.cuda.is_available()
-logger.info(f"GPU Available: {USE_GPU}")
-
-reader = easyocr.Reader(
-    ['en'],
-    gpu=USE_GPU,
-    model_storage_directory='./models'
-)
+def _get_reader():
+    global _reader
+    if _reader is None:
+        try:
+            import torch
+            import easyocr
+            USE_GPU = torch.cuda.is_available()
+            logger.info(f"GPU Available: {USE_GPU}")
+            _reader = easyocr.Reader(
+                ['en'],
+                gpu=USE_GPU,
+                model_storage_directory='./models'
+            )
+        except ImportError as e:
+            raise RuntimeError(
+                f"OCR dependencies not installed ({e}). "
+                "Run: pip install easyocr torch"
+            ) from e
+    return _reader
 
 
 def extract_text_with_ocr(file_bytes: bytes):
     try:
+        import numpy as np
+        import fitz
+        reader = _get_reader()
+
         doc = fitz.open(stream=file_bytes, filetype="pdf")
         full_text = ""
 
@@ -51,6 +63,7 @@ def extract_text_with_ocr(file_bytes: bytes):
 # 🔹 MAIN extractor (PDF + DOCX + DOC)
 def extract_text_from_file(file_bytes: bytes, filename: str):
     try:
+        from docling.document_converter import DocumentConverter
         converter = DocumentConverter()
 
         suffix = filename.split(".")[-1].lower()

@@ -1,59 +1,66 @@
-"""
-Proctoring business logic.
-"""
+"""Proctoring service + termination logic."""
 
+from datetime import date, datetime, timedelta, timezone
 from uuid import UUID
-from datetime import datetime, timezone
-from sqlalchemy import select, update
+
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
+from app.core.enums import ProctoringEventType, ProctoringSeverity
 from app.features.proctoring.models import ProctoringRecord
 from app.features.proctoring.schemas import ProctoringEventCreate
-from app.features.assessments.models import Assessment
-from app.core.enums import AssessmentStatus
 
 
 class ProctoringService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def record_event(self, event_data: ProctoringEventCreate) -> ProctoringRecord:
-        """
-        Record a proctoring event and update violation counts.
-        """
-        # 1. Fetch or create proctoring record for this assessment
-        stmt = select(ProctoringRecord).where(ProctoringRecord.assessment_id == event_data.assessment_id)
-        result = await self.db.execute(stmt)
-        record = result.scalar_one_or_none()
-        
+    async def record_event(self, data: ProctoringEventCreate) -> dict:
+        # Find or create proctoring record for this assessment
+        stmt = (
+            select(ProctoringRecord)
+            .where(ProctoringRecord.assessment_id == data.assessment_id)
+        )
+        res = await self.db.execute(stmt)
+        record = res.scalar_one_or_none()
+
         if not record:
             record = ProctoringRecord(
-                assessment_id=event_data.assessment_id,
-                violations_json={"events": []},
-                warning_count=0
+                assessment_id=data.assessment_id,
+                candidate_id=data.candidate_id,
+                retention_expiry=datetime.now(timezone.utc).date() + timedelta(days=20),
             )
             self.db.add(record)
-            await self.db.flush()
 
-        # 2. Append event
-        event_dict = event_data.model_dump()
-        event_dict["timestamp"] = event_dict["timestamp"].isoformat()
-        
-        # SQLAlchemy mutation tracking for JSONB
-        events = record.violations_json.get("events", [])
-        events.append(event_dict)
-        record.violations_json = {"events": events}
-        
-        # 3. Update warning count if severity is high
-        if event_data.severity in ["medium", "high"]:
-            record.warning_count += 1
-            
-        # 4. Check for termination (Simplified logic)
-        if record.warning_count >= 3:
-            await self.db.execute(
-                update(Assessment).where(Assessment.id == event_data.assessment_id)
-                .values(status=AssessmentStatus.TERMINATED, termination_reason="Multiple proctoring violations")
-            )
+        event_entry = {
+            "type": data.event_type.value if hasattr(data.event_type, "value") else str(data.event_type),
+            "severity": data.severity.value if hasattr(data.severity, "value") else str(data.severity),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "evidence": data.evidence or {},
+        }
+        record.violations_json.append(event_entry)
+        record.warning_count += 1
+
+        terminated = False
+        reason = None
+
+        max_warnings = settings.PROCTORING_MAX_WARNINGS
+        if record.warning_count >= max_warnings:
+            record.terminated = True
+            terminated = True
+            reason = f"Exceeded maximum warnings ({max_warnings})"
+
+        severity = data.severity.value if hasattr(data.severity, "value") else str(data.severity)
+        if severity == "high" and record.warning_count >= 1:
+            record.terminated = True
+            terminated = True
+            reason = "High-severity violation detected"
 
         await self.db.flush()
-        return record
+
+        return {
+            "warning_count": record.warning_count,
+            "terminated": terminated,
+            "reason": reason,
+        }

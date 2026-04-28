@@ -1,23 +1,33 @@
-"""
-Analytics and Selection schemas.
-"""
+"""Analytics schemas."""
 
-from uuid import UUID
 from typing import Any
 from pydantic import BaseModel
 
 
-class FunnelStage(BaseModel):
-    status: str
-    count: int
-
-
 class FunnelResponse(BaseModel):
-    stages: list[FunnelStage]
-    total_applicants: int
+    applied: int
+    eligible: int
+    assessed: int
+    interviewed: int
+    selected: int
 
 
-class InterviewAssignment(BaseModel):
-    candidate_id: UUID
-    interviewer_id: UUID
-    round: str
+class DashboardResponse(BaseModel):
+    total_candidates: int
+    selected_count: int
+    select_rate: float
+    avg_cgpa: float
+    status_breakdown: dict[str, Any]
+
+
+class OrganizationRead(BaseModel):
+    id: str
+    name: str
+    slug: str
+    plan: str = "starter"
+    candidate_count: int = 0
+    active_hiring_cycles: int = 0
+    status: str = "ACTIVE"
+
+    class Config:
+        from_attributes = True

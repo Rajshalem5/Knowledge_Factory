@@ -1,74 +1,115 @@
-"""
-Assessment business logic.
-"""
+"""Assessment service: start, submit, evaluate."""
 
-import secrets
-from uuid import UUID
-from datetime import datetime, timezone, timedelta
+import uuid
+from datetime import datetime, timedelta, timezone
 from typing import Any
+from uuid import UUID
 
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.assessments.models import Assessment, Submission
+from app.core.enums import AssessmentRound, AssessmentStatus, SubmissionSection
+from app.features.assessments.models import Assessment, Submission, Score
 from app.features.assessments.schemas import AssessmentStart, SubmissionCreate
-from app.core.enums import AssessmentStatus, AssessmentRound
+from app.features.candidates.models import Candidate
+from app.features.proctoring.models import ProctoringRecord
 
 
 class AssessmentService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def start_assessment(self, candidate_id: UUID, start_data: AssessmentStart) -> Assessment:
-        """
-        Initialize an assessment round. 
-        """
-        # 1. Check if already exists
-        stmt = select(Assessment).where(
-            Assessment.candidate_id == candidate_id,
-            Assessment.round == start_data.round
+    async def start_assessment(self, candidate_id: UUID, req: AssessmentStart) -> Assessment:
+        # Check if candidate already has an active/in-progress assessment for this round
+        stmt = (
+            select(Assessment)
+            .where(
+                Assessment.candidate_id == candidate_id,
+                Assessment.round == req.round,
+                Assessment.status.in_([AssessmentStatus.IN_PROGRESS]),
+            )
         )
         result = await self.db.execute(stmt)
         existing = result.scalar_one_or_none()
-        
+
         if existing:
             return existing
 
-        # 2. Create new assessment
-        new_assessment = Assessment(
+        # Create new assessment
+        assessment = Assessment(
             candidate_id=candidate_id,
-            round=start_data.round,
-            status=AssessmentStatus.IN_PROGRESS,
-            started_at=datetime.now(timezone.utc),
-            link_token=secrets.token_urlsafe(32),
+            round=req.round,
+            questions_json=self._generate_sample_questions(req.round),
+            link_token=uuid.uuid4().hex,
             link_expiry=datetime.now(timezone.utc) + timedelta(days=5),
-            questions_json={
-                "questions": [
-                    {"id": 1, "text": "Mock Question?", "options": ["A", "B"], "answer_idx": 0}
+            started_at=datetime.now(timezone.utc),
+            status=AssessmentStatus.IN_PROGRESS,
+        )
+        self.db.add(assessment)
+
+        # Create proctoring record
+        proctoring = ProctoringRecord(
+            assessment_id=assessment.id,
+            candidate_id=candidate_id,
+            retention_expiry=datetime.now(timezone.utc).date() + timedelta(days=20),
+        )
+        self.db.add(proctoring)
+
+        await self.db.flush()
+        return assessment
+
+    async def submit_section(self, candidate_id: UUID, data: SubmissionCreate) -> dict[str, Any]:
+        """Submit a section. Returns passed/failed test case counts."""
+        # Verify the candidate owns this assessment
+        stmt = select(Assessment).where(Assessment.id == data.assessment_id)
+        res = await self.db.execute(stmt)
+        assessment = res.scalar_one_or_none()
+
+        if not assessment or assessment.candidate_id != candidate_id:
+            raise ValueError("Assessment not found or access denied")
+
+        # Create submission
+        section = SubmissionSection.CODING if data.section in ("CODING", "coding") else SubmissionSection.MCQ
+        submission = Submission(
+            assessment_id=data.assessment_id,
+            section=section,
+            payload_json={"code" if data.section == "CODING" else "answers": data.content},
+        )
+        self.db.add(submission)
+
+        # Mock evaluation — in prod this goes to Judge0 + AI pipeline
+        passed = len(data.content.get("testCases", []))
+        failed = 0
+
+        await self.db.flush()
+        return {"submission_id": submission.id, "passed": passed, "failed": failed}
+
+    async def get_assessment(self, candidate_id: UUID) -> list[Assessment]:
+        stmt = (
+            select(Assessment)
+            .where(Assessment.candidate_id == candidate_id)
+            .order_by(Assessment.started_at.desc())
+        )
+        result = await self.db.execute(stmt)
+        return result.scalars().all()
+
+    @staticmethod
+    def _generate_sample_questions(round_type: AssessmentRound) -> dict:
+        """Generate sample questions for development. Replace with AI engine in production."""
+        if round_type == AssessmentRound.ROUND_2:
+            return {
+                "problems": [
+                    {
+                        "id": "r2_p1",
+                        "title": "Two Sum",
+                        "description": "Given an array of integers nums and an integer target, return indices of the two numbers...",
+                        "difficulty": "easy",
+                        "starter_code": "def two_sum(nums, target):\n    # write your code here\n    pass",
+                        "test_cases": [
+                            {"input": "[2,7,11,15], 9", "expectedOutput": "[0,1]"},
+                            {"input": "[3,2,4], 6", "expectedOutput": "[1,2]"},
+                        ],
+                    }
                 ]
             }
-        )
-        self.db.add(new_assessment)
-        await self.db.flush()
-        return new_assessment
-
-    async def submit_section(self, candidate_id: UUID, submission_data: SubmissionCreate) -> Submission:
-        """
-        Persist a candidate's submission.
-        """
-        new_submission = Submission(
-            assessment_id=submission_data.assessment_id,
-            section=submission_data.section,
-            payload_json=submission_data.content,
-            submitted_at=datetime.now(timezone.utc)
-        )
-        self.db.add(new_submission)
-        await self.db.flush()
-        
-        # Mark assessment as completed (Simplified)
-        await self.db.execute(
-            update(Assessment).where(Assessment.id == submission_data.assessment_id)
-            .values(status=AssessmentStatus.COMPLETED, ended_at=datetime.now(timezone.utc))
-        )
-        
-        return new_submission
+        return {"use_case": "Build a REST API endpoint for user registration with input validation."}
