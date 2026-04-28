@@ -15,7 +15,7 @@ export function AppShell({ children, title }: AppShellProps) {
   const { role } = useAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-  if (role === 'candidate') {
+  if (role === 'candidate' && !import.meta.env.DEV) {
     return (
       <div className="flex flex-col h-screen overflow-hidden">
         <CandidateNav />

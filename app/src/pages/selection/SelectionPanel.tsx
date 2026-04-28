@@ -1,26 +1,25 @@
 import { useState } from 'react';
 import { AppShell } from '../../components/layout/AppShell';
 import { Card, Button, Toggle, LoadingState, ErrorState } from '../../components/ui';
-import { useCandidates, useUpdateCandidateStatus } from '../../hooks/useCandidates';
+import { useFinalReviewCandidates, useSubmitFinalDecision } from '../../hooks/useInterviews';
 import { CheckCircle, XCircle, Trophy } from 'lucide-react';
 
 export default function SelectionPanel() {
-  const { data: candidatesData, isLoading, error } = useCandidates({ pageSize: 100 });
-  const updateStatus = useUpdateCandidateStatus();
+  const { data: candidates = [], isLoading, error } = useFinalReviewCandidates();
+  const submitFinalDecision = useSubmitFinalDecision();
   const [selections, setSelections] = useState<Record<string, boolean>>({});
-
-  const candidates = (candidatesData?.data ?? []).filter(
-    c => c.status === 'interviewed' || c.status === 'selected' || c.status === 'rejected'
-  );
 
   const handleToggle = (id: string, selected: boolean) => {
     setSelections(prev => ({ ...prev, [id]: selected }));
   };
 
   const handleConfirmAll = () => {
-    Object.entries(selections).forEach(([id, selected]) => {
-      updateStatus.mutate({ id, status: selected ? 'selected' : 'rejected' });
-    });
+    const decisions = candidates.map(candidate => ({
+      candidateId: candidate.id,
+      decision: (selections[candidate.id] ?? candidate.status === 'selected') ? 'selected' as const : 'rejected' as const,
+    }));
+
+    submitFinalDecision.mutate({ decisions });
   };
 
   if (isLoading) return <AppShell title="Selection"><LoadingState /></AppShell>;
@@ -34,7 +33,7 @@ export default function SelectionPanel() {
             <h2 className="text-xl font-bold text-on-surface tracking-tight-display">Final Selection</h2>
             <p className="text-sm text-tertiary">{candidates.length} candidates ready for final decision</p>
           </div>
-          <Button onClick={handleConfirmAll} isLoading={updateStatus.isPending}>
+          <Button onClick={handleConfirmAll} isLoading={submitFinalDecision.isPending} disabled={candidates.length === 0}>
             Confirm All Decisions
           </Button>
         </div>

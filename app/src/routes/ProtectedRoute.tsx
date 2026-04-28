@@ -12,6 +12,10 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
   const { user, role } = useAuth();
   const location = useLocation();
 
+  if (import.meta.env.DEV) {
+    return <>{children}</>;
+  }
+
   if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }

@@ -34,7 +34,12 @@ export function Modal({ open, onClose, title, children, className }: ModalProps)
           className,
         )}
       >
-        <div className="flex items-center justify-between mb-4">
+        <div
+          className={cn(
+            'flex items-center justify-between',
+            title ? 'mb-4' : 'absolute right-4 top-4 z-10',
+          )}
+        >
           {title && <h2 className="text-lg font-semibold text-on-surface tracking-tight-display">{title}</h2>}
           <button onClick={onClose} className="text-tertiary hover:text-on-surface transition-colors">
             <X size={18} />

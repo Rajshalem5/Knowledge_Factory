@@ -14,21 +14,34 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+function inferDevRole(email: string): Role {
+  const normalized = email.toLowerCase();
+  if (normalized.includes('interviewer')) return 'interviewer';
+  if (normalized.includes('admin')) return 'admin';
+  if (normalized.includes('superadmin')) return 'superadmin';
+  if (normalized.includes('hr')) return 'hr';
+  return 'candidate';
+}
+
+function createDevUser(email: string): User {
+  const role = inferDevRole(email);
+  return {
+    id: `dev-${role}-1`,
+    email,
+    name: role === 'interviewer' ? 'Test Interviewer' : `Test ${role}`,
+    role,
+  };
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(() => {
     const stored = localStorage.getItem('kf_user');
     if (stored) return JSON.parse(stored);
-    // For development, set a mock candidate user to bypass login
     if (import.meta.env.DEV) {
-      const mockUser: User = {
-        id: 'dev-candidate-1',
-        email: 'candidate@example.com',
-        name: 'Test Candidate',
-        role: 'candidate',
-      };
-      localStorage.setItem('kf_user', JSON.stringify(mockUser));
+      const demoUser = createDevUser('admin@example.com');
+      localStorage.setItem('kf_user', JSON.stringify(demoUser));
       localStorage.setItem('kf_token', 'dev-token');
-      return mockUser;
+      return demoUser;
     }
     return null;
   });
@@ -38,7 +51,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (email: string, password: string) => {
     setIsLoading(true);
     try {
-      const response = await authApi.login({ email, password });
+      let response;
+      try {
+        response = await authApi.login({ email, password });
+      } catch (error) {
+        if (!import.meta.env.DEV) throw error;
+        response = {
+          token: 'dev-token',
+          user: createDevUser(email),
+        };
+      }
       localStorage.setItem('kf_token', response.token);
       localStorage.setItem('kf_user', JSON.stringify(response.user));
       setToken(response.token);
@@ -75,6 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) throw new Error('useAuth must be used within AuthProvider');

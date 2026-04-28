@@ -1,5 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { assessmentApi } from '../api/assessment';
+import { interviewsApi } from '../api/interviews';
+import type { InterviewFeedbackRequest } from '../types';
 
 export function useAssessment(id: string) {
   return useQuery({
@@ -40,9 +42,10 @@ export function useSubmitSection() {
 export function useSubmitFeedback() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ candidateId, data }: { candidateId: string; data: Parameters<typeof assessmentApi.submitFeedback>[1] }) =>
-      assessmentApi.submitFeedback(candidateId, data),
+    mutationFn: ({ data }: { candidateId: string; data: InterviewFeedbackRequest }) =>
+      interviewsApi.submitFeedback(data),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['interviews'] });
       queryClient.invalidateQueries({ queryKey: ['candidates'] });
     },
   });

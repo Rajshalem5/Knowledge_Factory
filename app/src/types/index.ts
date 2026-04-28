@@ -58,6 +58,45 @@ export interface InterviewFeedback {
   completedAt: string;
 }
 
+export type InterviewStatus = 'scheduled' | 'in_progress' | 'completed';
+
+export interface InterviewAssignment {
+  id: string;
+  candidateId: string;
+  candidate: Candidate;
+  interviewerId: string;
+  interviewerName?: string;
+  round: string;
+  status: InterviewStatus;
+  scheduledAt: string;
+  meetingLink?: string;
+}
+
+export interface AssignInterviewRequest {
+  candidateId: string;
+  interviewerId: string;
+  scheduledAt: string;
+  meetingLink: string;
+  round?: string;
+}
+
+export interface InterviewFeedbackRequest {
+  interviewId: string;
+  candidateId: string;
+  technicalScore: number;
+  communicationScore: number;
+  culturalFitScore: number;
+  recommendation: 'select' | 'reject';
+  notes: string;
+}
+
+export interface FinalDecisionRequest {
+  decisions: Array<{
+    candidateId: string;
+    decision: 'selected' | 'rejected';
+  }>;
+}
+
 export interface Assessment {
   id: string;
   candidateId: string;

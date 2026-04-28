@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Factory } from 'lucide-react';
 import { Button, Input, Card } from '../../components/ui';
 import { useAuth } from '../../contexts/AuthContext';
+import { ROLE_HOME_ROUTES } from '../../utils/roles';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -16,7 +17,9 @@ export default function Login() {
     setError('');
     try {
       await login(email, password);
-      navigate('/portal');
+      const storedUser = localStorage.getItem('kf_user');
+      const role = storedUser ? JSON.parse(storedUser).role : null;
+      navigate(role ? ROLE_HOME_ROUTES[role as keyof typeof ROLE_HOME_ROUTES] : '/portal');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     }

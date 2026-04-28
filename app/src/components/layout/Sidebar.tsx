@@ -53,6 +53,16 @@ const NAV_ITEMS: Record<Role, NavItem[]> = {
   ],
 };
 
+const DEMO_NAV_ITEMS: NavItem[] = [
+  { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+  { label: 'Candidate Portal', path: '/portal', icon: UserCircle },
+  { label: 'Assessment', path: '/assessment', icon: Code },
+  { label: 'Interviews', path: '/interview', icon: MessageSquare },
+  { label: 'Selection', path: '/selection', icon: CheckCircle },
+  { label: 'Analytics', path: '/analytics', icon: BarChart3 },
+  { label: 'Super Admin', path: '/superadmin', icon: Shield },
+];
+
 interface SidebarProps {
   collapsed?: boolean;
   className?: string;
@@ -66,7 +76,7 @@ export function Sidebar({ collapsed = false, className }: SidebarProps) {
 
   if (!user || !role) return null;
 
-  const items = NAV_ITEMS[role];
+  const items = import.meta.env.DEV ? DEMO_NAV_ITEMS : NAV_ITEMS[role];
 
   return (
     <aside

@@ -56,6 +56,7 @@ export default function App() {
           <CandidateDetail />
         </ProtectedRoute>
       } />
+      <Route path="/candidates" element={<Navigate to="/dashboard" replace />} />
 
       {/* Interviewer routes */}
       <Route path="/interview" element={
