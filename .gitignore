@@ -1,0 +1,51 @@
+# Dependencies and environment
+node_modules/
+__pycache__/
+*.pyc
+.env
+.env.local
+venv/
+env/
+.venv
+
+# Build outputs
+dist/
+build/
+*.egg-info/
+.pytest_cache/
+coverage/
+
+# IDE and editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Skills folder (not needed in repo)
+/skills/
+
+# Unnecessary documentation and project files
+AUDIT_REPORT*.md
+~*.md.saved.bak*
+MNC_PROJECT_REVIEW.md
+QWEN.md
+cavemenskill.md
+Design.md
+Technical_Architecture.txt
+API_PROGRESS.md
+AUDIT_REPORT_COMPLETION_*.md
+
+# Verification scripts (local testing only)
+verify_*.py
+
+# Previous work and local references
+/previous memory/
+/about project documentation/
+
+# Node and Python specific
+.turbo/
+.next/
+out/
