@@ -70,7 +70,7 @@ export default function Assessment() {
   const handleSubmit = () => {
     setTestResults([
       { name: 'Visible Tests', passed: true, input: '', expected: '', actual: '' },
-      { name: 'Hidden Tests', passed: true, input: '', expected: '' },
+      { name: 'Hidden Tests', passed: true, input: '', expected: '',actual: '' },
     ]);
   };
 
@@ -94,7 +94,7 @@ export default function Assessment() {
             <FileText size={20} className="text-white" />
           </div>
           <div>
-            <Badge variant="primary" className="mb-1">Round 1</Badge>
+            <Badge variant="default" className="mb-1">Round 1</Badge>
             <span className="text-lg font-semibold text-on-surface tracking-tight-display block">Technical Assessment</span>
             <span className="text-xs text-on-surface-variant">20 minutes • 2 problems</span>
           </div>
@@ -339,7 +339,7 @@ export default function Assessment() {
           </div>
         </div>
 
-        {/* Right Panel - Output/Tests */}  
+        {/* Right Panel - Editor & Output */}
         <div className="w-1/2 flex flex-col bg-surface-container-low">
           {/* Editor Section */}
           <div className="flex-1 overflow-hidden border-b border-outline-variant/20">

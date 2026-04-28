@@ -104,15 +104,15 @@ export default function Portal() {
                 <h2 className="text-2xl font-bold text-on-surface">{profile.name}</h2>
                 <p className="text-on-surface-variant">{profile.email}</p>
                 <div className="mt-2 flex flex-wrap gap-2">
-                  <Badge variant="secondary" className="flex items-center gap-1">
+                  <Badge variant="default" className="flex items-center gap-1">
                     <GraduationCap size={14} />
                     {profile.college}
                   </Badge>
-                  <Badge variant="secondary" className="flex items-center gap-1">
+                  <Badge variant="default" className="flex items-center gap-1">
                     <Award size={14} />
                     {profile.branch}
                   </Badge>
-                  <Badge variant="secondary" className="flex items-center gap-1">
+                  <Badge variant="default" className="flex items-center gap-1">
                     <Trophy size={14} />
                     CGPA: {profile.cgpa}
                   </Badge>
@@ -205,7 +205,7 @@ export default function Portal() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <Badge variant={a.status === 'in_progress' ? 'info' : 'primary'}>
+                      <Badge variant={a.status === 'in_progress' ? 'info' : 'default'}>
                         {a.status === 'in_progress' ? 'In Progress' : 'Available'}
                       </Badge>
                       <Button
