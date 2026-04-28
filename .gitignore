@@ -1,12 +1,18 @@
 # Env files
 *.env
 *.env.*
+!.env.example
+!backend/.env.example
 
 # Python env
 venv/
 .venv/
 backend/venv/
 backend/.venv/
+__pycache__/
+*.pyc
+*.db
+*.log
 
 # Dependencies
 dependencies/
