@@ -1,40 +1,50 @@
+# app/routes/auth.py
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from app.schemas.auth import ForgotPasswordRequest, ResetPasswordRequest
-from app.services.auth_service import request_password_reset, reset_password
-from app.schemas.auth import RegisterRequest, LoginRequest
+
+from app.core.dependencies import get_db
+from app.core.rbac import require_roles
+
+from app.schemas.auth import (
+    RegisterRequest,
+    LoginRequest,
+    ForgotPasswordRequest,
+    ResetPasswordRequest
+)
+
 from app.services.auth_service import (
     register_admin,
     register_hr,
     register_candidate,
-    login_user
+    login_user,
+    request_password_reset,
+    reset_password
 )
-from app.core.dependencies import get_db
-from app.core.auth import get_current_user
-from app.core.rbac import require_roles
 
 router = APIRouter()
 
+
 @router.post("/admin/register")
-def register_admin_route(
+def create_admin(
     data: RegisterRequest,
     db: Session = Depends(get_db),
-    current_user = Depends(require_roles("ADMIN", "SUPERADMIN"))
+    current_user=Depends(require_roles("SUPERADMIN"))
 ):
     return register_admin(db, data)
 
 
 @router.post("/hr/register")
-def register_hr_route(
+def create_hr(
     data: RegisterRequest,
     db: Session = Depends(get_db),
-    current_user = Depends(require_roles("ADMIN"))
+    current_user=Depends(require_roles("SUPERADMIN", "ADMIN"))
 ):
     return register_hr(db, data)
 
 
 @router.post("/candidate/register")
-def register_candidate_route(
+def create_candidate(
     data: RegisterRequest,
     db: Session = Depends(get_db)
 ):
@@ -49,14 +59,6 @@ def login(
     return login_user(db, data)
 
 
-@router.get("/me")
-def get_me(current_user = Depends(get_current_user)):
-    return {
-        "email": current_user.email,
-        "name": current_user.name,
-        "role": current_user.role
-    }
-
 @router.post("/forgot-password")
 def forgot_password(
     data: ForgotPasswordRequest,
@@ -66,7 +68,7 @@ def forgot_password(
 
 
 @router.post("/reset-password")
-def reset_password_route(
+def change_password(
     data: ResetPasswordRequest,
     db: Session = Depends(get_db)
 ):
