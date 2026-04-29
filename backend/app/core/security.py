@@ -1,30 +1,33 @@
-"""Security utilities: JWT encode/decode, password hashing, refresh tokens.
-
-Per architecture doc Section 9.1:
-- JWT access tokens (HS256 in dev, RS256 in prod)
-- Refresh tokens stored in httpOnly cookies
-- Password hashing with bcrypt cost factor 12
-"""
+"""Security utilities - modernized with Argon2 and simplified token structure."""
 
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-import bcrypt
+# Use argon2-cffi for secure password hashing
+try:
+    from argon2 import PasswordHasher
+    from argon2.exceptions import VerifyMismatchError, InvalidHash
+    _ph = PasswordHasher()
+    _USE_ARGON2 = True
+except ImportError:
+    _USE_ARGON2 = False
+    import bcrypt
+
 from jose import jwt
 
 from app.config import settings
 
 
 def _get_secret() -> str:
-    """Return JWT signing secret — PEM key if configured, else crypto-random."""
+    """Return JWT signing secret."""
     if settings.JWT_PRIVATE_KEY:
         return settings.JWT_PRIVATE_KEY
-    # Dev fallback: generate a stable random secret from env or fresh each restart
     return secrets.token_urlsafe(64)
 
 
 def _get_public_key() -> str:
+    """Get public key (same as secret for HS256)."""
     if settings.JWT_PUBLIC_KEY:
         return settings.JWT_PUBLIC_KEY
     return _get_secret()
@@ -34,29 +37,44 @@ _ALGORITHM = "RS256" if settings.JWT_PRIVATE_KEY else "HS256"
 
 
 def hash_password(password: str) -> str:
-    salt = bcrypt.gensalt(rounds=12)
-    return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
+    """Hash password using Argon2 (preferred) or bcrypt fallback."""
+    if _USE_ARGON2:
+        return _ph.hash(password)
+    else:
+        # Fallback to bcrypt
+        salt = bcrypt.gensalt(rounds=12)
+        return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return bcrypt.checkpw(
-        plain_password.encode("utf-8"),
-        hashed_password.encode("utf-8"),
-    )
+    """Verify password against hash."""
+    if _USE_ARGON2:
+        try:
+            _ph.verify(hashed_password, plain_password)
+            return True
+        except (VerifyMismatchError, InvalidHash):
+            return False
+    else:
+        # Fallback to bcrypt
+        return bcrypt.checkpw(
+            plain_password.encode("utf-8"),
+            hashed_password.encode("utf-8"),
+        )
 
 
 def create_access_token(
     subject: str | Any,
-    tenant_id: str | None = None,
+    email: str | None = None,
     role: str | None = None,
 ) -> str:
+    """Create JWT access token."""
     expires_delta = timedelta(minutes=settings.JWT_ACCESS_TTL_MINUTES)
     expire = datetime.now(timezone.utc) + expires_delta
 
     to_encode = {
         "exp": int(expire.timestamp()),
         "sub": str(subject),
-        "tenant_id": str(tenant_id) if tenant_id else None,
+        "email": email if email else None,
         "role": role,
     }
 
@@ -64,6 +82,7 @@ def create_access_token(
 
 
 def create_refresh_token(subject: str) -> str:
+    """Create refresh token."""
     expires_delta = timedelta(days=settings.JWT_REFRESH_TTL_DAYS)
     expire = datetime.now(timezone.utc) + expires_delta
 
@@ -77,6 +96,7 @@ def create_refresh_token(subject: str) -> str:
 
 
 def decode_token(token: str) -> dict[str, Any] | None:
+    """Decode and validate JWT token."""
     try:
         return jwt.decode(
             token,

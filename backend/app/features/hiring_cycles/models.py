@@ -12,7 +12,6 @@ from app.core.enums import CycleStatus
 from app.database import Base
 
 if TYPE_CHECKING:
-    from app.features.auth.models import Tenant
     from app.features.candidates.models import Candidate
 
 
@@ -20,7 +19,6 @@ class HiringCycle(Base):
     __tablename__ = "hiring_cycles"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    tenant_id: Mapped[str] = mapped_column(String(36), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     start_date: Mapped[date] = mapped_column(Date, nullable=False)
     end_date: Mapped[date] = mapped_column(Date, nullable=False)
@@ -31,5 +29,4 @@ class HiringCycle(Base):
     created_by: Mapped[str | None] = mapped_column(String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
 
-    tenant: Mapped["Tenant"] = relationship(back_populates="cycles", lazy="selectin")
     candidates: Mapped[list["Candidate"]] = relationship(back_populates="cycle", lazy="selectin")
