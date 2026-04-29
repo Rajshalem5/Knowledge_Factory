@@ -1,8 +1,11 @@
+# app/services/auth_service.py
+
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 from jose import jwt, JWTError
 
 from app.models.user import User
+
 from app.core.config import settings
 from app.core.security import (
     hash_password,
@@ -11,10 +14,17 @@ from app.core.security import (
 )
 
 
-def create_user(db: Session, data, role: str):
-    existing = db.query(User).filter(User.email == data.email).first()
+def create_user(
+    db: Session,
+    data,
+    role: str,
+    created_by=None
+):
+    existing_user = db.query(User).filter(
+        User.email == data.email
+    ).first()
 
-    if existing:
+    if existing_user:
         raise HTTPException(
             status_code=400,
             detail="Email already exists"
@@ -34,9 +44,10 @@ def create_user(db: Session, data, role: str):
     user = User(
         email=data.email,
         password_hash=hash_password(data.password),
-        name=data.name,
+        full_name=data.full_name,
         role=role,
-        status="ACTIVE"
+        status="ACTIVE",
+        created_by=created_by
     )
 
     db.add(user)
@@ -48,19 +59,47 @@ def create_user(db: Session, data, role: str):
     }
 
 
-def register_admin(db: Session, data):
-    return create_user(db, data, "ADMIN")
+def register_admin(
+    db: Session,
+    data,
+    current_user
+):
+    return create_user(
+        db=db,
+        data=data,
+        role="ADMIN",
+        created_by=current_user.id
+    )
 
 
-def register_hr(db: Session, data):
-    return create_user(db, data, "HR")
+def register_hr(
+    db: Session,
+    data,
+    current_user
+):
+    return create_user(
+        db=db,
+        data=data,
+        role="HR",
+        created_by=current_user.id
+    )
 
 
-def register_candidate(db: Session, data):
-    return create_user(db, data, "CANDIDATE")
+def register_candidate(
+    db: Session,
+    data
+):
+    return create_user(
+        db=db,
+        data=data,
+        role="CANDIDATE"
+    )
 
 
-def login_user(db: Session, data):
+def login_user(
+    db: Session,
+    data
+):
     user = db.query(User).filter(
         User.email == data.email
     ).first()
@@ -69,6 +108,12 @@ def login_user(db: Session, data):
         raise HTTPException(
             status_code=401,
             detail="Invalid credentials"
+        )
+
+    if user.status != "ACTIVE":
+        raise HTTPException(
+            status_code=403,
+            detail="Account inactive"
         )
 
     if not verify_password(
@@ -82,7 +127,8 @@ def login_user(db: Session, data):
 
     token = create_access_token({
         "sub": user.email,
-        "role": user.role
+        "role": user.role,
+        "user_id": str(user.id)
     })
 
     return {
@@ -91,28 +137,23 @@ def login_user(db: Session, data):
     }
 
 
-def request_password_reset(db: Session, email: str):
+def request_password_reset(
+    db: Session,
+    email: str
+):
     user = db.query(User).filter(
         User.email == email
     ).first()
 
-    if not user:
-        return {
-            "message": "If email exists, reset link sent"
-        }
-
-    reset_token = create_access_token({
-        "sub": user.email,
-        "type": "password_reset"
-    })
-
     return {
-        "message": "Reset token generated",
-        "reset_token": reset_token
+        "message": "If email exists, reset link sent"
     }
 
 
-def reset_password(db: Session, data):
+def reset_password(
+    db: Session,
+    data
+):
     if data.new_password != data.confirm_password:
         raise HTTPException(
             status_code=400,
@@ -127,13 +168,6 @@ def reset_password(db: Session, data):
         )
 
         email = payload.get("sub")
-        token_type = payload.get("type")
-
-        if token_type != "password_reset":
-            raise HTTPException(
-                status_code=400,
-                detail="Invalid token"
-            )
 
     except JWTError:
         raise HTTPException(
