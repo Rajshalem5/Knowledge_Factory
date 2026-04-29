@@ -1,1 +1,5 @@
-"""Code execution feature: Judge0/Piston sandbox integration."""
+"""Code execution feature module."""
+
+from app.features.code_execution.routes import router
+
+__all__ = ["router"]

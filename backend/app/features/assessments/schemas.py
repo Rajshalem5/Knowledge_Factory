@@ -35,16 +35,3 @@ class SubmissionCreate(BaseModel):
     content: dict # MCQ answers or Code string
     time_spent_seconds: int
 
-
-class CodeExecutionRequest(BaseModel):
-    language: str
-    code: str
-    stdin: Optional[str] = None
-
-
-class CodeExecutionResponse(BaseModel):
-    stdout: str
-    stderr: str
-    exit_code: int
-    runtime_ms: int
-    memory_kb: int

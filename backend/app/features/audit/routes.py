@@ -22,8 +22,8 @@ async def list_audit_logs(
     db: AsyncSession = Depends(get_db),
     current_user = Depends(require_role([Role.ADMIN, Role.SUPERADMIN])),
 ):
-    """Retrieve audit logs for the current tenant."""
-    q = select(AuditLog).where(AuditLog.tenant_id == current_user.tenant_id)
+    """Retrieve audit logs for all users."""
+    q = select(AuditLog)
     if entity_type:
         q = q.where(AuditLog.entity_type == entity_type)
     q = q.order_by(AuditLog.created_at.desc()).offset((page - 1) * limit).limit(limit)

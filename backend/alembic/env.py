@@ -11,7 +11,7 @@ from app.database import Base
 
 # Import all models here so Alembic can detect them for autogenerate.
 # Each import registers the model's table with Base.metadata.
-from app.features.auth.models import Tenant, User  # noqa: F401
+from app.features.auth.models import User  # noqa: F401
 from app.features.hiring_cycles.models import HiringCycle  # noqa: F401
 from app.features.candidates.models import Candidate  # noqa: F401
 from app.features.assessments.models import Assessment, Submission, Score  # noqa: F401
@@ -28,7 +28,7 @@ if config.config_file_name is not None:
 
 # Override sqlalchemy.url with the value from Settings, so we don't
 # duplicate the connection string in alembic.ini.
-config.set_main_option("sqlalchemy.url", get_settings().DATABASE_URL)
+config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
 target_metadata = Base.metadata
 

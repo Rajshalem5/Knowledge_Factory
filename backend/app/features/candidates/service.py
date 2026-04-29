@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.enums import CandidateStatus
 from app.features.candidates.models import Candidate
-from app.features.candidates.schemas import CandidateRead, BulkUploadPreview
+from app.features.candidates.schemas import CandidateRead
 
 
 class CandidateService:
@@ -16,9 +16,9 @@ class CandidateService:
         self.db = db
 
     async def list_candidates(
-        self, tenant_id: UUID | None, page: int = 1, limit: int = 50, status: CandidateStatus | None = None, search: str | None = None
+        self, page: int = 1, limit: int = 50, status: CandidateStatus | None = None, search: str | None = None
     ):
-        query = select(Candidate).where(Candidate.tenant_id == tenant_id)
+        query = select(Candidate)
 
         if status:
             query = query.where(Candidate.status == status)
@@ -41,8 +41,8 @@ class CandidateService:
 
         return [self._to_read(c) for c in candidates], total
 
-    async def get_candidate(self, candidate_id: UUID, tenant_id: UUID) -> CandidateRead | None:
-        stmt = select(Candidate).where(Candidate.id == candidate_id, Candidate.tenant_id == tenant_id)
+    async def get_candidate(self, candidate_id: UUID) -> CandidateRead | None:
+        stmt = select(Candidate).where(Candidate.id == candidate_id)
         result = await self.db.execute(stmt)
         c = result.scalar_one_or_none()
         return self._to_read(c) if c else None
@@ -53,9 +53,8 @@ class CandidateService:
         c = result.scalar_one()
         return self._to_read(c)
 
-    async def update_status(self, candidate_id: UUID, tenant_id: UUID, new_status: CandidateStatus) -> CandidateRead | None:
+    async def update_status(self, candidate_id: UUID, new_status: CandidateStatus) -> CandidateRead | None:
         """Update candidate status with FSM validation."""
-        # Valid transitions per architecture doc Section 12
         valid_transitions = {
             CandidateStatus.APPLIED: {CandidateStatus.ROUND1_REVIEW, CandidateStatus.ROUND1_PASSED, CandidateStatus.ROUND1_REJECTED},
             CandidateStatus.ROUND1_REVIEW: {CandidateStatus.ROUND1_PASSED, CandidateStatus.ROUND1_REJECTED},
@@ -72,7 +71,7 @@ class CandidateService:
             CandidateStatus.SELECTED: set(),
         }
 
-        stmt = select(Candidate).where(Candidate.id == candidate_id, Candidate.tenant_id == tenant_id)
+        stmt = select(Candidate).where(Candidate.id == candidate_id)
         res = await self.db.execute(stmt)
         candidate = res.scalar_one_or_none()
 
@@ -102,6 +101,5 @@ class CandidateService:
             language_choice=c.language_choice,
             status=CandidateStatus(c.status) if isinstance(c.status, str) else c.status,
             created_at=c.created_at,
-            tenant_id=c.tenant_id,
             cycle_id=c.cycle_id,
         )

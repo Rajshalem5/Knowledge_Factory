@@ -21,13 +21,9 @@ async def run_screening(db: AsyncSession = Depends(get_db), current_user = Depen
     Candidates meeting CGPA/branch criteria transition from APPLIED to ROUND1_PASSED.
     Others go to ROUND1_REJECTED.
     """
-    tenant_id = current_user.tenant_id
-
-    # Get the active cycle for this tenant
+    # Get the active cycle
     from app.features.hiring_cycles.models import HiringCycle
-    stmt = select(HiringCycle).where(
-        HiringCycle.tenant_id == tenant_id, HiringCycle.status == "ACTIVE"
-    )
+    stmt = select(HiringCycle).where(HiringCycle.status == "ACTIVE")
     res = await db.execute(stmt)
     cycle = res.scalar_one_or_none()
 
@@ -39,7 +35,6 @@ async def run_screening(db: AsyncSession = Depends(get_db), current_user = Depen
     allowed_branches = cfg.get("allowed_branches", [])
 
     q = select(Candidate).where(
-        Candidate.tenant_id == tenant_id,
         Candidate.status == CandidateStatus.APPLIED,
     )
     res = await db.execute(q)

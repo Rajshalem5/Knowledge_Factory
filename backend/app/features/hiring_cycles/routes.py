@@ -16,7 +16,7 @@ router = APIRouter()
 
 @router.get("/")
 async def list_cycles(db: AsyncSession = Depends(get_db), current_user = Depends(require_role([Role.ADMIN, Role.SUPERADMIN]))):
-    stmt = select(HiringCycle).where(HiringCycle.tenant_id == current_user.tenant_id).order_by(HiringCycle.created_at.desc())
+    stmt = select(HiringCycle).order_by(HiringCycle.created_at.desc())
     res = await db.execute(stmt)
     cycles = res.scalars().all()
     return [
@@ -38,7 +38,6 @@ async def create_cycle(body: dict, db: AsyncSession = Depends(get_db), current_u
     from datetime import date
 
     cycle = HiringCycle(
-        tenant_id=current_user.tenant_id,
         name=body.get("name", ""),
         start_date=date.fromisoformat(body["start_date"]) if isinstance(body.get("start_date"), str) else body.get("start_date"),
         end_date=date.fromisoformat(body["end_date"]) if isinstance(body.get("end_date"), str) else body.get("end_date"),
@@ -55,7 +54,7 @@ async def create_cycle(body: dict, db: AsyncSession = Depends(get_db), current_u
 
 @router.patch("/{cycle_id}")
 async def update_cycle(cycle_id: UUID, body: dict, db: AsyncSession = Depends(get_db), current_user = Depends(require_role([Role.ADMIN, Role.SUPERADMIN]))):
-    stmt = select(HiringCycle).where(HiringCycle.id == cycle_id, HiringCycle.tenant_id == current_user.tenant_id)
+    stmt = select(HiringCycle).where(HiringCycle.id == cycle_id)
     res = await db.execute(stmt)
     cycle = res.scalar_one_or_none()
     if not cycle:
