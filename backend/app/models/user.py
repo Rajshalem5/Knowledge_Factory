@@ -11,7 +11,7 @@ class User(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
     email = Column(String(255), unique=True, nullable=False, index=True)
-    password_hash = Column(Text, nullable=False)
+    password_hash = Column(Text, nullable=True, default=None)
     full_name = Column(String(150), nullable=False)
     role = Column(String(30), nullable=False)
     status = Column(String(20), nullable=False, default="ACTIVE")

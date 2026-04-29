@@ -1,40 +1,45 @@
-# app/services/auth_service.py
-
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
-from jose import jwt, JWTError
+from uuid import UUID
 
 from app.models.user import User
+from app.schemas.auth import ProfileRequest
 
-from app.core.config import settings
-from app.core.security import (
-    hash_password,
-    verify_password,
-    create_access_token
-)
+def get_user_profile(db: Session, supabase_user_id: str) -> User:
+    '''Fetch local profile by Supabase user ID.'''
+    user = db.query(User).filter(
+        User.id == supabase_user_id
+    ).first()
+    if not user:
+        raise HTTPException(
+            status_code=404,
+            detail="User profile not found"
+        )
+    return user
 
 
-def create_user(
+def create_profile(
     db: Session,
-    data,
+    data: ProfileRequest,
     role: str,
+    supabase_user_id: str,
     created_by=None
 ):
+    '''Create local profile after Supabase signup. ID must match Supabase user.id (UUID str).'''
+    # Check if profile exists
     existing_user = db.query(User).filter(
-        User.email == data.email
+        User.id == supabase_user_id
     ).first()
-
     if existing_user:
         raise HTTPException(
             status_code=400,
-            detail="Email already exists"
+            detail="Profile already exists"
         )
 
     if role == "SUPERADMIN":
         existing_superadmin = db.query(User).filter(
             User.role == "SUPERADMIN"
         ).first()
-
         if existing_superadmin:
             raise HTTPException(
                 status_code=400,
@@ -42,8 +47,9 @@ def create_user(
             )
 
     user = User(
+        id=UUID(supabase_user_id),
         email=data.email,
-        password_hash=hash_password(data.password),
+        password_hash=None,
         full_name=data.full_name,
         role=role,
         status="ACTIVE",
@@ -55,142 +61,49 @@ def create_user(
     db.refresh(user)
 
     return {
-        "message": f"{role} registered successfully"
+        "message": f"{role} profile created successfully"
     }
 
 
-def register_admin(
+def register_admin_profile(
     db: Session,
-    data,
+    data: ProfileRequest,
+    supabase_user_id: str,
     current_user
 ):
-    return create_user(
+    return create_profile(
         db=db,
         data=data,
         role="ADMIN",
+        supabase_user_id=supabase_user_id,
         created_by=current_user.id
     )
 
 
-def register_hr(
+def register_hr_profile(
     db: Session,
-    data,
+    data: ProfileRequest,
+    supabase_user_id: str,
     current_user
 ):
-    return create_user(
+    return create_profile(
         db=db,
         data=data,
         role="HR",
+        supabase_user_id=supabase_user_id,
         created_by=current_user.id
     )
 
 
-def register_candidate(
+def register_candidate_profile(
     db: Session,
-    data
+    data: ProfileRequest,
+    supabase_user_id: str
 ):
-    return create_user(
+    return create_profile(
         db=db,
         data=data,
-        role="CANDIDATE"
+        role="CANDIDATE",
+        supabase_user_id=supabase_user_id
     )
 
-
-def login_user(
-    db: Session,
-    data
-):
-    user = db.query(User).filter(
-        User.email == data.email
-    ).first()
-
-    if not user:
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid credentials"
-        )
-
-    if user.status != "ACTIVE":
-        raise HTTPException(
-            status_code=403,
-            detail="Account inactive"
-        )
-
-    if not verify_password(
-        data.password,
-        user.password_hash
-    ):
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid credentials"
-        )
-
-    token = create_access_token({
-        "sub": user.email,
-        "role": user.role,
-        "user_id": str(user.id)
-    })
-
-    return {
-        "access_token": token,
-        "token_type": "bearer"
-    }
-
-
-def request_password_reset(
-    db: Session,
-    email: str
-):
-    user = db.query(User).filter(
-        User.email == email
-    ).first()
-
-    return {
-        "message": "If email exists, reset link sent"
-    }
-
-
-def reset_password(
-    db: Session,
-    data
-):
-    if data.new_password != data.confirm_password:
-        raise HTTPException(
-            status_code=400,
-            detail="Passwords do not match"
-        )
-
-    try:
-        payload = jwt.decode(
-            data.token,
-            settings.SECRET_KEY,
-            algorithms=[settings.ALGORITHM]
-        )
-
-        email = payload.get("sub")
-
-    except JWTError:
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid or expired token"
-        )
-
-    user = db.query(User).filter(
-        User.email == email
-    ).first()
-
-    if not user:
-        raise HTTPException(
-            status_code=404,
-            detail="User not found"
-        )
-
-    user.password_hash = hash_password(
-        data.new_password
-    )
-
-    db.commit()
-
-    return {
-        "message": "Password reset successful"
-    }
