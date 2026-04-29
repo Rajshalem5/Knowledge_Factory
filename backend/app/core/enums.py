@@ -31,12 +31,6 @@ class UserStatus(str, enum.Enum):
     PENDING = "PENDING"
 
 
-class TenantStatus(str, enum.Enum):
-    """Tenant (organization) status."""
-    ACTIVE = "ACTIVE"
-    SUSPENDED = "SUSPENDED"
-
-
 # ── Hiring Cycles ───────────────────────────────────────────────────
 
 class CycleStatus(str, enum.Enum):

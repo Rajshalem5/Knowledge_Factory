@@ -24,7 +24,6 @@ async def test_authenticate_user_success():
         email="test@example.com",
         password_hash=hashed,
         role="ADMIN",
-        tenant_id="tenant-id",
         name="Test Admin"
     )
     

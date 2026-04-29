@@ -1,15 +1,18 @@
-export type Role = 'candidate' | 'hr' | 'interviewer' | 'admin' | 'superadmin';
+/**
+ * Core types for the application
+ * Matches backend models (without multi-tenant fields)
+ */
+
+export type Role = 'candidate' | 'hr' | 'admin' | 'superadmin' | 'interviewer';
 
 export interface User {
   id: string;
   email: string;
   name: string;
   role: Role;
-  avatar?: string;
-  organizationId?: string;
 }
 
-export type CandidateStatus =
+export type CandidateStatus = 
   | 'applied'
   | 'eligible'
   | 'round1'
@@ -21,17 +24,21 @@ export type CandidateStatus =
 
 export interface Candidate {
   id: string;
-  name: string;
   email: string;
+  name: string;
   college: string;
   branch: string;
   cgpa: number;
   status: CandidateStatus;
   resumeUrl?: string;
+  govtIdUrl?: string;
   scores: AssessmentScore[];
   proctoringFlags: ProctoringFlag[];
   interviewFeedback?: InterviewFeedback;
   appliedAt: string;
+  phone?: string;
+  passedOutYear: number;
+  languageChoice: string;
 }
 
 export interface AssessmentScore {
@@ -100,18 +107,24 @@ export interface AnalyticsData {
   proctoringViolations: { type: string; count: number }[];
 }
 
-export interface Organization {
+export interface HiringCycle {
   id: string;
   name: string;
-  candidateCount: number;
-  activeHiringCycles: number;
-  plan: 'starter' | 'professional' | 'enterprise';
+  startDate: string;
+  endDate: string;
+  status: 'active' | 'upcoming' | 'completed' | 'cancelled';
+  eligibilityConfig: {
+    minCGPA: number;
+    allowedBranches: string[];
+  };
 }
 
 export interface PaginatedResponse<T> {
   data: T[];
-  total: number;
-  page: number;
-  pageSize: number;
-  totalPages: number;
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
 }

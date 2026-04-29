@@ -44,12 +44,6 @@ class EmailLog(Base):
         primary_key=True,
         default=uuid.uuid4,
     )
-    tenant_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("tenants.id", ondelete="SET NULL"),
-        nullable=True,
-        index=True,
-    )
     template_name: Mapped[str] = mapped_column(
         String(100),
         nullable=False,

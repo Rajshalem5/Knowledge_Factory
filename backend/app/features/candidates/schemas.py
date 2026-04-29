@@ -25,7 +25,6 @@ class CandidateRead(CandidateBase):
     id: UUID
     status: CandidateStatus
     created_at: datetime
-    tenant_id: UUID
     cycle_id: UUID
 
     class Config:

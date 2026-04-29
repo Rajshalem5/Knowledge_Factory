@@ -1,8 +1,6 @@
-"""Authentication business logic."""
+"""Authentication business logic - simplified without multi-tenancy."""
 
 from typing import Any
-from uuid import UUID
-
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,11 +12,9 @@ from app.core.security import (
 )
 from app.features.auth.models import User
 from app.features.candidates.models import Candidate
-from app.features.hiring_cycles.models import HiringCycle
 from app.features.auth.schemas import (
     CandidateRegisterRequest,
     LoginRequest,
-    RefreshRequest,
 )
 from app.core.enums import Role
 
@@ -50,10 +46,10 @@ class AuthService:
         return None
 
     async def register_candidate(
-        self, register_data: CandidateRegisterRequest, tenant_id: UUID, cycle_id: UUID
+        self, register_data: CandidateRegisterRequest, cycle_id: str
     ) -> Candidate:
+        """Register a new candidate."""
         new_candidate = Candidate(
-            tenant_id=tenant_id,
             cycle_id=cycle_id,
             email=register_data.email,
             password_hash=hash_password(register_data.password),
@@ -70,14 +66,17 @@ class AuthService:
 
     @staticmethod
     def generate_token_response(user_or_candidate: Any) -> dict:
+        """Generate token response with user info."""
+        from app.features.candidates.models import Candidate
+        
         is_candidate = isinstance(user_or_candidate, Candidate)
 
         subject = str(user_or_candidate.id)
-        tenant_id = str(user_or_candidate.tenant_id) if user_or_candidate.tenant_id else None
+        email = user_or_candidate.email
         role_val = user_or_candidate.role
         role = "CANDIDATE" if is_candidate else (role_val.value if hasattr(role_val, 'value') else str(role_val))
 
-        access_token = create_access_token(subject=subject, tenant_id=tenant_id, role=role)
+        access_token = create_access_token(subject=subject, email=email, role=role)
         refresh_tok = create_refresh_token(subject=subject)
 
         return {
@@ -89,6 +88,5 @@ class AuthService:
                 "email": user_or_candidate.email,
                 "name": user_or_candidate.name,
                 "role": role,
-                "tenant_id": tenant_id,
             },
         }
