@@ -35,20 +35,16 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379/0"
 
     # ── JWT / Security ─────────────────────────────────────────────
-    # RS256 private key for signing access tokens (PEM format).
     JWT_PRIVATE_KEY: str = ""
-    # RS256 public key for verifying tokens.
     JWT_PUBLIC_KEY: str = ""
-    # Access token time-to-live in minutes.
-    JWT_ACCESS_TTL_MINUTES: int = 15
-    # Refresh token time-to-live in days.
+    JWT_SECRET_KEY: str = "dev-stable-secret-change-in-production"
+    JWT_ACCESS_TTL_MINUTES: int = 60
     JWT_REFRESH_TTL_DAYS: int = 7
 
-    # ── AI / LLM ──────────────────────────────────────────────────
-    ANTHROPIC_API_KEY: str = ""
-    AI_MODEL: str = "claude-sonnet-4-5"
-    # Per-cycle spending cap in USD.
-    AI_SPEND_CAP_PER_CYCLE_USD: float = 50.0
+    # ── AI Question Generation ─────────────────────────────────────
+    AI_API_URL: str = "http://Code7-ai-alb-120690216.ap-south-1.elb.amazonaws.com/v1/chat/completions"
+    AI_API_KEY: str = "sk-8YoGZvol4JFZGXbWC0hFlg"
+    AI_MODEL: str = "qwen3-coder-30b"
 
     # ── Code Execution Sandbox ─────────────────────────────────────
     SANDBOX_URL: str = "http://judge0:2358"

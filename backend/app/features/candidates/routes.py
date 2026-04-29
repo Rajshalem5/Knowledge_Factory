@@ -25,7 +25,7 @@ async def list_candidates(
 ):
     service = CandidateService(db)
     candidates, total = await service.list_candidates(
-        tenant_id=current_user.tenant_id, page=page, limit=limit, status=status, search=search,
+        page=page, limit=limit, status=status, search=search,
     )
     return {"data": candidates, "pagination": {"page": page, "limit": limit, "total": total, "total_pages": (total + limit - 1) // limit if limit else 1}}
 
@@ -33,7 +33,7 @@ async def list_candidates(
 @router.get("/{candidate_id}", response_model=CandidateRead)
 async def get_candidate(candidate_id: UUID, db: AsyncSession = Depends(get_db), current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN, Role.INTERVIEWER]))):
     service = CandidateService(db)
-    candidate = await service.get_candidate(candidate_id, current_user.tenant_id)
+    candidate = await service.get_candidate(candidate_id)
     if not candidate:
         raise HTTPException(status_code=404, detail="Candidate not found")
     return candidate
@@ -52,7 +52,7 @@ async def update_candidate_status(candidate_id: UUID, update: dict, db: AsyncSes
     new_status = CandidateStatus(update["status"])
     service = CandidateService(db)
     try:
-        candidate = await service.update_status(candidate_id, current_user.tenant_id, new_status)
+        candidate = await service.update_status(candidate_id, new_status)
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
     if not candidate:

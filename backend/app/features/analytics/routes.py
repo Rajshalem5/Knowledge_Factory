@@ -15,10 +15,10 @@ router = APIRouter()
 @router.get("/funnel", response_model=FunnelResponse)
 async def get_hiring_funnel(db: AsyncSession = Depends(get_db), current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN]))):
     service = AnalyticsService(db)
-    return await service.get_hiring_funnel(current_user.tenant_id)
+    return await service.get_hiring_funnel()
 
 
 @router.get("/dashboard", response_model=DashboardResponse)
 async def get_dashboard(db: AsyncSession = Depends(get_db), current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN]))):
     service = AnalyticsService(db)
-    return await service.get_dashboard(current_user.tenant_id)
+    return await service.get_dashboard()

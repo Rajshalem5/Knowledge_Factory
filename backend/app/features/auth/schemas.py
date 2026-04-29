@@ -1,20 +1,21 @@
-"""Authentication schemas: Login, Register, Tokens, OTP."""
+"""Authentication schemas - simplified without multi-tenancy."""
 
 from uuid import UUID
 from pydantic import BaseModel, EmailStr, Field
 
 
-class Token(BaseModel):
+class TokenResponse(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
-    user: "UserRead"
+    user: "UserResponse"
 
 
 class TokenPayload(BaseModel):
     sub: str | None = None
-    tenant_id: str | None = None
+    email: str | None = None
     role: str | None = None
+    type: str | None = None  # For refresh tokens
 
 
 class LoginRequest(BaseModel):
@@ -26,7 +27,7 @@ class RegisterResponse(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
-    user: "UserRead"
+    user: "UserResponse"
 
 
 class RefreshRequest(BaseModel):
@@ -44,7 +45,13 @@ class ForgotPasswordRequest(BaseModel):
 
 class ResetPasswordRequest(BaseModel):
     token: str
-    password: str = Field(..., min_length=8)
+    new_password: str = Field(..., min_length=8)
+    confirm_password: str = Field(..., min_length=8)
+
+    def model_validator(self):
+        if self.new_password != self.confirm_password:
+            raise ValueError("Passwords do not match")
+        return self
 
 
 class CandidateRegisterRequest(BaseModel):
@@ -58,12 +65,11 @@ class CandidateRegisterRequest(BaseModel):
     language_choice: str = "english"
 
 
-class UserRead(BaseModel):
+class UserResponse(BaseModel):
     id: UUID
     email: EmailStr
     name: str
     role: str
-    tenant_id: UUID | None = None
 
     class Config:
         from_attributes = True

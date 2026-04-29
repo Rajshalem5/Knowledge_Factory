@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { cn } from '../../utils/cn';
 
 interface CodeEditorProps {
@@ -8,26 +8,34 @@ interface CodeEditorProps {
 }
 
 export function CodeEditor({ initialValue, onChange, className }: CodeEditorProps) {
-  const [value, setValue] = useState(initialValue);
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  // Sync external value changes (language switch, question load)
+  useEffect(() => {
+    if (ref.current && ref.current.value !== initialValue) {
+      ref.current.value = initialValue;
+    }
+  }, [initialValue]);
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setValue(e.target.value);
     onChange(e.target.value);
   };
 
-  const lineCount = value.split('\n').length;
+  // Count lines from the textarea's current value
+  const lineCount = (ref.current?.value ?? initialValue).split('\n').length;
 
   return (
     <div className={cn('flex h-full bg-primary font-mono text-sm', className)}>
-      <div className="flex-shrink-0 py-4 px-2 text-right select-none">
-        {Array.from({ length: lineCount }, (_, i) => (
+      <div className="flex-shrink-0 py-4 px-2 text-right select-none min-w-[2.5rem]">
+        {Array.from({ length: Math.max(lineCount, 1) }, (_, i) => (
           <div key={i} className="text-on-primary-container/40 leading-6 text-xs">
             {i + 1}
           </div>
         ))}
       </div>
       <textarea
-        value={value}
+        ref={ref}
+        defaultValue={initialValue}
         onChange={handleChange}
         spellCheck={false}
         className={cn(
