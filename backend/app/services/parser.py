@@ -3,11 +3,11 @@
 import logging
 import tempfile
 import numpy as np
-import easyocr
+import easyocr #type: ignore
 import torch
-import fitz
+import fitz #type: ignore
 
-from docling.document_converter import DocumentConverter
+from docling.document_converter import DocumentConverter #type: ignore
 
 
 logger = logging.getLogger(__name__)

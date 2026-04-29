@@ -1,7 +1,7 @@
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
-from supabase import create_client
+from supabase import create_client #type: ignore
 
 from app.core.config import settings
 from app.core.database import SessionLocal
