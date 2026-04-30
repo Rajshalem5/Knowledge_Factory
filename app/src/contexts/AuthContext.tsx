@@ -13,7 +13,7 @@ interface AuthContextValue {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (data: RegisterData) => Promise<void>;
+  register: (data: RegisterData | FormData) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
   hasRole: (role: string[]) => boolean;
@@ -72,7 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * Register new user/candidate
    * Automatically logs in after successful registration
    */
-  const register = useCallback(async (data: RegisterData) => {
+  const register = useCallback(async (data: RegisterData | FormData) => {
     setIsLoading(true);
     try {
       const response = await authApi.register(data);

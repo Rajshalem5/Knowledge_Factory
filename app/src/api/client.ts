@@ -27,11 +27,17 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
 
   // Get stored token and attach to headers
   const token = localStorage.getItem('kf_token');
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json',
+  const isFormData = fetchOptions.body instanceof FormData;
+
+  const headers: Record<string, string> = {
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...((fetchOptions.headers as Record<string, string>) || {}),
   };
+
+  // Only set application/json if not FormData
+  if (!isFormData) {
+    headers['Content-Type'] = 'application/json';
+  }
 
   const response = await fetch(url.toString(), { 
     ...fetchOptions, 
@@ -41,7 +47,18 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
   // Handle errors
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    const message = errorData.detail || errorData.message || `HTTP ${response.status}`;
+    let message = `HTTP ${response.status}`;
+    
+    if (errorData.detail) {
+      if (Array.isArray(errorData.detail)) {
+        message = errorData.detail.map((err: any) => err.msg || JSON.stringify(err)).join(', ');
+      } else {
+        message = errorData.detail;
+      }
+    } else if (errorData.message) {
+      message = errorData.message;
+    }
+    
     throw new Error(message);
   }
 
@@ -59,25 +76,25 @@ export const api = {
   get: <T>(endpoint: string, options?: RequestOptions) =>
     request<T>(endpoint, { ...options, method: 'GET' }),
 
-  post: <T>(endpoint: string, data?: unknown, options?: RequestOptions) =>
+  post: <T>(endpoint: string, data?: any, options?: RequestOptions) =>
     request<T>(endpoint, { 
       ...options, 
       method: 'POST', 
-      body: data ? JSON.stringify(data) : undefined 
+      body: data instanceof FormData ? data : (data ? JSON.stringify(data) : undefined)
     }),
 
-  put: <T>(endpoint: string, data?: unknown, options?: RequestOptions) =>
+  put: <T>(endpoint: string, data?: any, options?: RequestOptions) =>
     request<T>(endpoint, { 
       ...options, 
       method: 'PUT', 
-      body: data ? JSON.stringify(data) : undefined 
+      body: data instanceof FormData ? data : (data ? JSON.stringify(data) : undefined)
     }),
 
-  patch: <T>(endpoint: string, data?: unknown, options?: RequestOptions) =>
+  patch: <T>(endpoint: string, data?: any, options?: RequestOptions) =>
     request<T>(endpoint, { 
       ...options, 
       method: 'PATCH', 
-      body: data ? JSON.stringify(data) : undefined 
+      body: data instanceof FormData ? data : (data ? JSON.stringify(data) : undefined)
     }),
 
   delete: <T>(endpoint: string, options?: RequestOptions) =>

@@ -17,8 +17,17 @@ export default function Register() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    
+    const formData = new FormData();
+    formData.append('name', name);
+    formData.append('email', email);
+    formData.append('password', password);
+    if (resume) {
+      formData.append('resume', resume);
+    }
+
     try {
-      await register(name, email, password, resume || undefined);
+      await register(formData);
       navigate('/verify-otp');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed');
