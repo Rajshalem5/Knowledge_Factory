@@ -50,7 +50,7 @@ export const authApi = {
   login: (data: LoginData) =>
     api.post<AuthResponse>('/auth/login', data).then(normalizeResponse),
 
-  register: (data: RegisterData) =>
+  register: (data: RegisterData | FormData) =>
     api.post<AuthResponse>('/auth/register', data).then(normalizeResponse),
 
   refreshToken: (refreshToken: string) =>

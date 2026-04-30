@@ -36,11 +36,16 @@ async def login(login_data: LoginRequest, db: AsyncSession = Depends(get_db)):
     return auth_service.generate_token_response(user_or_candidate)
 
 
+from fastapi import Form, File, UploadFile
+
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 async def register_candidate(
-    register_data: CandidateRegisterRequest, db: AsyncSession = Depends(get_db)
+    name: str = Form(...),
+    email: str = Form(...),
+    password: str = Form(...),
+    resume: UploadFile = File(None),
+    db: AsyncSession = Depends(get_db)
 ):
-    """Register a new candidate."""
     from app.features.hiring_cycles.models import HiringCycle
     
     # Get active hiring cycle
@@ -57,8 +62,21 @@ async def register_candidate(
     auth_service = AuthService(db)
 
     try:
+        # manually construct request object
+        register_data = CandidateRegisterRequest(
+            name=name,
+            email=email,
+            password=password
+        )
+
         candidate = await auth_service.register_candidate(register_data, cycle.id)
+
+        # (optional) handle resume upload here
+        if resume:
+            print("Resume received:", resume.filename)
+
         return auth_service.generate_token_response(candidate)
+
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
