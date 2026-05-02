@@ -61,8 +61,9 @@ interface SidebarProps {
 /* Design.md: Admin/HR sidebar uses primary_container (#063342) as background.
    Icons are monochrome on-primary-container until hovered. No borders. */
 export function Sidebar({ collapsed = false, className }: SidebarProps) {
-  const { user, logout, role } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const role = user?.role;
 
   if (!user || !role) return null;
 

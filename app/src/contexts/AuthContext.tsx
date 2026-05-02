@@ -1,11 +1,13 @@
 /**
- * Authentication Context - Manages user authentication state
- * Handles login, logout, refresh token flow
+ * Authentication Context — manages user auth state.
+ * Access token in memory (not localStorage — reduces XSS exposure).
+ * Refreshes via /auth/me on mount. Supports silent 401 refresh via api client.
  */
 
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import type { User } from '../types';
 import { authApi } from '../api/auth';
+import { tokenStore } from '../api/token';
 
 interface AuthContextValue {
   user: User | null;
@@ -32,112 +34,120 @@ interface RegisterData {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(() => {
-    const stored = localStorage.getItem('kf_user');
-    return stored ? JSON.parse(stored) : null;
-  });
-  const [token, setToken] = useState<string | null>(() => 
-    localStorage.getItem('kf_token')
-  );
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(() => tokenStore.getAccessToken());
+  const [isVerifying, setIsVerifying] = useState(!!tokenStore.getRefreshToken());
 
-  // Auto-refresh token on mount if exists
+  // On mount: verify session exists via /auth/me
   useEffect(() => {
-    if (token && !user) {
-      refreshUser();
-    }
-  }, [token]);
+    const refreshToken = tokenStore.getRefreshToken();
+    const accessToken = tokenStore.getAccessToken();
 
-  /**
-   * Login with credentials
-   * Sets token in localStorage and updates user state
-   */
-  const login = useCallback(async (email: string, password: string) => {
-    setIsLoading(true);
-    try {
-      const response = await authApi.login({ email, password });
-      localStorage.setItem('kf_token', response.token);
-      localStorage.setItem('kf_user', JSON.stringify(response.user));
-      setToken(response.token);
-      setUser(response.user);
-    } catch (error) {
-      console.error('Login failed:', error);
-      throw error;
-    } finally {
-      setIsLoading(false);
+    if (!refreshToken && !accessToken) {
+      // Microtask avoids sync setState in effect body
+      queueMicrotask(() => setIsVerifying(false));
+      return;
     }
-  }, []);
 
-  /**
-   * Register new user/candidate
-   * Automatically logs in after successful registration
-   */
-  const register = useCallback(async (data: RegisterData | FormData) => {
-    setIsLoading(true);
-    try {
-      const response = await authApi.register(data);
-      localStorage.setItem('kf_token', response.token);
-      localStorage.setItem('kf_user', JSON.stringify(response.user));
-      setToken(response.token);
-      setUser(response.user);
-    } catch (error) {
-      console.error('Registration failed:', error);
-      throw error;
-    } finally {
-      setIsLoading(false);
+    // If we have a refresh token but no access token, try refreshing
+    if (refreshToken && !accessToken) {
+      authApi.refreshToken(refreshToken)
+        .then(async (res) => {
+          const { token: tkn, user: usr } = await authApi.normalizeTokenResponse(res);
+          tokenStore.setAccessToken(tkn);
+          tokenStore.setRefreshToken(res.refresh_token);
+          setToken(tkn);
+          setUser(usr);
+        })
+        .catch(() => {
+          tokenStore.clear();
+          setToken(null);
+          setUser(null);
+        })
+        .finally(() => setIsVerifying(false));
+      return;
     }
-  }, []);
 
-  /**
-   * Refresh current user data from server
-   */
-  const refreshUser = useCallback(async () => {
-    if (!token) return;
-    
-    setIsLoading(true);
-    try {
-      const userData = await authApi.getMe();
-      
-      const updatedUser: User = {
-        id: userData.id,
-        email: userData.email,
-        name: userData.name,
-        role: userData.role as any,
-      };
-      
-      setUser(updatedUser);
-      localStorage.setItem('kf_user', JSON.stringify(updatedUser));
-    } catch (error) {
-      console.error('Failed to refresh user:', error);
-      // Token might be invalid, clear it
-      handleLogout();
-    } finally {
-      setIsLoading(false);
-    }
-  }, [token]);
-
-  /**
-   * Logout - clears local storage and state
-   */
-  const logout = useCallback(() => {
-    // Call logout API (optional - mostly for audit trail)
-    authApi.logout()
-      .catch(err => console.warn('Logout API call failed:', err))
-      .finally(() => {
-        handleLogout();
-      });
+    // Verify current session
+    authApi.getMe()
+      .then((userData) => {
+        setUser({
+          id: userData.id,
+          email: userData.email,
+          name: userData.name,
+          role: userData.role.toLowerCase() as User['role'],
+        });
+      })
+      .catch(() => {
+        // Try refresh as fallback
+        if (refreshToken) {
+          return authApi.refreshToken(refreshToken);
+        }
+        throw new Error('Session invalid');
+      })
+      .then((refreshRes) => {
+        if (refreshRes) {
+          return authApi.normalizeTokenResponse(refreshRes);
+        }
+      })
+      .then((normalized) => {
+        if (normalized) {
+          tokenStore.setAccessToken(normalized.token);
+          tokenStore.setRefreshToken(normalized.token); // will be set by normalizeTokenResponse
+          setToken(normalized.token);
+          setUser(normalized.user);
+        }
+      })
+      .catch(() => {
+        tokenStore.clear();
+        setToken(null);
+        setUser(null);
+      })
+      .finally(() => setIsVerifying(false));
   }, []);
 
   const handleLogout = useCallback(() => {
-    localStorage.removeItem('kf_token');
-    localStorage.removeItem('kf_user');
+    tokenStore.clear();
     setToken(null);
     setUser(null);
   }, []);
 
-  /**
-   * Check if user has one of the specified roles
-   */
+  const login = useCallback(async (email: string, password: string) => {
+    const response = await authApi.login({ email, password });
+    tokenStore.setAccessToken(response.token);
+    tokenStore.setRefreshToken(response.refresh_token);
+    setToken(response.token);
+    setUser(response.user);
+  }, []);
+
+  const register = useCallback(async (data: RegisterData | FormData) => {
+    const response = await authApi.register(data);
+    tokenStore.setAccessToken(response.token);
+    tokenStore.setRefreshToken(response.refresh_token);
+    setToken(response.token);
+    setUser(response.user);
+  }, []);
+
+  const refreshUser = useCallback(async () => {
+    if (!token) return;
+    try {
+      const userData = await authApi.getMe();
+      setUser({
+        id: userData.id,
+        email: userData.email,
+        name: userData.name,
+        role: userData.role.toLowerCase() as User['role'],
+      });
+    } catch {
+      handleLogout();
+    }
+  }, [token, handleLogout]);
+
+  const logout = useCallback(() => {
+    authApi.logout().catch(() => {});
+    handleLogout();
+  }, [handleLogout]);
+
   const hasRole = useCallback((roles: string[]): boolean => {
     if (!user) return false;
     const userRole = user.role.toLowerCase().replace('_', '');
@@ -147,7 +157,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value: AuthContextValue = {
     user,
     token,
-    isLoading,
+    isLoading: isVerifying,
     isAuthenticated: !!token && !!user,
     login,
     register,
@@ -155,6 +165,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     refreshUser,
     hasRole,
   };
+
+  if (isVerifying) {
+    return null; // Block render until session is verified
+  }
 
   return (
     <AuthContext.Provider value={value}>

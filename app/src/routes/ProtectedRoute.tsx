@@ -9,8 +9,9 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
-  const { user, role } = useAuth();
+  const { user } = useAuth();
   const location = useLocation();
+  const role = user?.role;
 
   if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />;

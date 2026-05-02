@@ -1,32 +1,31 @@
 /**
  * API Client - connects frontend to backend REST API
- * Base URL from environment variable, JWT token auto-attached
+ * Access token in memory, refresh token in localStorage.
+ * Auto-refreshes on 401.
  */
+
+import { tokenStore } from './token';
+import { authApi } from './auth';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 interface RequestOptions extends RequestInit {
-  params?: Record<string, string>;
+  params?: Record<string, string | number>;
 }
 
 async function request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
   const { params, ...fetchOptions } = options;
-  
-  // Build full URL with base + endpoint
+
   let url = `${API_BASE}${endpoint}`;
-  
-  // Add query params if provided
+
   if (params) {
-    const queryString = new URLSearchParams(
-      Object.entries(params).map(([key, value]) => [key, String(value)])
-    ).toString();
-    if (queryString) {
-      url += `?${queryString}`;
+    const entries = Object.entries(params).filter(([, v]) => v != null && v !== '');
+    if (entries.length) {
+      url += `?${new URLSearchParams(entries.map(([k, v]) => [k, String(v)]))}`;
     }
   }
 
-  // Get stored token and attach to headers
-  const token = localStorage.getItem('kf_token');
+  const token = tokenStore.getAccessToken();
   const isFormData = fetchOptions.body instanceof FormData;
 
   const headers: Record<string, string> = {
@@ -34,41 +33,53 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
     ...((fetchOptions.headers as Record<string, string>) || {}),
   };
 
-  // Only set application/json if not FormData
   if (!isFormData) {
     headers['Content-Type'] = 'application/json';
   }
 
-  const response = await fetch(url.toString(), { 
-    ...fetchOptions, 
-    headers 
-  });
+  let response = await fetch(url, { ...fetchOptions, headers });
 
-  // Handle errors
+  // 401 — attempt silent refresh, then retry once
+  if (response.status === 401) {
+    const refreshToken = tokenStore.getRefreshToken();
+    if (refreshToken) {
+      try {
+        const refreshRes = await authApi.refreshToken(refreshToken);
+        const normalized = await authApi.normalizeTokenResponse(refreshRes);
+        tokenStore.setAccessToken(normalized.token);
+        tokenStore.setRefreshToken(refreshRes.refresh_token);
+
+        headers['Authorization'] = `Bearer ${normalized.token}`;
+        response = await fetch(url, { ...fetchOptions, headers });
+      } catch {
+        tokenStore.clear();
+        throw new Error('Session expired. Please log in again.');
+      }
+    }
+  }
+
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     let message = `HTTP ${response.status}`;
-    
+
     if (errorData.detail) {
       if (Array.isArray(errorData.detail)) {
-        message = errorData.detail.map((err: any) => err.msg || JSON.stringify(err)).join(', ');
+        message = errorData.detail.map((err: Record<string, unknown>) => err.msg || JSON.stringify(err)).join(', ');
       } else {
         message = errorData.detail;
       }
     } else if (errorData.message) {
       message = errorData.message;
     }
-    
+
     throw new Error(message);
   }
 
-  // Parse response body
   const contentType = response.headers.get('content-type') || '';
   if (contentType.includes('application/json')) {
     return response.json();
   }
 
-  // Return empty object for non-JSON responses (e.g., 204 No Content)
   return {} as T;
 }
 
@@ -76,30 +87,29 @@ export const api = {
   get: <T>(endpoint: string, options?: RequestOptions) =>
     request<T>(endpoint, { ...options, method: 'GET' }),
 
-  post: <T>(endpoint: string, data?: any, options?: RequestOptions) =>
-    request<T>(endpoint, { 
-      ...options, 
-      method: 'POST', 
-      body: data instanceof FormData ? data : (data ? JSON.stringify(data) : undefined)
+  post: <T>(endpoint: string, data?: unknown, options?: RequestOptions) =>
+    request<T>(endpoint, {
+      ...options,
+      method: 'POST',
+      body: data instanceof FormData ? data : (data ? JSON.stringify(data) : undefined),
     }),
 
-  put: <T>(endpoint: string, data?: any, options?: RequestOptions) =>
-    request<T>(endpoint, { 
-      ...options, 
-      method: 'PUT', 
-      body: data instanceof FormData ? data : (data ? JSON.stringify(data) : undefined)
+  put: <T>(endpoint: string, data?: unknown, options?: RequestOptions) =>
+    request<T>(endpoint, {
+      ...options,
+      method: 'PUT',
+      body: data instanceof FormData ? data : (data ? JSON.stringify(data) : undefined),
     }),
 
-  patch: <T>(endpoint: string, data?: any, options?: RequestOptions) =>
-    request<T>(endpoint, { 
-      ...options, 
-      method: 'PATCH', 
-      body: data instanceof FormData ? data : (data ? JSON.stringify(data) : undefined)
+  patch: <T>(endpoint: string, data?: unknown, options?: RequestOptions) =>
+    request<T>(endpoint, {
+      ...options,
+      method: 'PATCH',
+      body: data instanceof FormData ? data : (data ? JSON.stringify(data) : undefined),
     }),
 
   delete: <T>(endpoint: string, options?: RequestOptions) =>
     request<T>(endpoint, { ...options, method: 'DELETE' }),
 };
 
-// Export base URL for direct usage
 export { API_BASE };

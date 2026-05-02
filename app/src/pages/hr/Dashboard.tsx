@@ -1,22 +1,14 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, UserCheck, TrendingDown, Award, Upload, Search } from 'lucide-react';
+import { Users, Upload, Search } from 'lucide-react';
 import { AppShell } from '../../components/layout/AppShell';
 import { Card, CardHeader, CardTitle, Button, Select, Badge, LoadingState, ErrorState } from '../../components/ui';
 import { DataTable, type Column } from '../../components/ui/DataTable';
-import { StatCard } from '../../components/charts/StatCard';
 import { FunnelChart } from '../../components/charts/FunnelChart';
 import { useCandidates } from '../../hooks/useCandidates';
 import { useFunnelData } from '../../hooks/useAnalytics';
 import { STATUS_LABELS } from '../../utils/roles';
 import type { Candidate } from '../../types';
-
-const STAT_CARDS = [
-  { label: 'Total Candidates', key: 'total' as const, icon: Users, change: { value: 12, positive: true } },
-  { label: 'Eligible', key: 'eligible' as const, icon: UserCheck, change: { value: 8, positive: true } },
-  { label: 'Drop-off Rate', key: 'dropoff' as const, icon: TrendingDown, change: { value: 3, positive: false } },
-  { label: 'Pass Rate', key: 'passRate' as const, icon: Award, change: { value: 5, positive: true } },
-];
 
 const STATUS_OPTIONS = [
   { value: '', label: 'All Statuses' },
@@ -75,17 +67,21 @@ export default function Dashboard() {
     <AppShell title="Dashboard">
       <div className="space-y-6">
         {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {STAT_CARDS.map(stat => (
-            <StatCard
-              key={stat.key}
-              label={stat.label}
-              value={stat.key === 'total' ? (candidatesData?.total ?? 0) : stat.key === 'eligible' ? Math.round((candidatesData?.total ?? 0) * 0.72) : stat.key === 'dropoff' ? '18%' : '64%'}
-              change={stat.change}
-              icon={stat.icon}
-            />
-          ))}
-        </div>
+        {candidatesData ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card>
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-md bg-secondary/10">
+                  <Users size={18} className="text-secondary" />
+                </div>
+                <div>
+                  <p className="text-xs text-tertiary uppercase tracking-architectural">Total Candidates</p>
+                  <p className="text-xl font-bold text-on-surface">{candidatesData.pagination.total}</p>
+                </div>
+              </div>
+            </Card>
+          </div>
+        ) : null}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Funnel */}
@@ -98,7 +94,7 @@ export default function Dashboard() {
             ) : funnelData ? (
               <FunnelChart data={funnelData} />
             ) : (
-              <FunnelChart data={{ applied: 1240, eligible: 890, assessed: 645, interviewed: 280, selected: 95 }} />
+              <ErrorState message="Funnel data unavailable" />
             )}
           </Card>
 
@@ -141,7 +137,7 @@ export default function Dashboard() {
                 data={candidatesData.data}
                 keyExtractor={c => c.id}
                 page={page}
-                totalPages={candidatesData.totalPages}
+                totalPages={candidatesData.pagination.totalPages}
                 onPageChange={setPage}
                 onRowClick={c => navigate(`/candidates/${c.id}`)}
               />

@@ -18,7 +18,8 @@ import AnalyticsDashboard from './pages/analytics/AnalyticsDashboard';
 import SuperAdminPanel from './pages/superadmin/SuperAdminPanel';
 
 function AuthRedirect() {
-  const { role } = useAuth();
+  const { user } = useAuth();
+  const role = user?.role;
   if (!role) return <Navigate to="/login" replace />;
   return <Navigate to={ROLE_HOME_ROUTES[role]} replace />;
 }

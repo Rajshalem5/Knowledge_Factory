@@ -1,25 +1,10 @@
 import { AppShell } from '../../components/layout/AppShell';
-import { Card, CardTitle, Badge, Button } from '../../components/ui';
+import { Card, CardTitle, Badge, LoadingState, ErrorState } from '../../components/ui';
 import { DataTable, type Column } from '../../components/ui/DataTable';
 import { useOrganizations } from '../../hooks/useAnalytics';
-import type { Organization, User } from '../../types';
+import type { Organization } from '../../types';
 import { Shield, Building2, Users, Settings } from 'lucide-react';
 import { useState } from 'react';
-
-const SAMPLE_ORGS: Organization[] = [
-  { id: '1', name: 'Acme Corp', candidateCount: 450, activeHiringCycles: 3, plan: 'enterprise' },
-  { id: '2', name: 'TechStart Inc', candidateCount: 230, activeHiringCycles: 1, plan: 'professional' },
-  { id: '3', name: 'GlobalTech', candidateCount: 890, activeHiringCycles: 5, plan: 'enterprise' },
-  { id: '4', name: 'DevHire Co', candidateCount: 120, activeHiringCycles: 2, plan: 'starter' },
-];
-
-const SAMPLE_USERS: (User & { organizationName: string })[] = [
-  { id: '1', name: 'Alice Chen', email: 'alice@acme.com', role: 'admin', organizationName: 'Acme Corp' },
-  { id: '2', name: 'Bob Singh', email: 'bob@techstart.com', role: 'hr', organizationName: 'TechStart Inc' },
-  { id: '3', name: 'Carol Davis', email: 'carol@globaltech.com', role: 'interviewer', organizationName: 'GlobalTech' },
-  { id: '4', name: 'Dan Park', email: 'dan@devhire.com', role: 'admin', organizationName: 'DevHire Co' },
-  { id: '5', name: 'Eve Sharma', email: 'eve@acme.com', role: 'hr', organizationName: 'Acme Corp' },
-];
 
 const PLAN_COLORS: Record<string, 'success' | 'warning' | 'info'> = {
   starter: 'info',
@@ -28,10 +13,13 @@ const PLAN_COLORS: Record<string, 'success' | 'warning' | 'info'> = {
 };
 
 export default function SuperAdminPanel() {
-  const { data: organizations } = useOrganizations();
+  const { data: organizations, isLoading, error } = useOrganizations();
   const [activeTab, setActiveTab] = useState<'orgs' | 'users'>('orgs');
 
-  const orgs = organizations ?? SAMPLE_ORGS;
+  if (isLoading) return <AppShell title="Super Admin"><LoadingState /></AppShell>;
+  if (error) return <AppShell title="Super Admin"><ErrorState message="Failed to load organizations" /></AppShell>;
+
+  const orgs = organizations ?? [];
 
   const orgColumns: Column<Organization>[] = [
     {
@@ -50,30 +38,6 @@ export default function SuperAdminPanel() {
       key: 'plan',
       header: 'Plan',
       render: (o) => <Badge variant={PLAN_COLORS[o.plan]}>{o.plan.charAt(0).toUpperCase() + o.plan.slice(1)}</Badge>,
-    },
-  ];
-
-  const userColumns: Column<User & { organizationName: string }>[] = [
-    {
-      key: 'name',
-      header: 'User',
-      render: (u) => (
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-full bg-secondary/20 flex items-center justify-center">
-            <span className="text-[10px] font-bold text-secondary">{u.name.charAt(0)}</span>
-          </div>
-          <div>
-            <p className="font-medium text-sm text-on-surface">{u.name}</p>
-            <p className="text-[10px] text-tertiary">{u.email}</p>
-          </div>
-        </div>
-      ),
-    },
-    { key: 'organizationName', header: 'Organization' },
-    {
-      key: 'role',
-      header: 'Role',
-      render: (u) => <Badge variant="default">{u.role}</Badge>,
     },
   ];
 
@@ -143,7 +107,6 @@ export default function SuperAdminPanel() {
           <Card padding="none">
             <div className="p-4 bg-[var(--bg-layer1)] flex items-center justify-between">
               <CardTitle>Organizations</CardTitle>
-              <Button size="sm">Add Organization</Button>
             </div>
             <DataTable
               columns={orgColumns}
@@ -153,15 +116,10 @@ export default function SuperAdminPanel() {
           </Card>
         ) : (
           <Card padding="none">
-            <div className="p-4 bg-[var(--bg-layer1)] flex items-center justify-between">
-              <CardTitle>Users & Roles</CardTitle>
-              <Button size="sm">Add User</Button>
+            <div className="p-4 bg-[var(--bg-layer1)]">
+              <CardTitle>Users &amp; Roles</CardTitle>
             </div>
-            <DataTable
-              columns={userColumns}
-              data={SAMPLE_USERS}
-              keyExtractor={u => u.id}
-            />
+            <ErrorState message="User management requires backend integration" />
           </Card>
         )}
       </div>

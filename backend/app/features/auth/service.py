@@ -73,8 +73,7 @@ class AuthService:
 
         subject = str(user_or_candidate.id)
         email = user_or_candidate.email
-        role_val = user_or_candidate.role
-        role = "CANDIDATE" if is_candidate else (role_val.value if hasattr(role_val, 'value') else str(role_val))
+        role = "CANDIDATE" if is_candidate else (user_or_candidate.role.value if hasattr(user_or_candidate.role, 'value') else str(user_or_candidate.role))
 
         access_token = create_access_token(subject=subject, email=email, role=role)
         refresh_tok = create_refresh_token(subject=subject)
