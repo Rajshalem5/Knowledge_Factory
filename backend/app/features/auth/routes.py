@@ -43,6 +43,11 @@ async def register_candidate(
     name: str = Form(...),
     email: str = Form(...),
     password: str = Form(...),
+    college: str = Form(...),
+    branch: str = Form(...),
+    cgpa: float = Form(...),
+    passed_out_year: int = Form(...),
+    language_choice: str = Form("english"),
     resume: UploadFile = File(None),
     db: AsyncSession = Depends(get_db)
 ):
@@ -66,7 +71,12 @@ async def register_candidate(
         register_data = CandidateRegisterRequest(
             name=name,
             email=email,
-            password=password
+            password=password,
+            college=college,
+            branch=branch,
+            cgpa=cgpa,
+            passed_out_year=passed_out_year,
+            language_choice=language_choice,
         )
 
         candidate = await auth_service.register_candidate(register_data, cycle.id)

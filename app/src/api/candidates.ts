@@ -51,18 +51,7 @@ export const candidatesApi = {
   bulkUpload: (file: File) => {
     const formData = new FormData();
     formData.append('file', file);
-    
-    // Use fetch for multipart/form-data
-    const token = localStorage.getItem('kf_token');
-    
-    return fetch('/api/candidates/bulk-upload', {
-      method: 'POST',
-      headers: { 
-        Authorization: `Bearer ${token}`,
-        // Don't set Content-Type - let browser set it with boundary
-      },
-      body: formData,
-    }).then(r => r.json());
+    return api.post<unknown>('/api/candidates/bulk-upload', formData) as Promise<unknown>;
   },
 
   /**
@@ -72,15 +61,6 @@ export const candidatesApi = {
   previewBulkUpload: (file: File) => {
     const formData = new FormData();
     formData.append('file', file);
-    
-    const token = localStorage.getItem('kf_token');
-    
-    return fetch('/api/candidates/bulk-upload', {
-      method: 'POST',
-      headers: { 
-        Authorization: `Bearer ${token}`,
-      },
-      body: formData,
-    }).then(r => r.json());
+    return api.post<unknown>('/api/candidates/bulk-upload/preview', formData) as Promise<unknown>;
   },
 };

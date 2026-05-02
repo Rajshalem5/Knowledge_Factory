@@ -33,10 +33,17 @@ export interface AuthResponse {
   };
 }
 
-// Normalize role to lowercase for frontend
-function normalizeResponse(res: AuthResponse): { token: string; user: User } {
+export interface NormalizedAuthResponse {
+  token: string;
+  refresh_token: string;
+  user: User;
+}
+
+// Normalize role to lowercase for frontend, include refresh_token
+function normalizeResponse(res: AuthResponse): NormalizedAuthResponse {
   return {
     token: res.access_token,
+    refresh_token: res.refresh_token,
     user: {
       id: String(res.user.id),
       email: res.user.email,
@@ -44,6 +51,10 @@ function normalizeResponse(res: AuthResponse): { token: string; user: User } {
       role: res.user.role.toLowerCase() as User['role'],
     },
   };
+}
+
+async function normalizeTokenResponse(res: AuthResponse): Promise<NormalizedAuthResponse> {
+  return normalizeResponse(res);
 }
 
 export const authApi = {
@@ -70,4 +81,6 @@ export const authApi = {
 
   logout: () =>
     api.post<null>('/auth/logout'),
+
+  normalizeTokenResponse,
 };

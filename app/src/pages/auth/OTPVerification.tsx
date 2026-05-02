@@ -3,16 +3,20 @@ import { useNavigate } from 'react-router-dom';
 import { Factory } from 'lucide-react';
 import { Button, Input, Card } from '../../components/ui';
 import { authApi } from '../../api/auth';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function OTPVerification() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [otp, setOtp] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const email = localStorage.getItem('kf_user') ? JSON.parse(localStorage.getItem('kf_user')!).email : '';
+
+  const email = user?.email ?? '';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email) return;
     setError('');
     setIsLoading(true);
     try {
@@ -35,7 +39,11 @@ export default function OTPVerification() {
         <Card padding="lg">
           <h1 className="text-xl font-bold text-on-surface tracking-tight-display text-center mb-1">Verify your email</h1>
           <p className="text-sm text-tertiary text-center mb-6">
-            We sent a code to <span className="text-on-surface">{email}</span>
+            {email ? (
+              <span>We sent a code to <span className="text-on-surface">{email}</span></span>
+            ) : (
+              'Enter the verification code sent to your email'
+            )}
           </p>
           {error && (
             <div className="mb-4 p-3 rounded-md bg-danger/10 text-danger text-xs">
@@ -51,7 +59,7 @@ export default function OTPVerification() {
               required
               maxLength={6}
             />
-            <Button type="submit" className="w-full" isLoading={isLoading}>
+            <Button type="submit" className="w-full" isLoading={isLoading} disabled={!email}>
               Verify
             </Button>
           </form>

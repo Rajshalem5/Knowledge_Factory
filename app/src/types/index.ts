@@ -107,6 +107,14 @@ export interface AnalyticsData {
   proctoringViolations: { type: string; count: number }[];
 }
 
+export interface Organization {
+  id: string;
+  name: string;
+  candidateCount: number;
+  activeHiringCycles: number;
+  plan: string;
+}
+
 export interface HiringCycle {
   id: string;
   name: string;

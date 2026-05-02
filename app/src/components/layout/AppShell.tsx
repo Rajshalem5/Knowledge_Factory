@@ -12,7 +12,8 @@ interface AppShellProps {
 /* Design.md: Admin/HR gets high-density navy sidebar.
    Candidate gets centered "Glass" top-nav for a simpler, focused journey. */
 export function AppShell({ children, title }: AppShellProps) {
-  const { role } = useAuth();
+  const { user } = useAuth();
+  const role = user?.role;
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   if (role === 'candidate') {

@@ -6,7 +6,7 @@ import { useCodeExecution } from '../../hooks/useCodeExecution';
 import { useQuestion } from '../../hooks/useQuestion';
 import { Play, Send, ChevronDown, RefreshCw, CheckCircle, XCircle, Lock } from 'lucide-react';
 import { api } from '../../api/client';
-import type { EvaluationResult } from '../../api/code-execution';
+import type { EvaluationResponse } from '../../api/code-execution';
 
 const LANGUAGES = [
   { id: 'python', label: 'Python 3', version: '3.12.0' },
@@ -24,7 +24,7 @@ export default function Assessment() {
   const [showLangMenu, setShowLangMenu] = useState(false);
   const [difficulty, setDifficulty]     = useState<string>('medium');
   const [topic, setTopic]               = useState('arrays and loops');
-  const [evalResult, setEvalResult]     = useState<EvaluationResult | null>(null);
+  const [evalResult, setEvalResult]     = useState<EvaluationResponse | null>(null);
   const [runOutput, setRunOutput]       = useState<{ status: string; output: string } | null>(null);
 
   const { question, isGenerating, generate } = useQuestion();
@@ -76,13 +76,13 @@ export default function Assessment() {
     setRunOutput(null);
     setEvalResult(null);
     try {
-      const result = await api.post<EvaluationResult>(
+      const result = await api.post<EvaluationResponse>(
         `/code/evaluate-question/${question.id}`,
         { language, code, stdin: '' }
       );
       setEvalResult(result);
-    } catch (e: any) {
-      setRunOutput({ status: 'ERROR', output: e.message || 'Evaluation failed' });
+    } catch (e: unknown) {
+      setRunOutput({ status: 'ERROR', output: (e as Error)?.message || 'Evaluation failed' });
     }
   };
 
@@ -279,7 +279,7 @@ export default function Assessment() {
                   </span>
                 </div>
                 <div className="space-y-1">
-                  {evalResult.test_results.map((tr, i) => (
+                    {evalResult.test_results.map((tr, i: number) => (
                     <div key={i} className="flex items-start gap-2 text-xs">
                       {tr.status === 'PASSED'
                         ? <CheckCircle size={12} className="text-secondary mt-0.5 shrink-0" />
