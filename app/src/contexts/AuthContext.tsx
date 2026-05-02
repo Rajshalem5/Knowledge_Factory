@@ -1,7 +1,7 @@
 /**
  * Authentication Context — manages user auth state.
  * Access token in memory (not localStorage — reduces XSS exposure).
- * Refreshes via /auth/me on mount. Supports silent 401 refresh via api client.
+ * Refresh token in httpOnly cookie — set by backend, sent automatically.
  */
 
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
@@ -36,35 +36,14 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(() => tokenStore.getAccessToken());
-  const [isVerifying, setIsVerifying] = useState(!!tokenStore.getRefreshToken());
+  const [isVerifying, setIsVerifying] = useState(false);
 
   // On mount: verify session exists via /auth/me
   useEffect(() => {
-    const refreshToken = tokenStore.getRefreshToken();
     const accessToken = tokenStore.getAccessToken();
 
-    if (!refreshToken && !accessToken) {
-      // Microtask avoids sync setState in effect body
+    if (!accessToken) {
       queueMicrotask(() => setIsVerifying(false));
-      return;
-    }
-
-    // If we have a refresh token but no access token, try refreshing
-    if (refreshToken && !accessToken) {
-      authApi.refreshToken(refreshToken)
-        .then(async (res) => {
-          const { token: tkn, user: usr } = await authApi.normalizeTokenResponse(res);
-          tokenStore.setAccessToken(tkn);
-          tokenStore.setRefreshToken(res.refresh_token);
-          setToken(tkn);
-          setUser(usr);
-        })
-        .catch(() => {
-          tokenStore.clear();
-          setToken(null);
-          setUser(null);
-        })
-        .finally(() => setIsVerifying(false));
       return;
     }
 
@@ -79,11 +58,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
       })
       .catch(() => {
-        // Try refresh as fallback
-        if (refreshToken) {
-          return authApi.refreshToken(refreshToken);
-        }
-        throw new Error('Session invalid');
+        // Try refresh as fallback (cookie-based)
+        return authApi.refreshToken();
       })
       .then((refreshRes) => {
         if (refreshRes) {
@@ -93,7 +69,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .then((normalized) => {
         if (normalized) {
           tokenStore.setAccessToken(normalized.token);
-          tokenStore.setRefreshToken(normalized.token); // will be set by normalizeTokenResponse
           setToken(normalized.token);
           setUser(normalized.user);
         }
@@ -115,7 +90,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (email: string, password: string) => {
     const response = await authApi.login({ email, password });
     tokenStore.setAccessToken(response.token);
-    tokenStore.setRefreshToken(response.refresh_token);
     setToken(response.token);
     setUser(response.user);
   }, []);
@@ -123,7 +97,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = useCallback(async (data: RegisterData | FormData) => {
     const response = await authApi.register(data);
     tokenStore.setAccessToken(response.token);
-    tokenStore.setRefreshToken(response.refresh_token);
     setToken(response.token);
     setUser(response.user);
   }, []);

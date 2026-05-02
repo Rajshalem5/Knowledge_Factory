@@ -1,12 +1,10 @@
 /**
  * In-memory token storage.
  * Access token lives in module closure (not localStorage) to reduce XSS exposure.
- * Refresh token in localStorage as practical compromise until httpOnly cookies.
+ * Refresh token is stored as httpOnly cookie by the backend — never touched client-side.
  */
 
 let accessToken: string | null = null;
-
-const REFRESH_KEY = 'kf_refresh_token';
 
 export const tokenStore = {
   setAccessToken(token: string) {
@@ -17,16 +15,7 @@ export const tokenStore = {
     return accessToken;
   },
 
-  setRefreshToken(token: string) {
-    localStorage.setItem(REFRESH_KEY, token);
-  },
-
-  getRefreshToken(): string | null {
-    return localStorage.getItem(REFRESH_KEY);
-  },
-
   clear() {
     accessToken = null;
-    localStorage.removeItem(REFRESH_KEY);
   },
 };
