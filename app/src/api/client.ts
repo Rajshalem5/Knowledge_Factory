@@ -1,7 +1,7 @@
 /**
  * API Client - connects frontend to backend REST API
- * Access token in memory, refresh token in localStorage.
- * Auto-refreshes on 401.
+ * Access token in memory, refresh token in httpOnly cookie.
+ * Auto-refreshes on 401 via cookie-based /refresh endpoint.
  */
 
 import { tokenStore } from './token';
@@ -37,24 +37,20 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
     headers['Content-Type'] = 'application/json';
   }
 
-  let response = await fetch(url, { ...fetchOptions, headers });
+  let response = await fetch(url, { ...fetchOptions, headers, credentials: 'include' });
 
-  // 401 — attempt silent refresh, then retry once
+  // 401 — attempt silent refresh via cookie, then retry once
   if (response.status === 401) {
-    const refreshToken = tokenStore.getRefreshToken();
-    if (refreshToken) {
-      try {
-        const refreshRes = await authApi.refreshToken(refreshToken);
-        const normalized = await authApi.normalizeTokenResponse(refreshRes);
-        tokenStore.setAccessToken(normalized.token);
-        tokenStore.setRefreshToken(refreshRes.refresh_token);
+    try {
+      const refreshRes = await authApi.refreshToken();
+      const normalized = await authApi.normalizeTokenResponse(refreshRes);
+      tokenStore.setAccessToken(normalized.token);
 
-        headers['Authorization'] = `Bearer ${normalized.token}`;
-        response = await fetch(url, { ...fetchOptions, headers });
-      } catch {
-        tokenStore.clear();
-        throw new Error('Session expired. Please log in again.');
-      }
+      headers['Authorization'] = `Bearer ${normalized.token}`;
+      response = await fetch(url, { ...fetchOptions, headers, credentials: 'include' });
+    } catch {
+      tokenStore.clear();
+      throw new Error('Session expired. Please log in again.');
     }
   }
 

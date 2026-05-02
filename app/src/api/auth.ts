@@ -1,6 +1,7 @@
 /**
  * Authentication API client
  * Connects to /api/auth endpoints
+ * Refresh token is stored as httpOnly cookie — not returned in response body.
  */
 
 import { api } from './client';
@@ -23,7 +24,7 @@ interface RegisterData {
 
 export interface AuthResponse {
   access_token: string;
-  refresh_token: string;
+  refresh_token?: string; // optional — now in httpOnly cookie
   token_type: 'bearer';
   user: {
     id: string;
@@ -39,11 +40,11 @@ export interface NormalizedAuthResponse {
   user: User;
 }
 
-// Normalize role to lowercase for frontend, include refresh_token
+// Normalize role to lowercase for frontend
 function normalizeResponse(res: AuthResponse): NormalizedAuthResponse {
   return {
     token: res.access_token,
-    refresh_token: res.refresh_token,
+    refresh_token: res.refresh_token || '', // cookie handles refresh
     user: {
       id: String(res.user.id),
       email: res.user.email,
@@ -64,8 +65,8 @@ export const authApi = {
   register: (data: RegisterData | FormData) =>
     api.post<AuthResponse>('/auth/register', data).then(normalizeResponse),
 
-  refreshToken: (refreshToken: string) =>
-    api.post<AuthResponse>('/auth/refresh', { refresh_token: refreshToken }),
+  refreshToken: () =>
+    api.post<AuthResponse>('/auth/refresh'),
 
   verifyOtp: (data: { email: string; otp: string }) =>
     api.post<AuthResponse>('/auth/verify-otp', data).then(normalizeResponse),
@@ -80,7 +81,7 @@ export const authApi = {
     api.get<{ id: string; email: string; name: string; role: string }>('/auth/me'),
 
   logout: () =>
-    api.post<null>('/auth/logout'),
+    api.post<{ message: string }>('/auth/logout'),
 
   normalizeTokenResponse,
 };

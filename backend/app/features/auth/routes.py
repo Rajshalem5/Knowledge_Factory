@@ -1,6 +1,6 @@
 """Authentication routes - simplified without multi-tenancy."""
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,7 +11,6 @@ from app.features.auth.schemas import (
     ForgotPasswordRequest,
     LoginRequest,
     OtpVerifyRequest,
-    RefreshRequest,
     ResetPasswordRequest,
     TokenResponse,
     UserResponse,
@@ -22,9 +21,34 @@ from app.features.auth.models import User
 
 router = APIRouter()
 
+# Cookie settings for refresh token
+REFRESH_TOKEN_COOKIE_NAME = "kf_refresh_token"
+REFRESH_TOKEN_COOKIE_MAX_AGE = 7 * 24 * 60 * 60  # 7 days in seconds
 
-@router.post("/login", response_model=TokenResponse)
-async def login(login_data: LoginRequest, db: AsyncSession = Depends(get_db)):
+
+def set_refresh_cookie(response: Response, token: str):
+    """Set refresh token as httpOnly cookie."""
+    response.set_cookie(
+        key=REFRESH_TOKEN_COOKIE_NAME,
+        value=token,
+        httponly=True,
+        secure=False,  # Set True in production with HTTPS
+        samesite="lax",
+        max_age=REFRESH_TOKEN_COOKIE_MAX_AGE,
+        path="/api/auth",
+    )
+
+
+def clear_refresh_cookie(response: Response):
+    """Clear refresh token cookie."""
+    response.delete_cookie(
+        key=REFRESH_TOKEN_COOKIE_NAME,
+        path="/api/auth",
+    )
+
+
+@router.post("/login")
+async def login(login_data: LoginRequest, db: AsyncSession = Depends(get_db), response: Response = None):
     """Authenticate user or candidate and return tokens."""
     auth_service = AuthService(db)
     result = await auth_service.authenticate(login_data)
@@ -33,12 +57,22 @@ async def login(login_data: LoginRequest, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Incorrect email or password")
 
     user_or_candidate, _is_candidate = result
-    return auth_service.generate_token_response(user_or_candidate)
+    token_data = auth_service.generate_token_response(user_or_candidate)
+    
+    # Set refresh token as httpOnly cookie
+    set_refresh_cookie(response, token_data["refresh_token"])
+    
+    # Return access token only (refresh token is in cookie)
+    return {
+        "access_token": token_data["access_token"],
+        "token_type": "bearer",
+        "user": token_data["user"],
+    }
 
 
 from fastapi import Form, File, UploadFile
 
-@router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/register", status_code=status.HTTP_201_CREATED)
 async def register_candidate(
     name: str = Form(...),
     email: str = Form(...),
@@ -49,7 +83,8 @@ async def register_candidate(
     passed_out_year: int = Form(...),
     language_choice: str = Form("english"),
     resume: UploadFile = File(None),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    response: Response = None,
 ):
     from app.features.hiring_cycles.models import HiringCycle
     
@@ -85,7 +120,16 @@ async def register_candidate(
         if resume:
             print("Resume received:", resume.filename)
 
-        return auth_service.generate_token_response(candidate)
+        token_data = auth_service.generate_token_response(candidate)
+        
+        # Set refresh token as httpOnly cookie
+        set_refresh_cookie(response, token_data["refresh_token"])
+        
+        return {
+            "access_token": token_data["access_token"],
+            "token_type": "bearer",
+            "user": token_data["user"],
+        }
 
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc))
@@ -104,12 +148,20 @@ async def get_me(current_user=Depends(get_current_user)):
     )
 
 
-@router.post("/refresh", response_model=TokenResponse)
-async def refresh_token(refresh_data: RefreshRequest, db: AsyncSession = Depends(get_db)):
-    """Refresh access token using refresh token."""
+@router.post("/refresh")
+async def refresh_token(
+    db: AsyncSession = Depends(get_db),
+    response: Response = None,
+    request: Request = None,
+):
+    """Refresh access token using refresh token from httpOnly cookie."""
     from app.core.security import decode_token
 
-    payload = decode_token(refresh_data.refresh_token)
+    refresh_token_value = request.cookies.get(REFRESH_TOKEN_COOKIE_NAME)
+    if not refresh_token_value:
+        raise HTTPException(status_code=401, detail="No refresh token provided")
+
+    payload = decode_token(refresh_token_value)
     if not payload or payload.get("type") != "refresh":
         raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
 
@@ -122,7 +174,12 @@ async def refresh_token(refresh_data: RefreshRequest, db: AsyncSession = Depends
 
     if candidate:
         auth_svc = AuthService(db)
-        return auth_svc.generate_token_response(candidate)
+        token_data = auth_svc.generate_token_response(candidate)
+        set_refresh_cookie(response, token_data["refresh_token"])
+        return {
+            "access_token": token_data["access_token"],
+            "token_type": "bearer",
+        }
 
     stmt = select(User).where(User.id == sub)
     res = await db.execute(stmt)
@@ -132,13 +189,19 @@ async def refresh_token(refresh_data: RefreshRequest, db: AsyncSession = Depends
         raise HTTPException(status_code=401, detail="User not found")
 
     auth_svc = AuthService(db)
-    return auth_svc.generate_token_response(user)
+    token_data = auth_svc.generate_token_response(user)
+    set_refresh_cookie(response, token_data["refresh_token"])
+    return {
+        "access_token": token_data["access_token"],
+        "token_type": "bearer",
+    }
 
 
-@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
-async def logout(current_user=Depends(get_current_user)):
-    """Logout - client removes token, server will add blacklist in future."""
-    return None
+@router.post("/logout")
+async def logout(response: Response):
+    """Logout - clear refresh token cookie."""
+    clear_refresh_cookie(response)
+    return {"message": "Logged out"}
 
 
 @router.post("/verify-otp", response_model=TokenResponse)
