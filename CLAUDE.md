@@ -2,6 +2,68 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+---
+
+## Behavioral Guidelines
+
+**These guidelines override default behavior. Tradeoff: caution over speed.**
+
+### 1. Think Before Coding
+
+**Don't assume. Don't hide confusion. Surface tradeoffs.**
+
+Before implementing:
+- State assumptions explicitly. If uncertain, ask.
+- If multiple interpretations exist, present them — don't pick silently.
+- If a simpler approach exists, say so. Push back when warranted.
+- If something is unclear, stop. Name what's confusing. Ask.
+
+### 2. Simplicity First
+
+**Minimum code that solves the problem. Nothing speculative.**
+
+- No features beyond what was asked.
+- No abstractions for single-use code.
+- No "flexibility" or "configurability" that wasn't requested.
+- No error handling for impossible scenarios.
+- If you write 200 lines and it could be 50, rewrite it.
+
+Ask: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
+
+### 3. Surgical Changes
+
+**Touch only what you must. Clean up only your own mess.**
+
+When editing existing code:
+- Don't "improve" adjacent code, comments, or formatting.
+- Don't refactor things that aren't broken.
+- Match existing style, even if you'd do it differently.
+- If you notice unrelated dead code, mention it — don't delete it.
+
+When your changes create orphans:
+- Remove imports/variables/functions that YOUR changes made unused.
+- Don't remove pre-existing dead code unless asked.
+
+Test: every changed line should trace directly to the user's request.
+
+### 4. Goal-Driven Execution
+
+**Define success criteria. Loop until verified.**
+
+Transform tasks into verifiable goals:
+- "Add validation" → "Write tests for invalid inputs, then make them pass"
+- "Fix the bug" → "Write a test that reproduces it, then make it pass"
+- "Refactor X" → "Ensure tests pass before and after"
+
+For multi-step tasks, state a brief plan:
+```
+1. [Step] → verify: [check]
+2. [Step] → verify: [check]
+3. [Step] → verify: [check]
+```
+
+---
+
 ## Project Overview
 
 Knowledge Factory is a role-based intern hiring platform with AI-powered assessments, real-time code execution, and comprehensive analytics. It consists of:
@@ -219,6 +281,39 @@ Key variables:
 - Connection pooling configured in settings
 - Rate limiting on sensitive endpoints
 - Efficient database queries with proper indexing
+
+## API Route Inventory
+
+**Base URL**: `http://localhost:8000` | **Health**: `GET /health`
+
+| Module | Prefix | Route Count | Key Endpoints |
+|--------|--------|-------------|---------------|
+| Auth | `/api/auth` | 8 | login, register, me, refresh, logout, verify-otp, forgot/reset-password |
+| Candidates | `/api/candidates` | 5 | list, get, me, status, bulk-upload |
+| Assessment | `/api/assessment` | 3 | start, active, submit-section |
+| Code Execution | `/api/code` | 3 | execute, evaluate, evaluate-question/:id |
+| Questions | `/api/questions` | 2 | generate, :id/public |
+| Proctoring | `/api/proctoring` | 1 | event |
+| Interviews | `/api/candidates/:id/feedback` | 2 | submit feedback, get feedback |
+| Selection | `/api/selection` | 3 | select, bulk-select, reject |
+| Analytics | `/api/analytics` | 2 | funnel, dashboard |
+| Admin/Audit | `/api/admin` | 2 | users, logs |
+| Hiring Cycles | `/api/hiring-cycles` | 3 | list, create, update |
+| Screening | `/api/screening` | 1 | run |
+| Organizations | `/api/admin/organizations` | 3 | **Disabled (501)** — multi-tenancy removed |
+| WebSockets | — | 2 | **Placeholders** — proctoring, dashboard (Phase 2) |
+
+### Known Frontend ↔ Backend Mismatches
+
+1. **`assessment.ts`** — `start()` and `submitSection()` pass `assessmentId` in path, but backend routes don't accept it
+2. **`assessment.ts`** — `getAssessment()` calls `/api/assessment/{id}` → no backend route exists
+3. **`analytics.ts`** — paths missing `/api` prefix (`/analytics/funnel` vs `/api/analytics/funnel`)
+4. **`analytics.ts`** — `getOrganizations()` and `updateOrganization()` call `/superadmin/organizations` which are disabled (501)
+5. **`candidates.ts`** — `previewBulkUpload()` calls `/bulk-upload/preview` → no backend route
+
+### Known TODO
+
+- `backend/app/features/auth/routes.py:254` — password reset token generated but email never sent (placeholder only)
 
 ## Security Notes
 
