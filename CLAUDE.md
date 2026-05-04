@@ -64,12 +64,20 @@ For multi-step tasks, state a brief plan:
 
 ---
 
+## Project Status
+
+| Phase | Scope | Status |
+|-------|-------|--------|
+| **Phase 1: MVP** | Core infra — auth, DB, candidate CRUD, basic assessment flow, code execution sandbox | ~85% done — 3 known API mismatches (see Mismatches section) |
+| **Phase 2: Full Pipeline** | AI evaluation, real-time proctoring (WebSocket), Celery workers, email, audit logging, analytics | 0% done — all stub files empty |
+| **Phase 3: Production** | S3 uploads, security hardening, CI/CD, K8s, load testing, read replicas | Not started |
+
 ## Project Overview
 
 Knowledge Factory is a role-based intern hiring platform with AI-powered assessments, real-time code execution, and comprehensive analytics. It consists of:
 
 - **Frontend**: React 19 + TypeScript + Vite SPA with role-based routing
-- **Backend**: FastAPI + SQLAlchemy 2.0 async with PostgreSQL/SQLite
+- **Backend**: FastAPI 0.115 + SQLAlchemy 2.0 async with PostgreSQL/SQLite
 - **Key Features**: Multi-role access (candidate/hr/interviewer/admin/superadmin), assessment engine, code sandbox, proctoring, analytics
 
 ## Development Commands
@@ -152,17 +160,19 @@ VITE_LOG_LEVEL=info
 ```
 
 ### Backend Environment Variables (`backend/.env`)
-Key variables:
-- `DATABASE_URL`: PostgreSQL or SQLite connection string
+Currently configured for dev:
+- `DATABASE_URL=sqlite+aiosqlite:///./knowledge_factory.db`
+- `CORS_ORIGINS=http://localhost:5173,http://localhost:3000,http://localhost:8001`
+- `DEBUG=true`
 - `JWT_SECRET_KEY`: Secret for JWT token signing
 - `AI_API_KEY`: API key for AI question generation
 - `SANDBOX_URL`: Code execution sandbox URL
-- `CORS_ORIGINS`: Comma-separated allowed frontend origins
 
 ### Database Configuration
-- **Development**: SQLite (`aiosqlite://`) works out of the box
+- **Development**: SQLite (`aiosqlite:///./knowledge_factory.db`) — `knowledge_factory.db` exists in `backend/`
 - **Production**: PostgreSQL (`postgresql+asyncpg://`) recommended
 - **Migrations**: Alembic with auto-discovery of all models inheriting from `Base`
+- **Virtual environment**: `backend/.venv` (Windows: `backend\.venv\Scripts\python.exe`)
 
 ## Key Development Patterns
 
@@ -254,19 +264,38 @@ Key variables:
 - Use async sessions for all database operations
 - Follow naming conventions: snake_case for tables/columns
 
+## Project Memory
+
+- **Memory index**: `docs/memory/MEMORY.md`
+- **Build notes**: `docs/memory/build-memory.md`
+- **Design tokens**: `docs/memory/design-tokens.md`
+- **File structure**: `docs/memory/file-structure.md`
+
+## Documentation Structure
+
+All docs live under `docs/`:
+- `docs/api/` — API documentation, OpenAPI spec
+- `docs/architecture/` — System architecture, platform overview
+- `docs/diagrams/` — SVG sequence diagrams for each hiring round
+- `docs/reports/` — Audit reports, QA findings, integration summaries
+- `docs/setup/` — Setup guides, frontend quick-start, integration docs
+- `docs/memory/` — Project memory and historical notes
+
 ## Integration Points
 
 ### External Services
-- **AI API**: Question generation via configured AI endpoint
-- **Code Sandbox**: Judge0 or similar for code execution
-- **Email Service**: SendGrid for email notifications
-- **Object Storage**: S3-compatible for file uploads
+- **AI API**: Question generation via configured AI endpoint (stub — `backend/app/integrations/ai_engine.py`)
+- **Code Sandbox**: Judge0 or similar for code execution (stub — `backend/app/features/code_execution/routes.py`)
+- **Email Service**: SendGrid/SES for notifications (stub — `backend/app/integrations/email.py`)
+- **Object Storage**: S3-compatible for file uploads (not started — Phase 3)
+- **Task Queue**: Celery + Redis for async jobs (stub — `backend/app/workers/celery_app.py`)
+- **WebSockets**: Real-time proctoring/dashboard (stubs — `backend/app/websockets/`)
 
 ### Key Integrations
 - **Frontend ↔ Backend**: REST API with JWT authentication
 - **Backend ↔ Database**: Async SQLAlchemy 2.0
-- **Assessments ↔ Code Execution**: Sandbox integration for running code
-- **Proctoring ↔ Frontend**: WebSocket or polling for real-time monitoring
+- **Assessments ↔ Code Execution**: Sandbox integration for running code (stub)
+- **Proctoring ↔ Frontend**: WebSocket or polling for real-time monitoring (stub)
 
 ## Performance Considerations
 
@@ -317,7 +346,7 @@ Key variables:
 
 ## Security Notes
 
-- JWT tokens stored in `localStorage` (consider httpOnly cookies for production)
+- JWT tokens stored in `localStorage` — httpOnly cookies implemented for refresh tokens (P0-3), consider migrating access tokens too for production
 - Role-based access control enforced on both frontend and backend
 - Input validation via Pydantic schemas
 - SQL injection protection via SQLAlchemy ORM
