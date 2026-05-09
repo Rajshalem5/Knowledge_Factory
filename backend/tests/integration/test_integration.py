@@ -14,9 +14,12 @@ class TestCandidateFlow:
 
     async def test_01_candidate_registration(self, client: AsyncClient):
         """Test: Register new candidate -> should succeed."""
+        import uuid
+        unique_email = f"candidate-{uuid.uuid4().hex[:8]}@example.com"
+
         registration_data = {
             "name": "Test Candidate",
-            "email": "test.candidate@example.com",
+            "email": unique_email,
             "password": "Candidate@123",
             "college": "Test University",
             "branch": "Computer Science",
@@ -47,12 +50,15 @@ class TestCandidateFlow:
 
     async def test_02_candidate_login(self, client: AsyncClient):
         """Test: Login with registered candidate credentials."""
+        import uuid
+        unique_email = f"login-{uuid.uuid4().hex[:8]}@test.com"
+
         # First register
         register_response = await client.post(
             "/api/auth/register",
             json={
                 "name": "Login Test Candidate",
-                "email": "login@test.com",
+                "email": unique_email,
                 "password": "Candidate@123",
                 "college": "Test College",
                 "branch": "IT",
@@ -66,8 +72,8 @@ class TestCandidateFlow:
         response = await client.post(
             "/api/auth/login",
             json={
-                "email": "login@test.com",
-                "password": "Candidate@123",
+                "email": unique_email,
+                "password": "Candidate@123"
             },
         )
 
@@ -78,7 +84,7 @@ class TestCandidateFlow:
         data = response.json()
         assert "access_token" in data
         assert "user" in data
-        assert data["user"]["role"] == "candidate"
+        assert data["user"]["role"] == "CANDIDATE"
 
         print("✓ Candidate login successful")
 

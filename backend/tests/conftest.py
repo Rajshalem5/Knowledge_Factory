@@ -4,6 +4,7 @@ Uses SQLite by default (set TEST_DATABASE_URL env var to override for CI).
 """
 
 import os
+from datetime import date
 from typing import AsyncGenerator
 
 import pytest
@@ -11,13 +12,12 @@ import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from datetime import date
-
-from app.database import Base
+from app.database import Base, get_db
 from app.main import app
 from app.core.security import hash_password
 from app.features.candidates.models import Candidate
 from app.features.hiring_cycles.models import HiringCycle
+from app.features.auth.models import User
 
 # Use SQLite for local dev; override via env var in CI
 TEST_DATABASE_URL = os.getenv(
@@ -29,6 +29,19 @@ test_engine = create_async_engine(TEST_DATABASE_URL, echo=False)
 TestSessionFactory = async_sessionmaker(
     bind=test_engine, class_=AsyncSession, expire_on_commit=False
 )
+
+
+async def _override_get_db() -> AsyncGenerator[AsyncSession, None]:
+    """Override FastAPI's get_db dependency to use the test database."""
+    async with TestSessionFactory() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+        finally:
+            await session.close()
 
 
 @pytest.fixture(scope="session")
@@ -49,8 +62,6 @@ async def setup_database():
         await conn.run_sync(Base.metadata.create_all)
 
     # Seed data
-    from app.features.auth.models import User
-
     async with TestSessionFactory() as session:
         admin = User(
             email="admin@knowledgefactory.io",
@@ -78,6 +89,7 @@ async def setup_database():
             eligibility_config={"min_cgpa": 6.0, "allowed_branches": ["CSE", "ECE", "IT", "EEE"]},
         )
         session.add(cycle)
+        await session.flush()
 
         # Seed test candidates in APPLIED status for screening tests
         candidates_data = [
@@ -117,8 +129,10 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
     Provide an async HTTP client for integration tests.
 
     Uses httpx's ASGITransport to call the FastAPI app directly,
-    avoiding the overhead of a real HTTP server during tests.
+    with get_db dependency overridden to use the test database.
     """
+    app.dependency_overrides[get_db] = _override_get_db
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
+    app.dependency_overrides.pop(get_db, None)
