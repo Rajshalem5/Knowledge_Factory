@@ -14,17 +14,17 @@ export interface SubmissionCreateRequest {
 
 export const assessmentApi = {
   start: (data: AssessmentStartRequest) =>
-    api.post<Assessment>('/assessment/start', data),
+    api.post<Assessment>('/api/assessment/start', data),
 
   submitSection: (data: SubmissionCreateRequest) =>
-    api.post<{ passed: number; failed: number }>('/assessment/submit-section', data),
+    api.post<{ passed: number; failed: number }>('/api/assessment/submit-section', data),
 
   getAssessment: (assessmentId: string) =>
-    api.get<Assessment>(`/assessment/${assessmentId}`),
+    api.get<Assessment>(`/api/assessment/${assessmentId}`),
 
   getActiveAssessments: () =>
-    api.get<Assessment[]>('/assessment/active'),
+    api.get<Assessment[]>('/api/assessment/active'),
 
   submitFeedback: (candidateId: string, data: { technicalScore: number; communicationScore: number; recommendation: string; notes: string }) =>
-    api.post(`/candidates/${candidateId}/feedback`, data),
+    api.post(`/api/candidates/${candidateId}/feedback`, data),
 };
