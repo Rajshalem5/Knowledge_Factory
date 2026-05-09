@@ -22,9 +22,13 @@ export const candidatesApi = {
     cgpa_min?: number;
     cgpa_max?: number;
     language_choice?: string;
+    has_resume?: boolean;
+    has_govt_id?: boolean;
+    created_after?: string;
+    created_before?: string;
   }) =>
     api.get<PaginatedResponse<Candidate>>('/api/candidates', { 
-      params: params as Record<string, string | number> 
+      params: params as Record<string, string | number | boolean | undefined> 
     }),
 
   /**
