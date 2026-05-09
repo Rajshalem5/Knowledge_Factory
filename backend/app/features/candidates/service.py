@@ -19,6 +19,7 @@ class CandidateService:
         search: str | None = None, branch: str | None = None,
         college: str | None = None, cgpa_min: float | None = None,
         cgpa_max: float | None = None, passed_out_year: int | None = None,
+        language_choice: str | None = None,
     ):
         query = select(Candidate)
 
@@ -42,6 +43,8 @@ class CandidateService:
             query = query.where(Candidate.cgpa <= cgpa_max)
         if passed_out_year:
             query = query.where(Candidate.passed_out_year == passed_out_year)
+        if language_choice:
+            query = query.where(Candidate.language_choice.ilike(f"%{language_choice}%"))
 
         count_q = select(func.count()).select_from(query.subquery())
         count_result = await self.db.execute(count_q)
