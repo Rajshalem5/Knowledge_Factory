@@ -19,6 +19,7 @@ async def run_screening(
     branch: str | None = Query(None, description="Optional filter: only screen candidates from this branch"),
     college: str | None = Query(None, description="Optional filter: only screen candidates from this college"),
     passed_out_year: int | None = Query(None, description="Optional filter: only screen candidates from this passed-out year"),
+    language_choice: str | None = Query(None, description="Optional filter: only screen candidates with this language choice"),
     min_cgpa_override: float | None = Query(None, ge=0.0, le=10.0, description="Override the cycle's min_cgpa threshold"),
     db: AsyncSession = Depends(get_db), current_user = Depends(require_role([Role.HR, Role.ADMIN]))):
     """
@@ -26,7 +27,7 @@ async def run_screening(
     Candidates meeting CGPA/branch criteria transition from APPLIED to ROUND1_PASSED.
     Others go to ROUND1_REJECTED.
 
-    Supports optional extra filtering (branch, college, passed_out_year) and
+    Supports optional extra filtering (branch, college, passed_out_year, language_choice) and
     min_cgpa_override to run targeted screening rounds.
     """
     # Get the active cycle
@@ -53,6 +54,8 @@ async def run_screening(
         q = q.where(Candidate.college.ilike(f"%{college}%"))
     if passed_out_year:
         q = q.where(Candidate.passed_out_year == passed_out_year)
+    if language_choice:
+        q = q.where(Candidate.language_choice.ilike(f"%{language_choice}%"))
 
     res = await db.execute(q)
     candidates = res.scalars().all()
@@ -80,6 +83,9 @@ async def pipeline_stats(
     branch: str | None = Query(None, description="Optional filter by branch"),
     college: str | None = Query(None, description="Optional filter by college"),
     passed_out_year: int | None = Query(None, description="Optional filter by passed-out year"),
+    language_choice: str | None = Query(None, description="Optional filter by language choice"),
+    cgpa_min: float | None = Query(None, ge=0.0, le=10.0, description="Optional min CGPA filter"),
+    cgpa_max: float | None = Query(None, ge=0.0, le=10.0, description="Optional max CGPA filter"),
     db: AsyncSession = Depends(get_db),
     current_user = Depends(require_role([Role.HR, Role.ADMIN])),
 ):
@@ -91,6 +97,12 @@ async def pipeline_stats(
         base = base.where(Candidate.college.ilike(f"%{college}%"))
     if passed_out_year:
         base = base.where(Candidate.passed_out_year == passed_out_year)
+    if language_choice:
+        base = base.where(Candidate.language_choice.ilike(f"%{language_choice}%"))
+    if cgpa_min is not None:
+        base = base.where(Candidate.cgpa >= cgpa_min)
+    if cgpa_max is not None:
+        base = base.where(Candidate.cgpa <= cgpa_max)
     base = base.group_by(Candidate.status)
 
     res = await db.execute(base)
