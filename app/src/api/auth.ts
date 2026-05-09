@@ -60,28 +60,28 @@ async function normalizeTokenResponse(res: AuthResponse): Promise<NormalizedAuth
 
 export const authApi = {
   login: (data: LoginData) =>
-    api.post<AuthResponse>('/auth/login', data).then(normalizeResponse),
+    api.post<AuthResponse>('/api/auth/login', data).then(normalizeResponse),
 
   register: (data: RegisterData | FormData) =>
-    api.post<AuthResponse>('/auth/register', data).then(normalizeResponse),
+    api.post<AuthResponse>('/api/auth/register', data).then(normalizeResponse),
 
   refreshToken: () =>
-    api.post<AuthResponse>('/auth/refresh'),
+    api.post<AuthResponse>('/api/auth/refresh'),
 
   verifyOtp: (data: { email: string; otp: string }) =>
-    api.post<AuthResponse>('/auth/verify-otp', data).then(normalizeResponse),
+    api.post<AuthResponse>('/api/auth/verify-otp', data).then(normalizeResponse),
 
   forgotPassword: (data: { email: string }) =>
-    api.post<{ message: string }>('/auth/forgot-password', data),
+    api.post<{ message: string }>('/api/auth/forgot-password', data),
 
   resetPassword: (data: { token: string; new_password: string; confirm_password: string }) =>
-    api.post<{ message: string }>('/auth/reset-password', data),
+    api.post<{ message: string }>('/api/auth/reset-password', data),
 
   getMe: () =>
-    api.get<{ id: string; email: string; name: string; role: string }>('/auth/me'),
+    api.get<{ id: string; email: string; name: string; role: string }>('/api/auth/me'),
 
   logout: () =>
-    api.post<{ message: string }>('/auth/logout'),
+    api.post<{ message: string }>('/api/auth/logout'),
 
   normalizeTokenResponse,
 };
