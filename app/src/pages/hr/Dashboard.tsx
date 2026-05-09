@@ -52,30 +52,42 @@ export default function Dashboard() {
     cgpa_min: cgpaMinFilter ? parseFloat(cgpaMinFilter) : undefined,
     cgpa_max: cgpaMaxFilter ? parseFloat(cgpaMaxFilter) : undefined,
     language_choice: languageChoiceFilter || undefined,
+    has_resume: hasResumeFilter ? hasResumeFilter === 'true' : undefined,
+    has_govt_id: hasGovtIdFilter ? hasGovtIdFilter === 'true' : undefined,
+    created_after: createdAfterFilter || undefined,
+    created_before: createdBeforeFilter || undefined,
   });
 
   const { data: funnelData, isLoading: funnelLoading } = useFunnelData();
   const runScreening = useRunScreening();
   const { data: pipelineStats } = usePipelineStats(
     (() => {
-      const p: Record<string, string | number> = {};
+      const p: Record<string, string | number | boolean> = {};
       if (branchFilter) p.branch = branchFilter;
       if (collegeFilter) p.college = collegeFilter;
       if (passedOutYearFilter) p.passed_out_year = parseInt(passedOutYearFilter, 10);
       if (languageChoiceFilter) p.language_choice = languageChoiceFilter;
       if (cgpaMinFilter) p.cgpa_min = parseFloat(cgpaMinFilter);
       if (cgpaMaxFilter) p.cgpa_max = parseFloat(cgpaMaxFilter);
+      if (hasResumeFilter) p.has_resume = hasResumeFilter === 'true';
+      if (hasGovtIdFilter) p.has_govt_id = hasGovtIdFilter === 'true';
+      if (createdAfterFilter) p.created_after = createdAfterFilter;
+      if (createdBeforeFilter) p.created_before = createdBeforeFilter;
       return Object.keys(p).length > 0 ? p : undefined;
     })()
   );
 
   const handleRunScreening = () => {
-    const params: Record<string, string | number> = {};
+    const params: Record<string, string | number | boolean> = {};
     if (branchFilter) params.branch = branchFilter;
     if (collegeFilter) params.college = collegeFilter;
     if (passedOutYearFilter) params.passed_out_year = parseInt(passedOutYearFilter, 10);
     if (languageChoiceFilter) params.language_choice = languageChoiceFilter;
     if (minCgpaOverride) params.min_cgpa_override = parseFloat(minCgpaOverride);
+    if (hasResumeFilter) params.has_resume = hasResumeFilter === 'true';
+    if (hasGovtIdFilter) params.has_govt_id = hasGovtIdFilter === 'true';
+    if (createdAfterFilter) params.created_after = createdAfterFilter;
+    if (createdBeforeFilter) params.created_before = createdBeforeFilter;
     runScreening.mutate(
       Object.keys(params).length > 0 ? params : undefined
     );
