@@ -21,6 +21,7 @@ async def run_screening(
     passed_out_year: int | None = Query(None, description="Optional filter: only screen candidates from this passed-out year"),
     language_choice: str | None = Query(None, description="Optional filter: only screen candidates with this language choice"),
     min_cgpa_override: float | None = Query(None, ge=0.0, le=10.0, description="Override the cycle's min_cgpa threshold"),
+    search: str | None = Query(None, description="Optional search term (name, email, college)"),
     db: AsyncSession = Depends(get_db), current_user = Depends(require_role([Role.HR, Role.ADMIN]))):
     """
     Auto-screen candidates based on hiring cycle config.
@@ -56,6 +57,12 @@ async def run_screening(
         q = q.where(Candidate.passed_out_year == passed_out_year)
     if language_choice:
         q = q.where(Candidate.language_choice.ilike(f"%{language_choice}%"))
+    if search:
+        q = q.where(
+            Candidate.name.ilike(f"%{search}%")
+            | Candidate.email.ilike(f"%{search}%")
+            | Candidate.college.ilike(f"%{search}%")
+        )
 
     res = await db.execute(q)
     candidates = res.scalars().all()
@@ -86,10 +93,12 @@ async def pipeline_stats(
     language_choice: str | None = Query(None, description="Optional filter by language choice"),
     cgpa_min: float | None = Query(None, ge=0.0, le=10.0, description="Optional min CGPA filter"),
     cgpa_max: float | None = Query(None, ge=0.0, le=10.0, description="Optional max CGPA filter"),
+    search: str | None = Query(None, description="Optional search term (name, email, college)"),
     db: AsyncSession = Depends(get_db),
     current_user = Depends(require_role([Role.HR, Role.ADMIN])),
 ):
     """Get aggregated candidate counts per pipeline stage with optional extra filters."""
+    from sqlalchemy import or_
     base = select(Candidate.status, func.count(Candidate.id).label("count"))
     if branch:
         base = base.where(Candidate.branch.ilike(f"%{branch}%"))
@@ -103,6 +112,14 @@ async def pipeline_stats(
         base = base.where(Candidate.cgpa >= cgpa_min)
     if cgpa_max is not None:
         base = base.where(Candidate.cgpa <= cgpa_max)
+    if search:
+        base = base.where(
+            or_(
+                Candidate.name.ilike(f"%{search}%"),
+                Candidate.email.ilike(f"%{search}%"),
+                Candidate.college.ilike(f"%{search}%"),
+            )
+        )
     base = base.group_by(Candidate.status)
 
     res = await db.execute(base)
