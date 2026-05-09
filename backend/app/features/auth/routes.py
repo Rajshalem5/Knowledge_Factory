@@ -70,19 +70,9 @@ async def login(login_data: LoginRequest, db: AsyncSession = Depends(get_db), re
     }
 
 
-from fastapi import Form, File, UploadFile
-
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 async def register_candidate(
-    name: str = Form(...),
-    email: str = Form(...),
-    password: str = Form(...),
-    college: str = Form(...),
-    branch: str = Form(...),
-    cgpa: float = Form(...),
-    passed_out_year: int = Form(...),
-    language_choice: str = Form("english"),
-    resume: UploadFile = File(None),
+    register_data: CandidateRegisterRequest,
     db: AsyncSession = Depends(get_db),
     response: Response = None,
 ):
@@ -102,23 +92,7 @@ async def register_candidate(
     auth_service = AuthService(db)
 
     try:
-        # manually construct request object
-        register_data = CandidateRegisterRequest(
-            name=name,
-            email=email,
-            password=password,
-            college=college,
-            branch=branch,
-            cgpa=cgpa,
-            passed_out_year=passed_out_year,
-            language_choice=language_choice,
-        )
-
         candidate = await auth_service.register_candidate(register_data, cycle.id)
-
-        # (optional) handle resume upload here
-        if resume:
-            print("Resume received:", resume.filename)
 
         token_data = auth_service.generate_token_response(candidate)
         
@@ -127,6 +101,7 @@ async def register_candidate(
         
         return {
             "access_token": token_data["access_token"],
+            "refresh_token": token_data["refresh_token"],
             "token_type": "bearer",
             "user": token_data["user"],
         }
