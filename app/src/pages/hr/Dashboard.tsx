@@ -85,6 +85,8 @@ export default function Dashboard() {
     if (passedOutYearFilter) params.passed_out_year = parseInt(passedOutYearFilter, 10);
     if (languageChoiceFilter) params.language_choice = languageChoiceFilter;
     if (minCgpaOverride) params.min_cgpa_override = parseFloat(minCgpaOverride);
+    if (cgpaMinFilter) params.cgpa_min = parseFloat(cgpaMinFilter);
+    if (cgpaMaxFilter) params.cgpa_max = parseFloat(cgpaMaxFilter);
     if (hasResumeFilter) params.has_resume = hasResumeFilter === 'true';
     if (hasGovtIdFilter) params.has_govt_id = hasGovtIdFilter === 'true';
     if (createdAfterFilter) params.created_after = createdAfterFilter;
