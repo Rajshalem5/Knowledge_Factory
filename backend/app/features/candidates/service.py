@@ -1,5 +1,6 @@
 """Candidate management service."""
 
+from datetime import date, datetime
 from uuid import UUID
 
 from sqlalchemy import select, func, or_
@@ -20,6 +21,10 @@ class CandidateService:
         college: str | None = None, cgpa_min: float | None = None,
         cgpa_max: float | None = None, passed_out_year: int | None = None,
         language_choice: str | None = None,
+        has_resume: bool | None = None,
+        has_govt_id: bool | None = None,
+        created_after: date | None = None,
+        created_before: date | None = None,
     ):
         query = select(Candidate)
 
@@ -45,6 +50,22 @@ class CandidateService:
             query = query.where(Candidate.passed_out_year == passed_out_year)
         if language_choice:
             query = query.where(Candidate.language_choice.ilike(f"%{language_choice}%"))
+        if has_resume is not None:
+            if has_resume:
+                query = query.where(Candidate.resume_url.isnot(None))
+            else:
+                query = query.where(Candidate.resume_url.is_(None))
+        if has_govt_id is not None:
+            if has_govt_id:
+                query = query.where(Candidate.govt_id_url.isnot(None))
+            else:
+                query = query.where(Candidate.govt_id_url.is_(None))
+        if created_after:
+            dt = datetime.combine(created_after, datetime.min.time())
+            query = query.where(Candidate.created_at >= dt)
+        if created_before:
+            dt = datetime.combine(created_before, datetime.max.time())
+            query = query.where(Candidate.created_at <= dt)
 
         count_q = select(func.count()).select_from(query.subquery())
         count_result = await self.db.execute(count_q)

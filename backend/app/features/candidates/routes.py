@@ -1,5 +1,6 @@
 """Candidate management routes."""
 
+from datetime import date, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
@@ -26,6 +27,10 @@ async def list_candidates(
     cgpa_max: float | None = Query(None, ge=0.0, le=10.0),
     passed_out_year: int | None = None,
     language_choice: str | None = None,
+    has_resume: bool | None = Query(None, description="Filter by whether candidate has uploaded a resume"),
+    has_govt_id: bool | None = Query(None, description="Filter by whether candidate has uploaded govt ID"),
+    created_after: date | None = Query(None, description="Filter candidates created after this date (ISO format)"),
+    created_before: date | None = Query(None, description="Filter candidates created before this date (ISO format)"),
     db: AsyncSession = Depends(get_db),
     current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN])),
 ):
@@ -47,6 +52,8 @@ async def list_candidates(
         page=page, limit=limit, status=parsed_status, search=search,
         branch=branch, college=college, cgpa_min=cgpa_min, cgpa_max=cgpa_max,
         passed_out_year=passed_out_year, language_choice=language_choice,
+        has_resume=has_resume, has_govt_id=has_govt_id,
+        created_after=created_after, created_before=created_before,
     )
     return {"data": candidates, "pagination": {"page": page, "limit": limit, "total": total, "total_pages": (total + limit - 1) // limit if limit else 1}}
 
