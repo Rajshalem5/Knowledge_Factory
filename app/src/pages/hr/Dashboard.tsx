@@ -73,6 +73,7 @@ export default function Dashboard() {
       if (hasGovtIdFilter) p.has_govt_id = hasGovtIdFilter === 'true';
       if (createdAfterFilter) p.created_after = createdAfterFilter;
       if (createdBeforeFilter) p.created_before = createdBeforeFilter;
+      if (search) p.search = search;
       return Object.keys(p).length > 0 ? p : undefined;
     })()
   );
@@ -88,6 +89,7 @@ export default function Dashboard() {
     if (hasGovtIdFilter) params.has_govt_id = hasGovtIdFilter === 'true';
     if (createdAfterFilter) params.created_after = createdAfterFilter;
     if (createdBeforeFilter) params.created_before = createdBeforeFilter;
+    if (search) params.search = search;
     runScreening.mutate(
       Object.keys(params).length > 0 ? params : undefined
     );
