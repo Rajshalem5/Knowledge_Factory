@@ -28,6 +28,16 @@ async def get_active_assessments(db: AsyncSession = Depends(get_db), current_use
     return await service.get_assessment(current_user.id)
 
 
+@router.post("/{assessment_id}/complete", response_model=AssessmentRead)
+async def complete_assessment(assessment_id: str, db: AsyncSession = Depends(get_db), current_user=Depends(get_current_user)):
+    """Mark an assessment as completed and advance the candidate to the next pipeline stage."""
+    service = AssessmentService(db)
+    try:
+        return await service.complete_assessment(current_user.id, assessment_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @router.get("/{assessment_id}", response_model=AssessmentRead)
 async def get_assessment_by_id(assessment_id: str, db: AsyncSession = Depends(get_db), current_user=Depends(get_current_user)):
     """Get a single assessment by its ID."""
