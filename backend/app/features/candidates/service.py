@@ -16,7 +16,10 @@ class CandidateService:
         self.db = db
 
     async def list_candidates(
-        self, page: int = 1, limit: int = 50, status: CandidateStatus | None = None, search: str | None = None
+        self, page: int = 1, limit: int = 50, status: CandidateStatus | None = None,
+        search: str | None = None, branch: str | None = None,
+        college: str | None = None, cgpa_min: float | None = None,
+        cgpa_max: float | None = None, passed_out_year: int | None = None,
     ):
         query = select(Candidate)
 
@@ -30,6 +33,16 @@ class CandidateService:
                     Candidate.college.ilike(f"%{search}%"),
                 )
             )
+        if branch:
+            query = query.where(Candidate.branch.ilike(f"%{branch}%"))
+        if college:
+            query = query.where(Candidate.college.ilike(f"%{college}%"))
+        if cgpa_min is not None:
+            query = query.where(Candidate.cgpa >= cgpa_min)
+        if cgpa_max is not None:
+            query = query.where(Candidate.cgpa <= cgpa_max)
+        if passed_out_year:
+            query = query.where(Candidate.passed_out_year == passed_out_year)
 
         count_q = select(func.count()).select_from(query.subquery())
         count_result = await self.db.execute(count_q)
