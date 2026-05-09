@@ -10,7 +10,7 @@ import { authApi } from './auth';
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 interface RequestOptions extends RequestInit {
-  params?: Record<string, string | number>;
+  params?: Record<string, string | number | boolean | undefined>;
 }
 
 async function request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {

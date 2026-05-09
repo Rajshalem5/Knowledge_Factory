@@ -1,5 +1,9 @@
-"""Quick backend import verification."""
-import sys
-sys.path.insert(0, '.')
+"""Quick check that backend imports and routes load"""
 from app.main import app
-print('Backend imports OK')
+
+print('OK')
+print(f'Routes: {len(app.routes)}')
+for route in app.routes:
+    if hasattr(route, 'methods') and hasattr(route, 'path'):
+        methods = ','.join(sorted(route.methods))
+        print(f'  {methods} {route.path}')

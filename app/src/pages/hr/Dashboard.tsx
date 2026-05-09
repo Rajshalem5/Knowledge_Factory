@@ -35,6 +35,10 @@ export default function Dashboard() {
   const [cgpaMinFilter, setCgpaMinFilter] = useState('');
   const [cgpaMaxFilter, setCgpaMaxFilter] = useState('');
   const [languageChoiceFilter, setLanguageChoiceFilter] = useState('');
+  const [hasResumeFilter, setHasResumeFilter] = useState('');
+  const [hasGovtIdFilter, setHasGovtIdFilter] = useState('');
+  const [createdAfterFilter, setCreatedAfterFilter] = useState('');
+  const [createdBeforeFilter, setCreatedBeforeFilter] = useState('');
   const [showFilters, setShowFilters] = useState(false);
 
   const { data: candidatesData, isLoading, error } = useCandidates({
