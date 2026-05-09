@@ -1,5 +1,6 @@
 """Screening routes: Round 1 eligibility filtering."""
 
+from datetime import date, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -14,6 +15,51 @@ from app.core.enums import Role, CandidateStatus
 router = APIRouter()
 
 
+def _apply_extra_filters(q, branch, college, passed_out_year, language_choice, search,
+                          cgpa_min=None, cgpa_max=None,
+                          has_resume=None, has_govt_id=None,
+                          created_after=None, created_before=None):
+    """Apply common extra filters to a Candidate query."""
+    if branch:
+        q = q.where(Candidate.branch.ilike(f"%{branch}%"))
+    if college:
+        q = q.where(Candidate.college.ilike(f"%{college}%"))
+    if passed_out_year:
+        q = q.where(Candidate.passed_out_year == passed_out_year)
+    if language_choice:
+        q = q.where(Candidate.language_choice.ilike(f"%{language_choice}%"))
+    if search:
+        from sqlalchemy import or_
+        q = q.where(
+            or_(
+                Candidate.name.ilike(f"%{search}%"),
+                Candidate.email.ilike(f"%{search}%"),
+                Candidate.college.ilike(f"%{search}%"),
+            )
+        )
+    if cgpa_min is not None:
+        q = q.where(Candidate.cgpa >= cgpa_min)
+    if cgpa_max is not None:
+        q = q.where(Candidate.cgpa <= cgpa_max)
+    if has_resume is not None:
+        if has_resume:
+            q = q.where(Candidate.resume_url.isnot(None))
+        else:
+            q = q.where(Candidate.resume_url.is_(None))
+    if has_govt_id is not None:
+        if has_govt_id:
+            q = q.where(Candidate.govt_id_url.isnot(None))
+        else:
+            q = q.where(Candidate.govt_id_url.is_(None))
+    if created_after:
+        dt = datetime.combine(created_after, datetime.min.time())
+        q = q.where(Candidate.created_at >= dt)
+    if created_before:
+        dt = datetime.combine(created_before, datetime.max.time())
+        q = q.where(Candidate.created_at <= dt)
+    return q
+
+
 @router.post("/run")
 async def run_screening(
     branch: str | None = Query(None, description="Optional filter: only screen candidates from this branch"),
@@ -22,13 +68,18 @@ async def run_screening(
     language_choice: str | None = Query(None, description="Optional filter: only screen candidates with this language choice"),
     min_cgpa_override: float | None = Query(None, ge=0.0, le=10.0, description="Override the cycle's min_cgpa threshold"),
     search: str | None = Query(None, description="Optional search term (name, email, college)"),
+    has_resume: bool | None = Query(None, description="Filter by whether candidate has uploaded a resume"),
+    has_govt_id: bool | None = Query(None, description="Filter by whether candidate has uploaded govt ID"),
+    created_after: date | None = Query(None, description="Filter candidates created after this date (ISO format, e.g. 2026-01-01)"),
+    created_before: date | None = Query(None, description="Filter candidates created before this date (ISO format, e.g. 2026-06-30)"),
     db: AsyncSession = Depends(get_db), current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN]))):
     """
     Auto-screen candidates based on hiring cycle config.
     Candidates meeting CGPA/branch criteria transition from APPLIED to ROUND1_PASSED.
     Others go to ROUND1_REJECTED.
 
-    Supports optional extra filtering (branch, college, passed_out_year, language_choice) and
+    Supports optional extra filtering (branch, college, passed_out_year, language_choice,
+    has_resume, has_govt_id, created_after, created_before) and
     min_cgpa_override to run targeted screening rounds.
     """
     # Get the active cycle
@@ -49,20 +100,11 @@ async def run_screening(
     )
 
     # Extra optional filters
-    if branch:
-        q = q.where(Candidate.branch.ilike(f"%{branch}%"))
-    if college:
-        q = q.where(Candidate.college.ilike(f"%{college}%"))
-    if passed_out_year:
-        q = q.where(Candidate.passed_out_year == passed_out_year)
-    if language_choice:
-        q = q.where(Candidate.language_choice.ilike(f"%{language_choice}%"))
-    if search:
-        q = q.where(
-            Candidate.name.ilike(f"%{search}%")
-            | Candidate.email.ilike(f"%{search}%")
-            | Candidate.college.ilike(f"%{search}%")
-        )
+    q = _apply_extra_filters(
+        q, branch, college, passed_out_year, language_choice, search,
+        has_resume=has_resume, has_govt_id=has_govt_id,
+        created_after=created_after, created_before=created_before,
+    )
 
     res = await db.execute(q)
     candidates = res.scalars().all()
@@ -94,32 +136,22 @@ async def pipeline_stats(
     cgpa_min: float | None = Query(None, ge=0.0, le=10.0, description="Optional min CGPA filter"),
     cgpa_max: float | None = Query(None, ge=0.0, le=10.0, description="Optional max CGPA filter"),
     search: str | None = Query(None, description="Optional search term (name, email, college)"),
+    has_resume: bool | None = Query(None, description="Filter by whether candidate has uploaded a resume"),
+    has_govt_id: bool | None = Query(None, description="Filter by whether candidate has uploaded govt ID"),
+    created_after: date | None = Query(None, description="Filter candidates created after this date (ISO format)"),
+    created_before: date | None = Query(None, description="Filter candidates created before this date (ISO format)"),
     db: AsyncSession = Depends(get_db),
     current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN])),
 ):
     """Get aggregated candidate counts per pipeline stage with optional extra filters."""
     from sqlalchemy import or_
     base = select(Candidate.status, func.count(Candidate.id).label("count"))
-    if branch:
-        base = base.where(Candidate.branch.ilike(f"%{branch}%"))
-    if college:
-        base = base.where(Candidate.college.ilike(f"%{college}%"))
-    if passed_out_year:
-        base = base.where(Candidate.passed_out_year == passed_out_year)
-    if language_choice:
-        base = base.where(Candidate.language_choice.ilike(f"%{language_choice}%"))
-    if cgpa_min is not None:
-        base = base.where(Candidate.cgpa >= cgpa_min)
-    if cgpa_max is not None:
-        base = base.where(Candidate.cgpa <= cgpa_max)
-    if search:
-        base = base.where(
-            or_(
-                Candidate.name.ilike(f"%{search}%"),
-                Candidate.email.ilike(f"%{search}%"),
-                Candidate.college.ilike(f"%{search}%"),
-            )
-        )
+    base = _apply_extra_filters(
+        base, branch, college, passed_out_year, language_choice, search,
+        cgpa_min=cgpa_min, cgpa_max=cgpa_max,
+        has_resume=has_resume, has_govt_id=has_govt_id,
+        created_after=created_after, created_before=created_before,
+    )
     base = base.group_by(Candidate.status)
 
     res = await db.execute(base)
