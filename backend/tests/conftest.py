@@ -11,6 +11,8 @@ import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from datetime import date
+
 from app.database import Base
 from app.main import app
 from app.core.security import hash_password
@@ -70,8 +72,8 @@ async def setup_database():
 
         cycle = HiringCycle(
             name="Test Cycle",
-            start_date="2026-01-01",
-            end_date="2026-12-31",
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 12, 31),
             status="ACTIVE",
             eligibility_config={"min_cgpa": 6.0, "allowed_branches": ["CSE", "ECE", "IT", "EEE"]},
         )

@@ -78,6 +78,7 @@ class Base(DeclarativeBase):
 def create_test_database() -> AsyncGenerator[AsyncSession, None]:
     """Create a fresh in-memory SQLite test database with all tables and seed data."""
     import asyncio
+    from datetime import date
     from sqlalchemy import create_engine as create_sync_engine
     from app.core.security import hash_password
 
@@ -124,8 +125,8 @@ def create_test_database() -> AsyncGenerator[AsyncSession, None]:
             # Seed a default active hiring cycle
             cycle = HiringCycle(
                 name="Test Cycle",
-                start_date="2026-01-01",
-                end_date="2026-12-31",
+                start_date=date(2026, 1, 1),
+                end_date=date(2026, 12, 31),
                 status="ACTIVE",
                 eligibility_config={"min_cgpa": 6.0, "allowed_branches": ["CSE", "ECE", "IT", "EEE"]},
             )
