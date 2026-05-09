@@ -13,7 +13,7 @@ export const candidatesApi = {
    */
   getAll: (params?: { 
     page?: number; 
-    pageSize?: number; 
+    limit?: number; 
     status?: string; 
     branch?: string; 
     college?: string; 
