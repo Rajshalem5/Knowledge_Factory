@@ -21,7 +21,7 @@ class AssessmentService:
 
     async def start_assessment(self, candidate_id: UUID, req: AssessmentStart) -> Assessment:
         # Validate candidate exists and has correct pipeline status
-        c_stmt = select(Candidate).where(Candidate.id == candidate_id)
+        c_stmt = select(Candidate).where(Candidate.id == str(candidate_id))
         c_res = await self.db.execute(c_stmt)
         candidate = c_res.scalar_one_or_none()
         if not candidate:
@@ -46,7 +46,7 @@ class AssessmentService:
         stmt = (
             select(Assessment)
             .where(
-                Assessment.candidate_id == candidate_id,
+                Assessment.candidate_id == str(candidate_id),
                 Assessment.round == req.round,
                 Assessment.status.in_([AssessmentStatus.IN_PROGRESS]),
             )
@@ -91,7 +91,7 @@ class AssessmentService:
         res = await self.db.execute(stmt)
         assessment = res.scalar_one_or_none()
 
-        if not assessment or assessment.candidate_id != candidate_id:
+        if not assessment or str(assessment.candidate_id) != str(candidate_id):
             raise ValueError("Assessment not found or access denied")
 
         # Create submission
@@ -116,13 +116,13 @@ class AssessmentService:
         res = await self.db.execute(stmt)
         assessment = res.scalar_one_or_none()
 
-        if not assessment or assessment.candidate_id != candidate_id:
+        if not assessment or str(assessment.candidate_id) != str(candidate_id):
             raise ValueError("Assessment not found or access denied")
 
         if assessment.status == AssessmentStatus.COMPLETED:
             raise ValueError("Assessment is already completed")
 
-        candidate_stmt = select(Candidate).where(Candidate.id == candidate_id)
+        candidate_stmt = select(Candidate).where(Candidate.id == str(candidate_id))
         candidate_res = await self.db.execute(candidate_stmt)
         candidate = candidate_res.scalar_one_or_none()
         if not candidate:
@@ -155,7 +155,7 @@ class AssessmentService:
     async def get_assessment(self, candidate_id: UUID) -> list[Assessment]:
         stmt = (
             select(Assessment)
-            .where(Assessment.candidate_id == candidate_id)
+            .where(Assessment.candidate_id == str(candidate_id))
             .order_by(Assessment.started_at.desc())
         )
         result = await self.db.execute(stmt)

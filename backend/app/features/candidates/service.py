@@ -57,13 +57,13 @@ class CandidateService:
         return [CandidateRead.from_orm_compat(c) for c in candidates], total
 
     async def get_candidate(self, candidate_id: UUID) -> CandidateRead | None:
-        stmt = select(Candidate).where(Candidate.id == candidate_id)
+        stmt = select(Candidate).where(Candidate.id == str(candidate_id))
         result = await self.db.execute(stmt)
         c = result.scalar_one_or_none()
         return CandidateRead.from_orm_compat(c) if c else None
 
     async def get_my_profile(self, candidate_id: UUID) -> CandidateRead:
-        stmt = select(Candidate).where(Candidate.id == candidate_id)
+        stmt = select(Candidate).where(Candidate.id == str(candidate_id))
         result = await self.db.execute(stmt)
         c = result.scalar_one()
         return CandidateRead.from_orm_compat(c)
@@ -86,7 +86,7 @@ class CandidateService:
             CandidateStatus.SELECTED: set(),
         }
 
-        stmt = select(Candidate).where(Candidate.id == candidate_id)
+        stmt = select(Candidate).where(Candidate.id == str(candidate_id))
         res = await self.db.execute(stmt)
         candidate = res.scalar_one_or_none()
 

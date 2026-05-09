@@ -6,8 +6,8 @@ from pydantic import BaseModel
 
 
 class ProctoringEventCreate(BaseModel):
-    assessment_id: UUID
-    candidate_id: UUID
+    assessment_id: str
+    candidate_id: str
     event_type: str  # tab_switch, face_not_detected, etc.
     severity: str = "low"  # low, medium, high
     timestamp: Optional[str] = None
