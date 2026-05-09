@@ -1,7 +1,7 @@
 import { AppShell } from '../../components/layout/AppShell';
-import { Card, CardHeader, CardTitle, Badge, ProgressPipeline, LoadingState, ErrorState } from '../../components/ui';
+import { Card, CardHeader, CardTitle, Badge, ProgressPipeline, LoadingState, ErrorState, Button } from '../../components/ui';
 import { useMyCandidateProfile } from '../../hooks/useCandidates';
-import { useActiveAssessments } from '../../hooks/useAssessment';
+import { useActiveAssessments, useStartAssessment } from '../../hooks/useAssessment';
 import { STATUS_LABELS } from '../../utils/roles';
 import { Clock, FileText, Trophy, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -31,6 +31,14 @@ export default function Portal() {
   const navigate = useNavigate();
   const { data: profile, isLoading: profileLoading, error: profileError } = useMyCandidateProfile();
   const { data: assessments } = useActiveAssessments();
+  const startAssessment = useStartAssessment();
+
+  const handleStartAssessment = () => {
+    const round = profile?.display_status === 'eligible' || profile?.display_status === 'round1' ? 'ROUND_2' : 'ROUND_3';
+    startAssessment.mutate({ round }, {
+      onSuccess: () => navigate('/assessment'),
+    });
+  };
 
   if (profileLoading) return <AppShell title="My Portal"><LoadingState /></AppShell>;
   if (profileError) return <AppShell title="My Portal"><ErrorState message="Failed to load profile" /></AppShell>;
@@ -146,15 +154,22 @@ export default function Portal() {
         {/* Next Step */}
         {!isSelected && !isRejected && (
           <div className="p-4 rounded-md bg-secondary/5">
-            <p className="text-sm text-secondary font-medium">Next Step</p>
-            <p className="text-xs text-on-surface-variant mt-1">
-              {profile.display_status === 'applied' && 'Your application is being reviewed for eligibility.'}
-              {profile.display_status === 'eligible' && 'You are eligible! Wait for Round 1 assessment to begin.'}
-              {profile.display_status === 'round1' && 'Round 1 assessment is available. Click to start.'}
-              {profile.display_status === 'round2' && 'You passed Round 1! Round 2 assessment is ready.'}
-              {profile.display_status === 'round3' && 'Great progress! Complete Round 3 to advance.'}
-              {profile.display_status === 'interviewed' && 'Interview complete. Results will be announced soon.'}
-            </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-secondary font-medium">Next Step</p>
+                <p className="text-xs text-on-surface-variant mt-1">
+                  {profile.display_status === 'applied' && 'Your application is being reviewed for eligibility.'}
+                  {profile.display_status === 'eligible' && 'You are eligible! Start your Round 1 assessment now.'}
+                  {(profile.display_status === 'round1' || profile.display_status === 'round2' || profile.display_status === 'round3') && 'Continue your assessment to advance to the next stage.'}
+                  {profile.display_status === 'interviewed' && 'Interview complete. Results will be announced soon.'}
+                </p>
+              </div>
+              {profile.display_status === 'eligible' && (
+                <Button size="sm" onClick={handleStartAssessment} disabled={startAssessment.isPending}>
+                  {startAssessment.isPending ? 'Starting...' : 'Start Assessment'}
+                </Button>
+              )}
+            </div>
           </div>
         )}
       </div>

@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, Upload, Search } from 'lucide-react';
+import { Users, Upload, Search, Play } from 'lucide-react';
 import { AppShell } from '../../components/layout/AppShell';
 import { Card, CardHeader, CardTitle, Button, Select, Badge, LoadingState, ErrorState } from '../../components/ui';
 import { DataTable, type Column } from '../../components/ui/DataTable';
 import { FunnelChart } from '../../components/charts/FunnelChart';
 import { useCandidates } from '../../hooks/useCandidates';
 import { useFunnelData } from '../../hooks/useAnalytics';
+import { useRunScreening, usePipelineStats } from '../../hooks/useScreening';
 import { STATUS_LABELS } from '../../utils/roles';
 import type { Candidate } from '../../types';
 
@@ -38,6 +39,8 @@ export default function Dashboard() {
   });
 
   const { data: funnelData, isLoading: funnelLoading } = useFunnelData();
+  const runScreening = useRunScreening();
+  const { data: pipelineStats } = usePipelineStats();
 
   const columns: Column<Candidate>[] = [
     {
@@ -78,6 +81,26 @@ export default function Dashboard() {
                   <p className="text-xs text-tertiary uppercase tracking-architectural">Total Candidates</p>
                   <p className="text-xl font-bold text-on-surface">{candidatesData.pagination.total}</p>
                 </div>
+              </div>
+            </Card>
+            <Card>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-tertiary uppercase tracking-architectural">Applied → Passed</p>
+                  <p className="text-xl font-bold text-on-surface">
+                    {pipelineStats?.stats?.ROUND1_PASSED ?? '?'}
+                    <span className="text-xs text-tertiary font-normal"> / {pipelineStats?.stats?.APPLIED ?? '?'}</span>
+                  </p>
+                </div>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => runScreening.mutate()}
+                  disabled={runScreening.isPending}
+                >
+                  <Play size={14} />
+                  {runScreening.isPending ? 'Running...' : 'Run Screening'}
+                </Button>
               </div>
             </Card>
           </div>
