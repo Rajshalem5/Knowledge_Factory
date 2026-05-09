@@ -15,7 +15,10 @@ router = APIRouter()
 @router.post("/start", response_model=AssessmentRead)
 async def start_assessment(start_data: AssessmentStart, db: AsyncSession = Depends(get_db), current_user=Depends(get_current_user)):
     service = AssessmentService(db)
-    return await service.start_assessment(current_user.id, start_data)
+    try:
+        return await service.start_assessment(current_user.id, start_data)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/active", response_model=list[AssessmentRead])
