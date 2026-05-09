@@ -22,7 +22,7 @@ async def run_screening(
     language_choice: str | None = Query(None, description="Optional filter: only screen candidates with this language choice"),
     min_cgpa_override: float | None = Query(None, ge=0.0, le=10.0, description="Override the cycle's min_cgpa threshold"),
     search: str | None = Query(None, description="Optional search term (name, email, college)"),
-    db: AsyncSession = Depends(get_db), current_user = Depends(require_role([Role.HR, Role.ADMIN]))):
+    db: AsyncSession = Depends(get_db), current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN]))):
     """
     Auto-screen candidates based on hiring cycle config.
     Candidates meeting CGPA/branch criteria transition from APPLIED to ROUND1_PASSED.
@@ -95,7 +95,7 @@ async def pipeline_stats(
     cgpa_max: float | None = Query(None, ge=0.0, le=10.0, description="Optional max CGPA filter"),
     search: str | None = Query(None, description="Optional search term (name, email, college)"),
     db: AsyncSession = Depends(get_db),
-    current_user = Depends(require_role([Role.HR, Role.ADMIN])),
+    current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN])),
 ):
     """Get aggregated candidate counts per pipeline stage with optional extra filters."""
     from sqlalchemy import or_
