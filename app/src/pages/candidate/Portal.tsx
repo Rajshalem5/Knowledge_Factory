@@ -5,7 +5,7 @@ import { useActiveAssessments, useStartAssessment } from '../../hooks/useAssessm
 import { STATUS_LABELS } from '../../utils/roles';
 import { Clock, FileText, Trophy, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import type { CandidateStatus } from '../../types';
+import type { CandidateStatus, Assessment } from '../../types';
 
 const PIPELINE_STEPS = [
   { id: 'applied', label: 'Applied' },
@@ -102,22 +102,24 @@ export default function Portal() {
               <CardTitle>Active Assessments</CardTitle>
             </CardHeader>
             <div className="space-y-3">
-              {assessments.map((a: { id: string; round: number; status: string; timeLimit: number }) => (
+              {assessments.map((a: Assessment) => (
                 <div key={a.id} className="flex items-center justify-between p-3 rounded-md bg-[var(--bg-layer1)]">
                   <div className="flex items-center gap-3">
                     <FileText size={18} className="text-secondary" />
                     <div>
-                      <p className="text-sm font-medium text-on-surface">Round {a.round} Assessment</p>
+                      <p className="text-sm font-medium text-on-surface">
+                        Round {a.round === 'ROUND_2' ? '2' : '3'} Assessment
+                      </p>
                       <p className="text-xs text-tertiary">
                         <Clock size={10} className="inline mr-1" />
-                        {a.timeLimit} minutes
+                        {a.time_limit} minutes
                       </p>
                     </div>
                   </div>
-                  <Badge variant={a.status === 'in_progress' ? 'warning' : 'default'}>
-                    {a.status === 'in_progress' ? 'In Progress' : 'Not Started'}
+                  <Badge variant={a.status === 'IN_PROGRESS' ? 'warning' : 'default'}>
+                    {a.status === 'IN_PROGRESS' ? 'In Progress' : a.status === 'COMPLETED' ? 'Completed' : 'Not Started'}
                   </Badge>
-                  {a.status !== 'completed' && (
+                  {a.status !== 'COMPLETED' && (
                     <button
                       onClick={() => navigate('/assessment')}
                       className="ml-3 text-secondary hover:text-secondary/80 transition-colors"

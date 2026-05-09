@@ -257,7 +257,7 @@ export default function Dashboard() {
                 data={candidatesData.data}
                 keyExtractor={c => c.id}
                 page={page}
-                totalPages={candidatesData.pagination.totalPages}
+                total_pages={candidatesData.pagination.total_pages}
                 onPageChange={setPage}
                 onRowClick={c => navigate(`/candidates/${c.id}`)}
               />

@@ -14,7 +14,7 @@ interface DataTableProps<T> {
   data: T[];
   keyExtractor: (item: T) => string;
   page?: number;
-  totalPages?: number;
+  total_pages?: number;
   onPageChange?: (page: number) => void;
   onRowClick?: (item: T) => void;
   className?: string;
@@ -27,7 +27,7 @@ export function DataTable<T>({
   data,
   keyExtractor,
   page = 1,
-  totalPages = 1,
+  total_pages = 1,
   onPageChange,
   onRowClick,
   className,
@@ -81,9 +81,9 @@ export function DataTable<T>({
           })}
         </tbody>
       </table>
-      {totalPages > 1 && (
+      {total_pages > 1 && (
         <div className="flex items-center justify-between px-4 py-3 mt-1">
-          <span className="text-xs text-tertiary">Page {page} of {totalPages}</span>
+          <span className="text-xs text-tertiary">Page {page} of {total_pages}</span>
           <div className="flex gap-1">
             <button
               onClick={() => onPageChange?.(Math.max(1, page - 1))}
@@ -93,8 +93,8 @@ export function DataTable<T>({
               <ChevronLeft size={16} />
             </button>
             <button
-              onClick={() => onPageChange?.(Math.min(totalPages, page + 1))}
-              disabled={page >= totalPages}
+              onClick={() => onPageChange?.(Math.min(total_pages, page + 1))}
+              disabled={page >= total_pages}
               className="p-1 rounded hover:bg-surface-container-low disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             >
               <ChevronRight size={16} />
