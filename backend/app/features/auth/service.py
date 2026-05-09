@@ -28,7 +28,7 @@ class AuthService:
         # Check users table first
         stmt = select(User).where(User.email == login_data.email)
         result = await self.db.execute(stmt)
-        user = result.scalar_one_or_none()
+        user = result.scalars().first()
 
         if user and verify_password(login_data.password, user.password_hash):
             return (user, False)
@@ -36,7 +36,7 @@ class AuthService:
         # Check candidates table
         stmt = select(Candidate).where(Candidate.email == login_data.email)
         result = await self.db.execute(stmt)
-        candidate = result.scalar_one_or_none()
+        candidate = result.scalars().first()
 
         if candidate and candidate.password_hash and verify_password(
             login_data.password, candidate.password_hash
