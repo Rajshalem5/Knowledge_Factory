@@ -48,8 +48,8 @@ export default function CandidateDetail() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Badge variant={candidate.status === 'selected' ? 'success' : candidate.status === 'rejected' ? 'danger' : 'warning'}>
-                {STATUS_LABELS[candidate.status]}
+              <Badge variant={candidate.display_status === 'selected' ? 'success' : candidate.display_status === 'rejected' ? 'danger' : 'warning'}>
+                {STATUS_LABELS[candidate.display_status as CandidateStatus] || candidate.status}
               </Badge>
               <Button variant="danger" size="sm" onClick={() => handleStatusChange('rejected')}>
                 Reject
