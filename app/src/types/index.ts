@@ -68,13 +68,15 @@ export interface InterviewFeedback {
 
 export interface Assessment {
   id: string;
-  candidateId: string;
-  round: number;
-  problems: Problem[];
-  startedAt?: string;
-  completedAt?: string;
-  timeLimit: number;
-  status: 'not_started' | 'in_progress' | 'completed';
+  candidate_id: string;
+  round: string;
+  status: string;
+  questions_json: Record<string, unknown>;
+  link_token: string;
+  link_expiry: string;
+  started_at?: string;
+  ended_at?: string;
+  time_limit: number;
 }
 
 export interface Problem {
@@ -134,6 +136,6 @@ export interface PaginatedResponse<T> {
     page: number;
     limit: number;
     total: number;
-    totalPages: number;
+    total_pages: number;
   };
 }

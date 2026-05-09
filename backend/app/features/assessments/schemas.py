@@ -24,6 +24,7 @@ class AssessmentRead(BaseModel):
     link_expiry: datetime
     started_at: Optional[datetime] = None
     ended_at: Optional[datetime] = None
+    time_limit: int = 60
 
     class Config:
         from_attributes = True
