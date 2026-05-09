@@ -29,7 +29,8 @@ export interface Candidate {
   college: string;
   branch: string;
   cgpa: number;
-  status: CandidateStatus;
+  status: string;
+  display_status: string;
   resumeUrl?: string;
   govtIdUrl?: string;
   scores: AssessmentScore[];

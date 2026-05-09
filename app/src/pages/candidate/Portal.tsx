@@ -36,9 +36,9 @@ export default function Portal() {
   if (profileError) return <AppShell title="My Portal"><ErrorState message="Failed to load profile" /></AppShell>;
   if (!profile) return <AppShell title="My Portal"><ErrorState message="Profile not found" /></AppShell>;
 
-  const currentStep = STATUS_INDEX[profile.status] ?? 0;
-  const isSelected = profile.status === 'selected';
-  const isRejected = profile.status === 'rejected';
+  const currentStep = STATUS_INDEX[profile.display_status as CandidateStatus] ?? 0;
+  const isSelected = profile.display_status === 'selected';
+  const isRejected = profile.display_status === 'rejected';
 
   return (
     <AppShell title="My Portal">
@@ -53,7 +53,7 @@ export default function Portal() {
             <Badge
               variant={isSelected ? 'success' : isRejected ? 'danger' : 'warning'}
             >
-              {STATUS_LABELS[profile.status]}
+              {STATUS_LABELS[profile.display_status as CandidateStatus] || profile.status}
             </Badge>
           </div>
           <div className="mt-4 grid grid-cols-3 gap-4 text-sm">
@@ -148,12 +148,12 @@ export default function Portal() {
           <div className="p-4 rounded-md bg-secondary/5">
             <p className="text-sm text-secondary font-medium">Next Step</p>
             <p className="text-xs text-on-surface-variant mt-1">
-              {profile.status === 'applied' && 'Your application is being reviewed for eligibility.'}
-              {profile.status === 'eligible' && 'You are eligible! Wait for Round 1 assessment to begin.'}
-              {profile.status === 'round1' && 'Round 1 assessment is available. Click to start.'}
-              {profile.status === 'round2' && 'You passed Round 1! Round 2 assessment is ready.'}
-              {profile.status === 'round3' && 'Great progress! Complete Round 3 to advance.'}
-              {profile.status === 'interviewed' && 'Interview complete. Results will be announced soon.'}
+              {profile.display_status === 'applied' && 'Your application is being reviewed for eligibility.'}
+              {profile.display_status === 'eligible' && 'You are eligible! Wait for Round 1 assessment to begin.'}
+              {profile.display_status === 'round1' && 'Round 1 assessment is available. Click to start.'}
+              {profile.display_status === 'round2' && 'You passed Round 1! Round 2 assessment is ready.'}
+              {profile.display_status === 'round3' && 'Great progress! Complete Round 3 to advance.'}
+              {profile.display_status === 'interviewed' && 'Interview complete. Results will be announced soon.'}
             </p>
           </div>
         )}

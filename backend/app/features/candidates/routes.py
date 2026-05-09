@@ -56,7 +56,15 @@ async def get_my_profile(db: AsyncSession = Depends(get_db), current_user = Depe
 @router.patch("/{candidate_id}/status", response_model=CandidateRead)
 async def update_candidate_status(candidate_id: UUID, update: dict, db: AsyncSession = Depends(get_db), current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN]))):
     from app.features.candidates.models import Candidate
-    new_status = CandidateStatus(update["status"])
+    raw_status = update["status"]
+    # Try parsing as full backend enum first, then as simplified display status
+    try:
+        new_status = CandidateStatus(raw_status.upper())
+    except ValueError:
+        mapped = CandidateStatus.from_display_status(raw_status)
+        if not mapped:
+            raise HTTPException(status_code=422, detail=f"Invalid status: {raw_status}")
+        new_status = mapped
     service = CandidateService(db)
     try:
         candidate = await service.update_status(candidate_id, new_status)

@@ -1,6 +1,5 @@
 """Candidate management service."""
 
-from decimal import Decimal
 from uuid import UUID
 
 from sqlalchemy import select, func, or_
@@ -52,19 +51,19 @@ class CandidateService:
         result = await self.db.execute(query)
         candidates = result.scalars().all()
 
-        return [self._to_read(c) for c in candidates], total
+        return [CandidateRead.from_orm_compat(c) for c in candidates], total
 
     async def get_candidate(self, candidate_id: UUID) -> CandidateRead | None:
         stmt = select(Candidate).where(Candidate.id == candidate_id)
         result = await self.db.execute(stmt)
         c = result.scalar_one_or_none()
-        return self._to_read(c) if c else None
+        return CandidateRead.from_orm_compat(c) if c else None
 
     async def get_my_profile(self, candidate_id: UUID) -> CandidateRead:
         stmt = select(Candidate).where(Candidate.id == candidate_id)
         result = await self.db.execute(stmt)
         c = result.scalar_one()
-        return self._to_read(c)
+        return CandidateRead.from_orm_compat(c)
 
     async def update_status(self, candidate_id: UUID, new_status: CandidateStatus) -> CandidateRead | None:
         """Update candidate status with FSM validation."""
@@ -99,20 +98,4 @@ class CandidateService:
 
         candidate.status = new_status.value
         await self.db.flush()
-        return self._to_read(candidate)
-
-    @staticmethod
-    def _to_read(c: Candidate) -> CandidateRead:
-        return CandidateRead(
-            id=c.id,
-            name=c.name,
-            email=c.email,
-            college=c.college,
-            branch=c.branch,
-            cgpa=Decimal(str(c.cgpa)),
-            passed_out_year=c.passed_out_year,
-            language_choice=c.language_choice,
-            status=CandidateStatus(c.status) if isinstance(c.status, str) else c.status,
-            created_at=c.created_at,
-            cycle_id=c.cycle_id,
-        )
+        return CandidateRead.from_orm_compat(candidate)

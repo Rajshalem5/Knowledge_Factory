@@ -56,8 +56,8 @@ export default function Dashboard() {
       key: 'status',
       header: 'Status',
       render: (c) => (
-        <Badge variant={c.status === 'selected' ? 'success' : c.status === 'rejected' ? 'danger' : 'default'}>
-          {STATUS_LABELS[c.status]}
+        <Badge variant={c.display_status === 'selected' ? 'success' : c.display_status === 'rejected' ? 'danger' : 'default'}>
+          {STATUS_LABELS[c.display_status as CandidateStatus] || c.status}
         </Badge>
       ),
     },

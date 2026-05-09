@@ -74,6 +74,43 @@ class CandidateStatus(str, enum.Enum):
     FINAL_REJECTED = "FINAL_REJECTED"
     TERMINATED = "TERMINATED"
 
+    @property
+    def display_status(self) -> str:
+        """Map granular backend status to simplified frontend-friendly status."""
+        mapping = {
+            CandidateStatus.APPLIED: "applied",
+            CandidateStatus.ROUND1_REVIEW: "applied",
+            CandidateStatus.ROUND1_PASSED: "eligible",
+            CandidateStatus.ROUND1_REJECTED: "rejected",
+            CandidateStatus.ROUND2_IN_PROGRESS: "round1",
+            CandidateStatus.ROUND2_PASSED: "round1",
+            CandidateStatus.ROUND2_REJECTED: "rejected",
+            CandidateStatus.ROUND3_IN_PROGRESS: "round2",
+            CandidateStatus.ROUND3_PASSED: "round2",
+            CandidateStatus.ROUND3_REJECTED: "rejected",
+            CandidateStatus.INTERVIEW_SCHEDULED: "round3",
+            CandidateStatus.INTERVIEW_COMPLETED: "interviewed",
+            CandidateStatus.SELECTED: "selected",
+            CandidateStatus.FINAL_REJECTED: "rejected",
+            CandidateStatus.TERMINATED: "rejected",
+        }
+        return mapping.get(self, "applied")
+
+    @classmethod
+    def from_display_status(cls, display: str) -> "CandidateStatus | None":
+        """Map a simplified frontend status back to the most appropriate backend status."""
+        reverse_map = {
+            "applied": cls.APPLIED,
+            "eligible": cls.ROUND1_PASSED,
+            "round1": cls.ROUND2_IN_PROGRESS,
+            "round2": cls.ROUND3_IN_PROGRESS,
+            "round3": cls.INTERVIEW_SCHEDULED,
+            "interviewed": cls.INTERVIEW_COMPLETED,
+            "selected": cls.SELECTED,
+            "rejected": cls.FINAL_REJECTED,
+        }
+        return reverse_map.get(display.lower())
+
 
 # ── Assessments ────────────────────────────────────────────────────
 
