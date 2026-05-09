@@ -41,6 +41,7 @@ export default function Dashboard() {
     status: statusFilter || undefined,
     branch: branchFilter || undefined,
     college: collegeFilter || undefined,
+    passed_out_year: passedOutYearFilter ? parseInt(passedOutYearFilter, 10) : undefined,
   });
 
   const { data: funnelData, isLoading: funnelLoading } = useFunnelData();
