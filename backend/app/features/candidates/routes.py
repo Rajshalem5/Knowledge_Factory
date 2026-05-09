@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -60,24 +60,16 @@ async def update_candidate_status(candidate_id: UUID, update: dict, db: AsyncSes
     return candidate
 
 
-@router.post("/bulk-upload", status_code=status.HTTP_201_CREATED)
-async def bulk_upload_candidates(db: AsyncSession = Depends(get_db), current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN]))):
-    """Bulk upload placeholder — accepts CSV file via multipart form."""
+async def _process_bulk_upload_csv(file: UploadFile | None) -> BulkUploadPreview:
+    """Parse CSV upload file and return preview + validation results."""
     import csv
     import io
     import uuid
-    from fastapi import UploadFile, Form
 
-    # Accept an optional CSV file in form data
-    from fastapi import Request
-    request = Request({})
-    body = await request.form()
-    file_obj = body.get("file")
-
-    if not isinstance(file_obj, UploadFile):
+    if not file:
         return BulkUploadPreview(batch_id="", total_records=0, valid_records=0, invalid_records=0, preview=[], errors=[])
 
-    content = await file_obj.read()
+    content = await file.read()
     text = content.decode("utf-8")
     reader = csv.DictReader(io.StringIO(text))
     records = list(reader)
@@ -102,3 +94,25 @@ async def bulk_upload_candidates(db: AsyncSession = Depends(get_db), current_use
         preview=preview,
         errors=errors,
     )
+
+
+@router.post("/bulk-upload/preview", response_model=BulkUploadPreview)
+async def preview_bulk_upload(
+    file: UploadFile | None = File(None),
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN])),
+):
+    """Preview bulk upload — validate CSV and return preview without saving."""
+    return await _process_bulk_upload_csv(file)
+
+
+@router.post("/bulk-upload", status_code=status.HTTP_201_CREATED)
+async def bulk_upload_candidates(
+    file: UploadFile | None = File(None),
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN])),
+):
+    """Bulk upload candidates from CSV (preview + save)."""
+    preview = await _process_bulk_upload_csv(file)
+    # TODO: Save valid records to the database
+    return preview
