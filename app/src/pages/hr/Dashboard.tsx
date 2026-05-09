@@ -34,6 +34,7 @@ export default function Dashboard() {
   const [minCgpaOverride, setMinCgpaOverride] = useState('');
   const [cgpaMinFilter, setCgpaMinFilter] = useState('');
   const [cgpaMaxFilter, setCgpaMaxFilter] = useState('');
+  const [languageChoiceFilter, setLanguageChoiceFilter] = useState('');
   const [showFilters, setShowFilters] = useState(false);
 
   const { data: candidatesData, isLoading, error } = useCandidates({
@@ -46,6 +47,7 @@ export default function Dashboard() {
     passed_out_year: passedOutYearFilter ? parseInt(passedOutYearFilter, 10) : undefined,
     cgpa_min: cgpaMinFilter ? parseFloat(cgpaMinFilter) : undefined,
     cgpa_max: cgpaMaxFilter ? parseFloat(cgpaMaxFilter) : undefined,
+    language_choice: languageChoiceFilter || undefined,
   });
 
   const { data: funnelData, isLoading: funnelLoading } = useFunnelData();
@@ -56,6 +58,9 @@ export default function Dashboard() {
       if (branchFilter) p.branch = branchFilter;
       if (collegeFilter) p.college = collegeFilter;
       if (passedOutYearFilter) p.passed_out_year = parseInt(passedOutYearFilter, 10);
+      if (languageChoiceFilter) p.language_choice = languageChoiceFilter;
+      if (cgpaMinFilter) p.cgpa_min = parseFloat(cgpaMinFilter);
+      if (cgpaMaxFilter) p.cgpa_max = parseFloat(cgpaMaxFilter);
       return Object.keys(p).length > 0 ? p as any : undefined;
     })()
   );
@@ -65,6 +70,7 @@ export default function Dashboard() {
     if (branchFilter) params.branch = branchFilter;
     if (collegeFilter) params.college = collegeFilter;
     if (passedOutYearFilter) params.passed_out_year = parseInt(passedOutYearFilter, 10);
+    if (languageChoiceFilter) params.language_choice = languageChoiceFilter;
     if (minCgpaOverride) params.min_cgpa_override = parseFloat(minCgpaOverride);
     runScreening.mutate(
       Object.keys(params).length > 0 ? params : undefined
@@ -202,6 +208,16 @@ export default function Dashboard() {
                       placeholder="Default 6.0"
                       value={minCgpaOverride}
                       onChange={e => setMinCgpaOverride(e.target.value)}
+                      className="w-full px-3 py-1.5 rounded-md bg-[var(--bg-base)] text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/50 border border-[var(--border-ghost)]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-tertiary mb-1">Language Choice</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. python, java"
+                      value={languageChoiceFilter}
+                      onChange={e => { setLanguageChoiceFilter(e.target.value); setPage(1); }}
                       className="w-full px-3 py-1.5 rounded-md bg-[var(--bg-base)] text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/50 border border-[var(--border-ghost)]"
                     />
                   </div>

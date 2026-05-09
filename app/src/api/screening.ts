@@ -25,10 +25,6 @@ export const screeningApi = {
   run: (params?: Record<string, string | number>) =>
     api.post<ScreeningResult>('/api/screening/run', undefined, { params }),
 
-  /**
-   * Get pipeline stage stats with optional filters
-   * GET /api/screening/pipeline-stats
-   */
   getPipelineStats: (params?: Record<string, string | number>) =>
     api.get<PipelineStats>('/api/screening/pipeline-stats', { params }),
 };
