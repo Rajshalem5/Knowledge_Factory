@@ -1,15 +1,26 @@
 import { api } from './client';
 import type { Assessment } from '../types';
 
-export const assessmentApi = {
-  start: (assessmentId: string) =>
-    api.post<Assessment>(`/assessment/${assessmentId}/start`),
+export interface AssessmentStartRequest {
+  round: string;
+}
 
-  submitSection: (assessmentId: string, data: { problemId: string; code: string }) =>
-    api.post<{ passed: number; failed: number }>(`/assessment/${assessmentId}/submit-section`, data),
+export interface SubmissionCreateRequest {
+  assessment_id: string;
+  section: string;
+  content: { problemId?: string; code?: string };
+  time_spent_seconds?: number;
+}
+
+export const assessmentApi = {
+  start: (data: AssessmentStartRequest) =>
+    api.post<Assessment>('/assessment/start', data),
+
+  submitSection: (data: SubmissionCreateRequest) =>
+    api.post<{ passed: number; failed: number }>('/assessment/submit-section', data),
 
   getAssessment: (assessmentId: string) =>
-    api.get<Assessment>(`/assessment/${assessmentId}`),
+    api.get<Assessment>(`/api/assessment/${assessmentId}`),
 
   getActiveAssessments: () =>
     api.get<Assessment[]>('/assessment/active'),
