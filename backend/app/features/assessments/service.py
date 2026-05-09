@@ -35,7 +35,8 @@ class AssessmentService:
         status_mapping = round_status_map.get(req.round)
         if status_mapping:
             required_status, next_status = status_mapping
-            if candidate.status != required_status:
+            current = CandidateStatus(candidate.status) if isinstance(candidate.status, str) else candidate.status
+            if current != required_status:
                 raise ValueError(
                     f"Candidate must be in {required_status.value} to start {req.round.value} assessment"
                 )
@@ -56,8 +57,12 @@ class AssessmentService:
         if existing:
             return existing
 
+        # Pre-generate assessment ID so it's available before flush
+        assessment_id = str(uuid.uuid4())
+
         # Create new assessment
         assessment = Assessment(
+            id=assessment_id,
             candidate_id=candidate_id,
             round=req.round,
             questions_json=self._generate_sample_questions(req.round),
@@ -70,7 +75,7 @@ class AssessmentService:
 
         # Create proctoring record
         proctoring = ProctoringRecord(
-            assessment_id=assessment.id,
+            assessment_id=assessment_id,
             candidate_id=candidate_id,
             retention_expiry=datetime.now(timezone.utc).date() + timedelta(days=20),
         )
