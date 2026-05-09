@@ -3,14 +3,14 @@ import type { FunnelData, AnalyticsData, Organization } from '../types';
 
 export const analyticsApi = {
   getFunnel: (organizationId?: string) =>
-    api.get<FunnelData>('/analytics/funnel', { params: organizationId ? { organizationId } : undefined }),
+    api.get<FunnelData>('/api/analytics/funnel', { params: organizationId ? { organizationId } : undefined }),
 
   getAnalytics: (organizationId?: string) =>
-    api.get<AnalyticsData>('/analytics/dashboard', { params: organizationId ? { organizationId } : undefined }),
+    api.get<AnalyticsData>('/api/analytics/dashboard', { params: organizationId ? { organizationId } : undefined }),
 
   getOrganizations: () =>
-    api.get<Organization[]>('/superadmin/organizations'),
+    api.get<Organization[]>('/api/admin/organizations'),
 
   updateOrganization: (id: string, data: Partial<Organization>) =>
-    api.patch<Organization>(`/superadmin/organizations/${id}`, data),
+    api.patch<Organization>(`/api/admin/organizations/${id}`, data),
 };
