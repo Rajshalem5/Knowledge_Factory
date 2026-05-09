@@ -20,7 +20,7 @@ export const assessmentApi = {
     api.post<{ passed: number; failed: number }>('/assessment/submit-section', data),
 
   getAssessment: (assessmentId: string) =>
-    api.get<Assessment>(`/api/assessment/${assessmentId}`),
+    api.get<Assessment>(`/assessment/${assessmentId}`),
 
   getActiveAssessments: () =>
     api.get<Assessment[]>('/assessment/active'),
