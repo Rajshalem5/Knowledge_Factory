@@ -46,7 +46,13 @@ export default function Dashboard() {
   const { data: funnelData, isLoading: funnelLoading } = useFunnelData();
   const runScreening = useRunScreening();
   const { data: pipelineStats } = usePipelineStats(
-    branchFilter ? { branch: branchFilter } : undefined
+    (() => {
+      const p: Record<string, string | number> = {};
+      if (branchFilter) p.branch = branchFilter;
+      if (collegeFilter) p.college = collegeFilter;
+      if (passedOutYearFilter) p.passed_out_year = parseInt(passedOutYearFilter, 10);
+      return Object.keys(p).length > 0 ? p as any : undefined;
+    })()
   );
 
   const handleRunScreening = () => {

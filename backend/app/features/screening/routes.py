@@ -79,6 +79,7 @@ async def run_screening(
 async def pipeline_stats(
     branch: str | None = Query(None, description="Optional filter by branch"),
     college: str | None = Query(None, description="Optional filter by college"),
+    passed_out_year: int | None = Query(None, description="Optional filter by passed-out year"),
     db: AsyncSession = Depends(get_db),
     current_user = Depends(require_role([Role.HR, Role.ADMIN])),
 ):
@@ -88,6 +89,8 @@ async def pipeline_stats(
         base = base.where(Candidate.branch.ilike(f"%{branch}%"))
     if college:
         base = base.where(Candidate.college.ilike(f"%{college}%"))
+    if passed_out_year:
+        base = base.where(Candidate.passed_out_year == passed_out_year)
     base = base.group_by(Candidate.status)
 
     res = await db.execute(base)

@@ -14,7 +14,7 @@ export function useRunScreening() {
   });
 }
 
-export function usePipelineStats(params?: { branch?: string; college?: string }) {
+export function usePipelineStats(params?: { branch?: string; college?: string; passed_out_year?: number }) {
   return useQuery({
     queryKey: ['pipeline-stats', params],
     queryFn: () => screeningApi.getPipelineStats(params),
