@@ -263,6 +263,48 @@ export default function Dashboard() {
                       className="w-full px-3 py-1.5 rounded-md bg-[var(--bg-base)] text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/50 border border-[var(--border-ghost)]"
                     />
                   </div>
+                  <div>
+                    <label className="block text-xs text-tertiary mb-1">Has Resume</label>
+                    <select
+                      value={hasResumeFilter}
+                      onChange={e => { setHasResumeFilter(e.target.value); setPage(1); }}
+                      className="w-full px-3 py-1.5 rounded-md bg-[var(--bg-base)] text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/50 border border-[var(--border-ghost)]"
+                    >
+                      <option value="">All</option>
+                      <option value="true">Yes</option>
+                      <option value="false">No</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-tertiary mb-1">Has Govt ID</label>
+                    <select
+                      value={hasGovtIdFilter}
+                      onChange={e => { setHasGovtIdFilter(e.target.value); setPage(1); }}
+                      className="w-full px-3 py-1.5 rounded-md bg-[var(--bg-base)] text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/50 border border-[var(--border-ghost)]"
+                    >
+                      <option value="">All</option>
+                      <option value="true">Yes</option>
+                      <option value="false">No</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-tertiary mb-1">Created After</label>
+                    <input
+                      type="date"
+                      value={createdAfterFilter}
+                      onChange={e => { setCreatedAfterFilter(e.target.value); setPage(1); }}
+                      className="w-full px-3 py-1.5 rounded-md bg-[var(--bg-base)] text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/50 border border-[var(--border-ghost)]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-tertiary mb-1">Created Before</label>
+                    <input
+                      type="date"
+                      value={createdBeforeFilter}
+                      onChange={e => { setCreatedBeforeFilter(e.target.value); setPage(1); }}
+                      className="w-full px-3 py-1.5 rounded-md bg-[var(--bg-base)] text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/50 border border-[var(--border-ghost)]"
+                    />
+                  </div>
                 </div>
               )}
               {runScreening.isError && (
