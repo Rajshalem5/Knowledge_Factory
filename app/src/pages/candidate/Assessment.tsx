@@ -5,7 +5,7 @@ import { Timer } from '../../components/assessment/Timer';
 import { CodeEditor } from '../../components/assessment/CodeEditor';
 import { useCodeExecution } from '../../hooks/useCodeExecution';
 import { useQuestion } from '../../hooks/useQuestion';
-import { useActiveAssessments, useCompleteAssessment } from '../../hooks/useAssessment';
+import { useActiveAssessments, useCompleteAssessment, useSubmitSection } from '../../hooks/useAssessment';
 import { Play, Send, ChevronDown, RefreshCw, CheckCircle, XCircle, Lock, CheckSquare } from 'lucide-react';
 import { api } from '../../api/client';
 import type { EvaluationResponse } from '../../api/code-execution';
@@ -34,6 +34,7 @@ export default function Assessment() {
   const { runCode, isExecuting, isEvaluating } = useCodeExecution();
   const { data: activeAssessments } = useActiveAssessments();
   const completeAssessment = useCompleteAssessment();
+  const submitSection = useSubmitSection();
   const activeAssessment = activeAssessments?.[0];
   const hasSubmitted = evalResult !== null || runOutput !== null;
 
@@ -96,6 +97,15 @@ export default function Assessment() {
     { language, code, stdin: '' }
   );
       setEvalResult(result);
+      // Record the submission in the assessment pipeline
+      if (activeAssessment) {
+        submitSection.mutate({
+          assessment_id: activeAssessment.id,
+          section: 'CODING',
+          content: { code, problemId: question.id },
+          time_spent_seconds: 0,
+        });
+      }
     } catch (e: unknown) {
       setRunOutput({ status: 'ERROR', output: (e as Error)?.message || 'Evaluation failed' });
     }
