@@ -17,7 +17,8 @@ export const candidatesApi = {
     status?: string; 
     branch?: string; 
     college?: string; 
-    search?: string 
+    search?: string;
+    passed_out_year?: number;
   }) =>
     api.get<PaginatedResponse<Candidate>>('/api/candidates', { 
       params: params as Record<string, string | number> 
