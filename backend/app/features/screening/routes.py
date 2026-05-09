@@ -68,6 +68,8 @@ async def run_screening(
     language_choice: str | None = Query(None, description="Optional filter: only screen candidates with this language choice"),
     min_cgpa_override: float | None = Query(None, ge=0.0, le=10.0, description="Override the cycle's min_cgpa threshold"),
     search: str | None = Query(None, description="Optional search term (name, email, college)"),
+    cgpa_min: float | None = Query(None, ge=0.0, le=10.0, description="Optional min CGPA filter"),
+    cgpa_max: float | None = Query(None, ge=0.0, le=10.0, description="Optional max CGPA filter"),
     has_resume: bool | None = Query(None, description="Filter by whether candidate has uploaded a resume"),
     has_govt_id: bool | None = Query(None, description="Filter by whether candidate has uploaded govt ID"),
     created_after: date | None = Query(None, description="Filter candidates created after this date (ISO format, e.g. 2026-01-01)"),
@@ -102,6 +104,7 @@ async def run_screening(
     # Extra optional filters
     q = _apply_extra_filters(
         q, branch, college, passed_out_year, language_choice, search,
+        cgpa_min=cgpa_min, cgpa_max=cgpa_max,
         has_resume=has_resume, has_govt_id=has_govt_id,
         created_after=created_after, created_before=created_before,
     )
