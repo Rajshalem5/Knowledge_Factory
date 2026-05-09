@@ -47,3 +47,16 @@ export function useSubmitFeedback() {
     },
   });
 }
+
+export function useCompleteAssessment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (assessmentId: string) => assessmentApi.complete(assessmentId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['assessments-active'] });
+      queryClient.invalidateQueries({ queryKey: ['candidate-me'] });
+      queryClient.invalidateQueries({ queryKey: ['candidates'] });
+      queryClient.invalidateQueries({ queryKey: ['pipeline-stats'] });
+    },
+  });
+}
