@@ -2,8 +2,8 @@
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select, update as sa_update
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import func, select, update as sa_update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -15,11 +15,19 @@ router = APIRouter()
 
 
 @router.post("/run")
-async def run_screening(db: AsyncSession = Depends(get_db), current_user = Depends(require_role([Role.HR, Role.ADMIN]))):
+async def run_screening(
+    branch: str | None = Query(None, description="Optional filter: only screen candidates from this branch"),
+    college: str | None = Query(None, description="Optional filter: only screen candidates from this college"),
+    passed_out_year: int | None = Query(None, description="Optional filter: only screen candidates from this passed-out year"),
+    min_cgpa_override: float | None = Query(None, ge=0.0, le=10.0, description="Override the cycle's min_cgpa threshold"),
+    db: AsyncSession = Depends(get_db), current_user = Depends(require_role([Role.HR, Role.ADMIN]))):
     """
     Auto-screen candidates based on hiring cycle config.
     Candidates meeting CGPA/branch criteria transition from APPLIED to ROUND1_PASSED.
     Others go to ROUND1_REJECTED.
+
+    Supports optional extra filtering (branch, college, passed_out_year) and
+    min_cgpa_override to run targeted screening rounds.
     """
     # Get the active cycle
     from app.features.hiring_cycles.models import HiringCycle
@@ -31,12 +39,21 @@ async def run_screening(db: AsyncSession = Depends(get_db), current_user = Depen
         raise HTTPException(status_code=400, detail="No active hiring cycle found")
 
     cfg = cycle.eligibility_config or {}
-    min_cgpa = float(cfg.get("min_cgpa", 6.0))
+    min_cgpa = float(min_cgpa_override) if min_cgpa_override is not None else float(cfg.get("min_cgpa", 6.0))
     allowed_branches = cfg.get("allowed_branches", [])
 
     q = select(Candidate).where(
         Candidate.status == CandidateStatus.APPLIED,
     )
+
+    # Extra optional filters
+    if branch:
+        q = q.where(Candidate.branch.ilike(f"%{branch}%"))
+    if college:
+        q = q.where(Candidate.college.ilike(f"%{college}%"))
+    if passed_out_year:
+        q = q.where(Candidate.passed_out_year == passed_out_year)
+
     res = await db.execute(q)
     candidates = res.scalars().all()
 
@@ -55,4 +72,30 @@ async def run_screening(db: AsyncSession = Depends(get_db), current_user = Depen
             rejected += 1
 
     await db.flush()
-    return {"screened": len(candidates), "passed": passed, "rejected": rejected}
+    return {"screened": len(candidates), "passed": passed, "rejected": rejected, "min_cgpa": min_cgpa, "allowed_branches": allowed_branches}
+
+
+@router.get("/pipeline-stats")
+async def pipeline_stats(
+    branch: str | None = Query(None, description="Optional filter by branch"),
+    college: str | None = Query(None, description="Optional filter by college"),
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(require_role([Role.HR, Role.ADMIN])),
+):
+    """Get aggregated candidate counts per pipeline stage with optional extra filters."""
+    base = select(Candidate.status, func.count(Candidate.id).label("count"))
+    if branch:
+        base = base.where(Candidate.branch.ilike(f"%{branch}%"))
+    if college:
+        base = base.where(Candidate.college.ilike(f"%{college}%"))
+    base = base.group_by(Candidate.status)
+
+    res = await db.execute(base)
+    rows = res.all()
+    stats = {row.status: row.count for row in rows}
+
+    # Ensure all statuses appear even when 0
+    for s in CandidateStatus:
+        stats.setdefault(s.value, 0)
+
+    return {"stats": dict(sorted(stats.items()))}
