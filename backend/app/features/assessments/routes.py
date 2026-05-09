@@ -25,6 +25,19 @@ async def get_active_assessments(db: AsyncSession = Depends(get_db), current_use
     return await service.get_assessment(current_user.id)
 
 
+@router.get("/{assessment_id}", response_model=AssessmentRead)
+async def get_assessment_by_id(assessment_id: str, db: AsyncSession = Depends(get_db), current_user=Depends(get_current_user)):
+    """Get a single assessment by its ID."""
+    from sqlalchemy import select
+    from app.features.assessments.models import Assessment
+    stmt = select(Assessment).where(Assessment.id == assessment_id)
+    res = await db.execute(stmt)
+    assessment = res.scalar_one_or_none()
+    if not assessment:
+        raise HTTPException(status_code=404, detail="Assessment not found")
+    return assessment
+
+
 @router.post("/submit-section", response_model=dict)
 async def submit_section(submission_data: SubmissionCreate, db: AsyncSession = Depends(get_db), current_user=Depends(get_current_user)):
     service = AssessmentService(db)
