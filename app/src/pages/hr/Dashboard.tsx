@@ -32,6 +32,8 @@ export default function Dashboard() {
   const [collegeFilter, setCollegeFilter] = useState('');
   const [passedOutYearFilter, setPassedOutYearFilter] = useState('');
   const [minCgpaOverride, setMinCgpaOverride] = useState('');
+  const [cgpaMinFilter, setCgpaMinFilter] = useState('');
+  const [cgpaMaxFilter, setCgpaMaxFilter] = useState('');
   const [showFilters, setShowFilters] = useState(false);
 
   const { data: candidatesData, isLoading, error } = useCandidates({
@@ -42,6 +44,8 @@ export default function Dashboard() {
     branch: branchFilter || undefined,
     college: collegeFilter || undefined,
     passed_out_year: passedOutYearFilter ? parseInt(passedOutYearFilter, 10) : undefined,
+    cgpa_min: cgpaMinFilter ? parseFloat(cgpaMinFilter) : undefined,
+    cgpa_max: cgpaMaxFilter ? parseFloat(cgpaMaxFilter) : undefined,
   });
 
   const { data: funnelData, isLoading: funnelLoading } = useFunnelData();
@@ -198,6 +202,32 @@ export default function Dashboard() {
                       placeholder="Default 6.0"
                       value={minCgpaOverride}
                       onChange={e => setMinCgpaOverride(e.target.value)}
+                      className="w-full px-3 py-1.5 rounded-md bg-[var(--bg-base)] text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/50 border border-[var(--border-ghost)]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-tertiary mb-1">CGPA Min</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      max="10"
+                      placeholder="e.g. 6.0"
+                      value={cgpaMinFilter}
+                      onChange={e => { setCgpaMinFilter(e.target.value); setPage(1); }}
+                      className="w-full px-3 py-1.5 rounded-md bg-[var(--bg-base)] text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/50 border border-[var(--border-ghost)]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-tertiary mb-1">CGPA Max</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      max="10"
+                      placeholder="e.g. 9.0"
+                      value={cgpaMaxFilter}
+                      onChange={e => { setCgpaMaxFilter(e.target.value); setPage(1); }}
                       className="w-full px-3 py-1.5 rounded-md bg-[var(--bg-base)] text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/50 border border-[var(--border-ghost)]"
                     />
                   </div>

@@ -19,6 +19,8 @@ export const candidatesApi = {
     college?: string; 
     search?: string;
     passed_out_year?: number;
+    cgpa_min?: number;
+    cgpa_max?: number;
   }) =>
     api.get<PaginatedResponse<Candidate>>('/api/candidates', { 
       params: params as Record<string, string | number> 
