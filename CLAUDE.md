@@ -334,11 +334,11 @@ All docs live under `docs/`:
 
 ### Known Frontend ↔ Backend Mismatches
 
-1. **`assessment.ts`** — `start()` and `submitSection()` pass `assessmentId` in path, but backend routes don't accept it
-2. **`assessment.ts`** — `getAssessment()` calls `/api/assessment/{id}` → no backend route exists
-3. **`analytics.ts`** — paths missing `/api` prefix (`/analytics/funnel` vs `/api/analytics/funnel`)
-4. **`analytics.ts`** — `getOrganizations()` and `updateOrganization()` call `/superadmin/organizations` which are disabled (501)
-5. **`candidates.ts`** — `previewBulkUpload()` calls `/bulk-upload/preview` → no backend route
+1. ~~**`assessment.ts`** — `start()` and `submitSection()` pass `assessmentId` in path~~ ✅ Fixed (commit `95060bd`)
+2. ~~**`assessment.ts`** — `getAssessment()` calls `/api/assessment/{id}`~~ ✅ Fixed — backend route added (commit `8255a7d`)
+3. ~~**`analytics.ts`** — paths missing `/api` prefix~~ ✅ Fixed (commit `33ca4c1`)
+4. **`analytics.ts`** — `getOrganizations()` and `updateOrganization()` call `/api/admin/organizations` which return 501 — intentional (multi-tenancy was removed, endpoints left as stubs)
+5. ~~**`candidates.ts`** — `previewBulkUpload()` calls `/bulk-upload/preview`~~ ✅ Fixed — backend route added (commit `e181541`)
 
 ### Known TODO
 

@@ -8,7 +8,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.enums import AssessmentRound, AssessmentStatus, SubmissionSection
+from app.core.enums import AssessmentRound, AssessmentStatus, CandidateStatus, SubmissionSection
 from app.features.assessments.models import Assessment, Submission, Score
 from app.features.assessments.schemas import AssessmentStart, SubmissionCreate
 from app.features.candidates.models import Candidate
@@ -20,6 +20,27 @@ class AssessmentService:
         self.db = db
 
     async def start_assessment(self, candidate_id: UUID, req: AssessmentStart) -> Assessment:
+        # Validate candidate exists and has correct pipeline status
+        c_stmt = select(Candidate).where(Candidate.id == candidate_id)
+        c_res = await self.db.execute(c_stmt)
+        candidate = c_res.scalar_one_or_none()
+        if not candidate:
+            raise ValueError("Candidate not found")
+
+        # Round-to-status mapping: required current status → target status on start
+        round_status_map = {
+            AssessmentRound.ROUND_2: (CandidateStatus.ROUND1_PASSED, CandidateStatus.ROUND2_IN_PROGRESS),
+            AssessmentRound.ROUND_3: (CandidateStatus.ROUND2_PASSED, CandidateStatus.ROUND3_IN_PROGRESS),
+        }
+        status_mapping = round_status_map.get(req.round)
+        if status_mapping:
+            required_status, next_status = status_mapping
+            if candidate.status != required_status:
+                raise ValueError(
+                    f"Candidate must be in {required_status.value} to start {req.round.value} assessment"
+                )
+            candidate.status = next_status
+
         # Check if candidate already has an active/in-progress assessment for this round
         stmt = (
             select(Assessment)
