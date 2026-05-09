@@ -4,6 +4,7 @@ import { AppShell } from '../../components/layout/AppShell';
 import { Card, Badge, Button, Tabs, LoadingState, ErrorState } from '../../components/ui';
 import { useCandidate, useUpdateCandidateStatus } from '../../hooks/useCandidates';
 import { STATUS_LABELS } from '../../utils/roles';
+import type { CandidateStatus } from '../../types';
 
 export default function CandidateDetail() {
   const { id } = useParams<{ id: string }>();

@@ -9,7 +9,7 @@ import { useCandidates } from '../../hooks/useCandidates';
 import { useFunnelData } from '../../hooks/useAnalytics';
 import { useRunScreening, usePipelineStats } from '../../hooks/useScreening';
 import { STATUS_LABELS } from '../../utils/roles';
-import type { Candidate } from '../../types';
+import type { Candidate, CandidateStatus } from '../../types';
 
 const STATUS_OPTIONS = [
   { value: '', label: 'All Statuses' },
@@ -32,7 +32,7 @@ export default function Dashboard() {
 
   const { data: candidatesData, isLoading, error } = useCandidates({
     page,
-    pageSize: 10,
+    limit: 10,
     search: search || undefined,
     status: statusFilter || undefined,
     branch: branchFilter || undefined,
