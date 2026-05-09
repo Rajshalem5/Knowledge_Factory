@@ -24,8 +24,8 @@ export interface GenerateRequest {
 
 export const questionsApi = {
   generate: (req: GenerateRequest) =>
-    api.post<QuestionPublicView>('/questions/generate', req),
+    api.post<QuestionPublicView>('/api/questions/generate', req),
 
   getPublic: (id: string) =>
-    api.get<QuestionPublicView>(`/questions/${id}/public`),
+    api.get<QuestionPublicView>(`/api/questions/${id}/public`),
 };

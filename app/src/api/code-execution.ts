@@ -54,7 +54,7 @@ export const executeCode = async (
   request: CodeExecutionRequest
 ): Promise<CodeExecutionResponse> => {
   const response = await api.post<CodeExecutionResponse>(
-    '/code/execute',
+    '/api/code/execute',
     request
   );
   return response;
@@ -67,7 +67,7 @@ export const evaluateCode = async (
   request: EvaluationRequest
 ): Promise<EvaluationResponse> => {
   const response = await api.post<EvaluationResponse>(
-    '/code/evaluate',
+    '/api/code/evaluate',
     request
   );
   return response;

@@ -76,10 +76,10 @@ export default function Assessment() {
     setRunOutput(null);
     setEvalResult(null);
     try {
-      const result = await api.post<EvaluationResponse>(
-        `/code/evaluate-question/${question.id}`,
-        { language, code, stdin: '' }
-      );
+  const result = await api.post<EvaluationResponse>(
+    `/api/code/evaluate-question/${question.id}`,
+    { language, code, stdin: '' }
+  );
       setEvalResult(result);
     } catch (e: unknown) {
       setRunOutput({ status: 'ERROR', output: (e as Error)?.message || 'Evaluation failed' });
