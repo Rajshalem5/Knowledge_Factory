@@ -105,6 +105,48 @@ class AssessmentService:
         await self.db.flush()
         return {"submission_id": submission.id, "passed": passed, "failed": failed}
 
+    async def complete_assessment(self, candidate_id: UUID, assessment_id: str) -> Assessment:
+        """Mark an assessment as completed and transition the candidate to the next pipeline stage."""
+        stmt = select(Assessment).where(Assessment.id == assessment_id)
+        res = await self.db.execute(stmt)
+        assessment = res.scalar_one_or_none()
+
+        if not assessment or assessment.candidate_id != candidate_id:
+            raise ValueError("Assessment not found or access denied")
+
+        if assessment.status == AssessmentStatus.COMPLETED:
+            raise ValueError("Assessment is already completed")
+
+        candidate_stmt = select(Candidate).where(Candidate.id == candidate_id)
+        candidate_res = await self.db.execute(candidate_stmt)
+        candidate = candidate_res.scalar_one_or_none()
+        if not candidate:
+            raise ValueError("Candidate not found")
+
+        # Transition candidate status based on the round
+        round_transitions = {
+            AssessmentRound.ROUND_2: (
+                CandidateStatus.ROUND2_IN_PROGRESS,
+                CandidateStatus.ROUND2_PASSED,
+            ),
+            AssessmentRound.ROUND_3: (
+                CandidateStatus.ROUND3_IN_PROGRESS,
+                CandidateStatus.ROUND3_PASSED,
+            ),
+        }
+        transition = round_transitions.get(assessment.round)
+        if transition:
+            expected_status, next_status = transition
+            current = CandidateStatus(candidate.status) if isinstance(candidate.status, str) else candidate.status
+            if current == expected_status:
+                candidate.status = next_status
+
+        assessment.status = AssessmentStatus.COMPLETED
+        assessment.ended_at = datetime.now(timezone.utc)
+
+        await self.db.flush()
+        return assessment
+
     async def get_assessment(self, candidate_id: UUID) -> list[Assessment]:
         stmt = (
             select(Assessment)
