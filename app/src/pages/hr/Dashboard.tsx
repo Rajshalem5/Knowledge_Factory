@@ -61,7 +61,7 @@ export default function Dashboard() {
       if (languageChoiceFilter) p.language_choice = languageChoiceFilter;
       if (cgpaMinFilter) p.cgpa_min = parseFloat(cgpaMinFilter);
       if (cgpaMaxFilter) p.cgpa_max = parseFloat(cgpaMaxFilter);
-      return Object.keys(p).length > 0 ? p as any : undefined;
+      return Object.keys(p).length > 0 ? p : undefined;
     })()
   );
 
