@@ -339,6 +339,20 @@ All docs live under `docs/`:
 3. ~~**`analytics.ts`** — paths missing `/api` prefix~~ ✅ Fixed (commit `33ca4c1`)
 4. **`analytics.ts`** — `getOrganizations()` and `updateOrganization()` call `/api/admin/organizations` which return 501 — intentional (multi-tenancy was removed, endpoints left as stubs)
 5. ~~**`candidates.ts`** — `previewBulkUpload()` calls `/bulk-upload/preview`~~ ✅ Fixed — backend route added (commit `e181541`)
+6. ~~**`assessment.ts`** — `getAssessment()` had double `/api` prefix~~ ✅ Fixed (commit `eb7a0df`)
+7. ~~**Backend CandidateStatus (ROUND1_PASSED etc) vs Frontend CandidateStatus (eligible, round1 etc)** — mismatched status enums broke display and status updates~~ ✅ Fixed — added `display_status` property and `from_display_status()` classmethod to `CandidateStatus` enum, added `display_status` field to `CandidateRead` schema, patched frontend components to use `display_status` (commit `d5ba312`)
+
+### Pipeline Status
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| Screening (POST /api/screening/run) | ✅ Complete | Transitions APPLIED → ROUND1_PASSED/ROUND1_REJECTED, supports extra filters |
+| Pipeline Stats (GET /api/screening/pipeline-stats) | ✅ Complete | Aggregated counts per candidate status |
+| Assessment Start (POST /api/assessment/start) | ✅ Complete | Validates candidate must be ROUND1_PASSED (for ROUND_2) or ROUND2_PASSED (for ROUND_3), transitions via FSM |
+| Candidate Listing (GET /api/candidates) | ✅ Enhanced | Supports branch, college, cgpa_min, cgpa_max, passed_out_year filters |
+| Status Update (PATCH /api/candidates/{id}/status) | ✅ Complete | Accepts both backend enum and simplified frontend status values |
+| HR Dashboard "Run Screening" button | ✅ Added | Triggers screening, shows pipeline stats |
+| Candidate Portal "Start Assessment" button | ✅ Added | Starts assessment via API, transitions status, navigates to /assessment |
 
 ### Known TODO
 
