@@ -169,14 +169,23 @@ export default function Portal() {
                 <p className="text-sm text-secondary font-medium">Next Step</p>
                 <p className="text-xs text-on-surface-variant mt-1">
                   {profile.display_status === 'applied' && 'Your application is being reviewed for eligibility.'}
-                  {profile.display_status === 'eligible' && 'You are eligible! Start your Round 1 assessment now.'}
-                  {(profile.display_status === 'round1' || profile.display_status === 'round2' || profile.display_status === 'round3') && 'Continue your assessment to advance to the next stage.'}
+                  {profile.display_status === 'eligible' && 'You are eligible! Start your assessment now.'}
+                  {(profile.status === 'ROUND2_PASSED' || profile.status === 'ROUND3_PASSED') && 'You passed! Start the next round assessment.'}
+                  {(profile.display_status === 'round1' && profile.status !== 'ROUND2_PASSED') && 'Your Round 1 assessment is in progress. Continue coding.'}
+                  {(profile.display_status === 'round2' && profile.status !== 'ROUND3_PASSED') && 'Your Round 2 assessment is in progress. Continue working.'}
+                  {profile.display_status === 'round3' && 'Your application is in the final round.'}
                   {profile.display_status === 'interviewed' && 'Interview complete. Results will be announced soon.'}
                 </p>
               </div>
               {profile.display_status === 'eligible' && (
                 <Button size="sm" onClick={handleStartAssessment} disabled={startAssessment.isPending}>
                   {startAssessment.isPending ? 'Starting...' : 'Start Assessment'}
+                </Button>
+              )}
+              {/* Show button for next rounds after completing previous assessment */}
+              {(profile.status === 'ROUND2_PASSED' || profile.status === 'ROUND3_PASSED') && (
+                <Button size="sm" onClick={handleStartAssessment} disabled={startAssessment.isPending}>
+                  {startAssessment.isPending ? 'Starting...' : 'Start Next Assessment'}
                 </Button>
               )}
             </div>
