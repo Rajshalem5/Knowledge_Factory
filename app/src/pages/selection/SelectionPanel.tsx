@@ -5,7 +5,7 @@ import { useCandidates, useUpdateCandidateStatus } from '../../hooks/useCandidat
 import { CheckCircle, XCircle, Trophy } from 'lucide-react';
 
 export default function SelectionPanel() {
-  const { data: candidatesData, isLoading, error } = useCandidates({ pageSize: 100 });
+  const { data: candidatesData, isLoading, error } = useCandidates({ limit: 100 });
   const updateStatus = useUpdateCandidateStatus();
   const [selections, setSelections] = useState<Record<string, boolean>>({});
 
