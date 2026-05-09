@@ -4,10 +4,12 @@ import { screeningApi } from '../api/screening';
 export function useRunScreening() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (params?: { branch?: string; college?: string; passed_out_year?: number; min_cgpa_override?: number }) =>
+    mutationFn: (params?: Record<string, string | number>) =>
       screeningApi.run(params),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['candidates'] });
+      queryClient.invalidateQueries({ queryKey: ['pipeline-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['funnel'] });
     },
   });
 }

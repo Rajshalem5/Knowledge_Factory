@@ -22,13 +22,13 @@ export const screeningApi = {
    * Run screening with optional extra filters
    * POST /api/screening/run
    */
-  run: (params?: { branch?: string; college?: string; passed_out_year?: number; min_cgpa_override?: number }) =>
-    api.post<ScreeningResult>('/api/screening/run', undefined, { params: params as Record<string, string | number> }),
+  run: (params?: Record<string, string | number>) =>
+    api.post<ScreeningResult>('/api/screening/run', undefined, { params }),
 
   /**
    * Get pipeline stage stats with optional filters
    * GET /api/screening/pipeline-stats
    */
-  getPipelineStats: (params?: { branch?: string; college?: string }) =>
-    api.get<PipelineStats>('/api/screening/pipeline-stats', { params: params as Record<string, string | number> }),
+  getPipelineStats: (params?: Record<string, string | number>) =>
+    api.get<PipelineStats>('/api/screening/pipeline-stats', { params }),
 };
