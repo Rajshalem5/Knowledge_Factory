@@ -20,12 +20,19 @@ async def list_candidates(
     limit: int = Query(50, ge=1, le=100),
     status: CandidateStatus | None = None,
     search: str | None = None,
+    branch: str | None = None,
+    college: str | None = None,
+    cgpa_min: float | None = Query(None, ge=0.0, le=10.0),
+    cgpa_max: float | None = Query(None, ge=0.0, le=10.0),
+    passed_out_year: int | None = None,
     db: AsyncSession = Depends(get_db),
     current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN])),
 ):
     service = CandidateService(db)
     candidates, total = await service.list_candidates(
         page=page, limit=limit, status=status, search=search,
+        branch=branch, college=college, cgpa_min=cgpa_min, cgpa_max=cgpa_max,
+        passed_out_year=passed_out_year,
     )
     return {"data": candidates, "pagination": {"page": page, "limit": limit, "total": total, "total_pages": (total + limit - 1) // limit if limit else 1}}
 
