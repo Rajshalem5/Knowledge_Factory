@@ -34,7 +34,15 @@ export default function Portal() {
   const startAssessment = useStartAssessment();
 
   const handleStartAssessment = () => {
-    const round = profile?.display_status === 'eligible' || profile?.display_status === 'round1' ? 'ROUND_2' : 'ROUND_3';
+    // Determine which round to start based on actual backend status
+    let round = 'ROUND_2';
+    if (profile?.status === 'ROUND2_PASSED') {
+      round = 'ROUND_3';
+    } else if (profile?.display_status === 'round2' || profile?.status === 'ROUND3_PASSED') {
+      round = 'ROUND_3';
+    } else if (profile?.display_status === 'round1' && profile?.status !== 'ROUND2_IN_PROGRESS') {
+      round = 'ROUND_3';
+    }
     startAssessment.mutate({ round }, {
       onSuccess: () => navigate('/assessment'),
     });
