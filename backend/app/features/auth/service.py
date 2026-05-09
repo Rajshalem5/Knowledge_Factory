@@ -49,6 +49,15 @@ class AuthService:
         self, register_data: CandidateRegisterRequest, cycle_id: str
     ) -> Candidate:
         """Register a new candidate."""
+        # Check for duplicate email
+        stmt = select(Candidate).where(Candidate.email == register_data.email)
+        result = await self.db.execute(stmt)
+        existing = result.scalars().first()
+        if existing:
+            raise ValueError(
+                f"A candidate with email '{register_data.email}' is already registered."
+            )
+
         new_candidate = Candidate(
             cycle_id=cycle_id,
             email=register_data.email,
