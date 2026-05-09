@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { assessmentApi, AssessmentStartRequest, SubmissionCreateRequest } from '../api/assessment';
+import { assessmentApi } from '../api/assessment';
+import type { AssessmentStartRequest, SubmissionCreateRequest } from '../api/assessment';
 
 export function useAssessment(id: string) {
   return useQuery({

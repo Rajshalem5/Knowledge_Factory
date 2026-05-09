@@ -6,7 +6,7 @@ import { useSubmitFeedback } from '../../hooks/useAssessment';
 import { MessageSquare, Star } from 'lucide-react';
 
 export default function InterviewPanel() {
-  const { data: candidatesData, isLoading, error } = useCandidates({ status: 'interviewed', pageSize: 50 });
+  const { data: candidatesData, isLoading, error } = useCandidates({ status: 'interviewed', limit: 50 });
   const submitFeedback = useSubmitFeedback();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [technicalScore, setTechnicalScore] = useState('5');
