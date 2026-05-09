@@ -1,10 +1,12 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button, Badge } from '../../components/ui';
 import { Timer } from '../../components/assessment/Timer';
 import { CodeEditor } from '../../components/assessment/CodeEditor';
 import { useCodeExecution } from '../../hooks/useCodeExecution';
 import { useQuestion } from '../../hooks/useQuestion';
-import { Play, Send, ChevronDown, RefreshCw, CheckCircle, XCircle, Lock } from 'lucide-react';
+import { useActiveAssessments, useCompleteAssessment } from '../../hooks/useAssessment';
+import { Play, Send, ChevronDown, RefreshCw, CheckCircle, XCircle, Lock, CheckSquare } from 'lucide-react';
 import { api } from '../../api/client';
 import type { EvaluationResponse } from '../../api/code-execution';
 
@@ -18,6 +20,7 @@ type LangId = typeof LANGUAGES[number]['id'];
 const DIFFICULTIES = ['easy', 'medium', 'hard'] as const;
 
 export default function Assessment() {
+  const navigate = useNavigate();
   const [language, setLanguage]         = useState<LangId>('python');
   const [code, setCode]                 = useState('# Click "Generate Question" to start');
   const [customInput, setCustomInput]   = useState('');
@@ -29,6 +32,18 @@ export default function Assessment() {
 
   const { question, isGenerating, generate } = useQuestion();
   const { runCode, isExecuting, isEvaluating } = useCodeExecution();
+  const { data: activeAssessments } = useActiveAssessments();
+  const completeAssessment = useCompleteAssessment();
+  const activeAssessment = activeAssessments?.[0];
+  const hasSubmitted = evalResult !== null || runOutput !== null;
+
+  const handleComplete = () => {
+    if (!activeAssessment) return;
+    if (!window.confirm('Submit and complete this assessment? Your answers will be final.')) return;
+    completeAssessment.mutate(activeAssessment.id, {
+      onSuccess: () => navigate('/portal'),
+    });
+  };
 
   // Generate question from AI
   const handleGenerate = async () => {
@@ -108,6 +123,12 @@ export default function Assessment() {
             isLoading={isEvaluating} disabled={!question}>
             <Send size={12} />
             Submit
+          </Button>
+          <Button size="sm" variant="secondary" onClick={handleComplete}
+            isLoading={completeAssessment.isPending}
+            disabled={!activeAssessment || !hasSubmitted || completeAssessment.isPending}>
+            <CheckSquare size={12} />
+            {completeAssessment.isPending ? 'Completing...' : 'Complete & Advance'}
           </Button>
         </div>
       </div>
