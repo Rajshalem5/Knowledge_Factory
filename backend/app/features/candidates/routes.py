@@ -37,6 +37,13 @@ async def list_candidates(
     return {"data": candidates, "pagination": {"page": page, "limit": limit, "total": total, "total_pages": (total + limit - 1) // limit if limit else 1}}
 
 
+@router.get("/me", response_model=CandidateRead)
+async def get_my_profile(db: AsyncSession = Depends(get_db), current_user = Depends(get_current_user)):
+    """Get the authenticated candidate's own profile."""
+    service = CandidateService(db)
+    return await service.get_my_profile(current_user.id)
+
+
 @router.get("/{candidate_id}", response_model=CandidateRead)
 async def get_candidate(candidate_id: UUID, db: AsyncSession = Depends(get_db), current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN, Role.INTERVIEWER]))):
     service = CandidateService(db)
@@ -44,13 +51,6 @@ async def get_candidate(candidate_id: UUID, db: AsyncSession = Depends(get_db), 
     if not candidate:
         raise HTTPException(status_code=404, detail="Candidate not found")
     return candidate
-
-
-@router.get("/me", response_model=CandidateRead)
-async def get_my_profile(db: AsyncSession = Depends(get_db), current_user = Depends(get_current_user)):
-    """Get the authenticated candidate's own profile."""
-    service = CandidateService(db)
-    return await service.get_my_profile(current_user.id)
 
 
 @router.patch("/{candidate_id}/status", response_model=CandidateRead)
