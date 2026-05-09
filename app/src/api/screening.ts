@@ -17,14 +17,29 @@ export interface PipelineStats {
   stats: Record<string, number>;
 }
 
+export interface ScreeningFilters {
+  branch?: string;
+  college?: string;
+  passed_out_year?: number;
+  language_choice?: string;
+  min_cgpa_override?: number;
+  search?: string;
+  cgpa_min?: number;
+  cgpa_max?: number;
+  has_resume?: boolean;
+  has_govt_id?: boolean;
+  created_after?: string;
+  created_before?: string;
+}
+
 export const screeningApi = {
   /**
    * Run screening with optional extra filters
    * POST /api/screening/run
    */
-  run: (params?: Record<string, string | number>) =>
+  run: (params?: Record<string, string | number | boolean>) =>
     api.post<ScreeningResult>('/api/screening/run', undefined, { params }),
 
-  getPipelineStats: (params?: Record<string, string | number>) =>
+  getPipelineStats: (params?: Record<string, string | number | boolean>) =>
     api.get<PipelineStats>('/api/screening/pipeline-stats', { params }),
 };
