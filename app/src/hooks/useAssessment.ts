@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { assessmentApi } from '../api/assessment';
+import { assessmentApi, AssessmentStartRequest, SubmissionCreateRequest } from '../api/assessment';
 
 export function useAssessment(id: string) {
   return useQuery({
@@ -19,7 +19,7 @@ export function useActiveAssessments() {
 export function useStartAssessment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: assessmentApi.start,
+    mutationFn: (data: AssessmentStartRequest) => assessmentApi.start(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['assessments-active'] });
     },
@@ -29,8 +29,7 @@ export function useStartAssessment() {
 export function useSubmitSection() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ assessmentId, data }: { assessmentId: string; data: Parameters<typeof assessmentApi.submitSection>[1] }) =>
-      assessmentApi.submitSection(assessmentId, data),
+    mutationFn: (data: SubmissionCreateRequest) => assessmentApi.submitSection(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['assessment'] });
     },
