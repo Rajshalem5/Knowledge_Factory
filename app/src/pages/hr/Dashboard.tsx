@@ -275,6 +275,38 @@ export default function Dashboard() {
               </Card>
             </div>
 
+            {/* Funnel Stage Aggregates */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <Card>
+                <div className="text-xs text-tertiary uppercase tracking-architectural mb-1">Eligible</div>
+                <p className="text-xl font-bold text-secondary">{pipelineStats?.stats?.ROUND1_PASSED ?? 0}</p>
+                <p className="text-[10px] text-tertiary mt-0.5">Passed screening</p>
+              </Card>
+              <Card>
+                <div className="text-xs text-tertiary uppercase tracking-architectural mb-1">In Assessment</div>
+                <p className="text-xl font-bold text-secondary">
+                  {((pipelineStats?.stats?.ROUND2_IN_PROGRESS ?? 0) +
+                    (pipelineStats?.stats?.ROUND2_PASSED ?? 0) +
+                    (pipelineStats?.stats?.ROUND3_IN_PROGRESS ?? 0) +
+                    (pipelineStats?.stats?.ROUND3_PASSED ?? 0))}
+                </p>
+                <p className="text-[10px] text-tertiary mt-0.5">R2 + R3 candidates</p>
+              </Card>
+              <Card>
+                <div className="text-xs text-tertiary uppercase tracking-architectural mb-1">Interviewed</div>
+                <p className="text-xl font-bold text-secondary">
+                  {((pipelineStats?.stats?.INTERVIEW_SCHEDULED ?? 0) +
+                    (pipelineStats?.stats?.INTERVIEW_COMPLETED ?? 0))}
+                </p>
+                <p className="text-[10px] text-tertiary mt-0.5">Scheduled + completed</p>
+              </Card>
+              <Card>
+                <div className="text-xs text-tertiary uppercase tracking-architectural mb-1">Selected</div>
+                <p className="text-xl font-bold text-secondary">{pipelineStats?.stats?.SELECTED ?? 0}</p>
+                <p className="text-[10px] text-tertiary mt-0.5">Offers extended</p>
+              </Card>
+            </div>
+
             {/* Filter Toggle + Screening Filters */}
             <Card>
               <div className="flex items-center justify-between mb-3">
