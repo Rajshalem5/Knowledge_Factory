@@ -39,6 +39,7 @@ class AnalyticsService:
         has_assessment: bool | None = None,
         updated_after: date | None = None,
         updated_before: date | None = None,
+        assessment_status: str | None = None,
     ) -> FunnelResponse:
         """Get hiring funnel counts with optional filters.
 
@@ -69,6 +70,7 @@ class AnalyticsService:
                 status=status,
                 updated_after=updated_after,
                 updated_before=updated_before,
+                assessment_status=assessment_status,
             )
             return q
 

@@ -52,6 +52,7 @@ export default function Dashboard() {
   const [targetStatusesFilter, setTargetStatusesFilter] = useState('');
   const [updatedAfterFilter, setUpdatedAfterFilter] = useState('');
   const [updatedBeforeFilter, setUpdatedBeforeFilter] = useState('');
+  const [assessmentStatusFilter, setAssessmentStatusFilter] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [sortBy, setSortBy] = useState('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -82,6 +83,7 @@ export default function Dashboard() {
     has_assessment: hasAssessmentFilter ? hasAssessmentFilter === 'true' : undefined,
     updated_after: updatedAfterFilter || undefined,
     updated_before: updatedBeforeFilter || undefined,
+    assessment_status: assessmentStatusFilter || undefined,
     sort_by: sortBy,
     sort_order: sortOrder,
   });
@@ -92,7 +94,7 @@ export default function Dashboard() {
     createdBeforeFilter || passedOutYearFilter || passedOutYearMinFilter || passedOutYearMaxFilter ||
     emailVerifiedFilter || phoneFilter || emailFilter || nameFilter || cycleIdFilter || hasPhoneFilter ||
     hasAssessmentFilter ||
-    updatedAfterFilter || updatedBeforeFilter || targetStatusesFilter
+    updatedAfterFilter || updatedBeforeFilter || targetStatusesFilter || assessmentStatusFilter
       ? {
           branch: branchFilter || undefined,
           college: collegeFilter || undefined,
@@ -118,6 +120,7 @@ export default function Dashboard() {
           updated_after: updatedAfterFilter || undefined,
           updated_before: updatedBeforeFilter || undefined,
           target_statuses: targetStatusesFilter || undefined,
+          assessment_status: assessmentStatusFilter || undefined,
         }
       : undefined
   );
@@ -149,6 +152,7 @@ export default function Dashboard() {
       if (updatedAfterFilter) p.updated_after = updatedAfterFilter;
       if (updatedBeforeFilter) p.updated_before = updatedBeforeFilter;
       if (targetStatusesFilter) p.target_statuses = targetStatusesFilter;
+      if (assessmentStatusFilter) p.assessment_status = assessmentStatusFilter;
       return Object.keys(p).length > 0 ? p : undefined;
     })()
   );
@@ -178,6 +182,7 @@ export default function Dashboard() {
     if (updatedAfterFilter) params.updated_after = updatedAfterFilter;
     if (updatedBeforeFilter) params.updated_before = updatedBeforeFilter;
     if (targetStatusesFilter) params.target_statuses = targetStatusesFilter;
+    if (assessmentStatusFilter) params.assessment_status = assessmentStatusFilter;
     if (search) params.search = search;
     runScreening.mutate(
       Object.keys(params).length > 0 ? params : undefined
@@ -434,6 +439,7 @@ export default function Dashboard() {
                       setCreatedBeforeFilter('');
                       setUpdatedAfterFilter('');
                       setUpdatedBeforeFilter('');
+                      setAssessmentStatusFilter('');
                       setEmailVerifiedFilter('');
                       setPhoneFilter('');
                       setEmailFilter('');
@@ -630,6 +636,19 @@ export default function Dashboard() {
                       onChange={e => { setUpdatedBeforeFilter(e.target.value); setPage(1); }}
                       className="w-full px-3 py-1.5 rounded-md bg-[var(--bg-base)] text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/50 border border-[var(--border-ghost)]"
                     />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-tertiary mb-1">Assessment Status</label>
+                    <select
+                      value={assessmentStatusFilter}
+                      onChange={e => { setAssessmentStatusFilter(e.target.value); setPage(1); }}
+                      className="w-full px-3 py-1.5 rounded-md bg-[var(--bg-base)] text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/50 border border-[var(--border-ghost)]"
+                    >
+                      <option value="">All</option>
+                      <option value="IN_PROGRESS">In Progress</option>
+                      <option value="COMPLETED">Completed</option>
+                      <option value="NOT_STARTED">Not Started</option>
+                    </select>
                   </div>
                   <div>
                     <label className="block text-xs text-tertiary mb-1">Email Verified</label>

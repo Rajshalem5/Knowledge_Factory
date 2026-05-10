@@ -46,6 +46,7 @@ def apply_candidate_filters(
     status: str | None = None,
     updated_after: date | None = None,
     updated_before: date | None = None,
+    assessment_status: str | None = None,
 ) -> Select:
     """Apply common candidate filters to a SELECT query.
 
@@ -135,6 +136,18 @@ def apply_candidate_filters(
     if updated_before:
         dt = datetime.combine(updated_before, datetime.max.time())
         query = query.where(Candidate.updated_at <= dt)
+
+    # Assessment status filter — find candidates whose assessment has a specific status
+    if assessment_status:
+        from app.core.enums import AssessmentStatus as AsmStatus
+        try:
+            st = AsmStatus(assessment_status.upper())
+        except ValueError:
+            st = None
+        if st:
+            from app.features.assessments.models import Assessment
+            subq = select(Assessment.candidate_id).where(Assessment.status == st.value)
+            query = query.where(Candidate.id.in_(subq))
 
     # Optional status filter — accepts both raw backend values
     # (e.g. "APPLIED") and simplified frontend display_status values

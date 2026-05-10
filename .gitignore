@@ -41,6 +41,7 @@ AUDIT_REPORT_COMPLETION_*.md
 # Verification scripts (local testing only)
 verify_*.py
 check_*.py
+_*.py
 /test_*.py
 
 # Previous work and local references
