@@ -32,7 +32,7 @@ export default function Assessment() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { question, isGenerating, generate } = useQuestion();
-  const { runCode, isExecuting, isEvaluating } = useCodeExecution();
+  const { runCode, isExecuting } = useCodeExecution();
   const { data: activeAssessments } = useActiveAssessments();
   const completeAssessment = useCompleteAssessment();
   const submitSection = useSubmitSection();

@@ -46,6 +46,7 @@ export default function Dashboard() {
   const [phoneFilter, setPhoneFilter] = useState('');
   const [emailFilter, setEmailFilter] = useState('');
   const [nameFilter, setNameFilter] = useState('');
+  const [cycleIdFilter, setCycleIdFilter] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [sortBy, setSortBy] = useState('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -71,6 +72,7 @@ export default function Dashboard() {
     email_verified: emailVerifiedFilter ? emailVerifiedFilter === 'true' : undefined,
     phone: phoneFilter || undefined,
     email: emailFilter || undefined,
+    cycle_id: cycleIdFilter || undefined,
     sort_by: sortBy,
     sort_order: sortOrder,
   });
@@ -79,7 +81,7 @@ export default function Dashboard() {
     search || branchFilter || collegeFilter || languageChoiceFilter || cgpaMinFilter ||
     cgpaMaxFilter || hasResumeFilter || hasGovtIdFilter || createdAfterFilter ||
     createdBeforeFilter || passedOutYearFilter || passedOutYearMinFilter || passedOutYearMaxFilter ||
-    emailVerifiedFilter || phoneFilter || emailFilter || nameFilter
+    emailVerifiedFilter || phoneFilter || emailFilter || nameFilter || cycleIdFilter
       ? {
           branch: branchFilter || undefined,
           college: collegeFilter || undefined,
@@ -98,6 +100,7 @@ export default function Dashboard() {
           email_verified: emailVerifiedFilter ? emailVerifiedFilter === 'true' : undefined,
           phone: phoneFilter || undefined,
           email: emailFilter || undefined,
+          cycle_id: cycleIdFilter || undefined,
         }
       : undefined
   );
@@ -105,6 +108,7 @@ export default function Dashboard() {
   const { data: pipelineStats } = usePipelineStats(
     (() => {
       const p: Record<string, string | number | boolean> = {};
+      if (cycleIdFilter) p.cycle_id = cycleIdFilter;
       if (branchFilter) p.branch = branchFilter;
       if (collegeFilter) p.college = collegeFilter;
       if (languageChoiceFilter) p.language_choice = languageChoiceFilter;
@@ -452,6 +456,16 @@ export default function Dashboard() {
                       placeholder="e.g. 2025"
                       value={passedOutYearFilter}
                       onChange={e => { setPassedOutYearFilter(e.target.value); setPage(1); }}
+                      className="w-full px-3 py-1.5 rounded-md bg-[var(--bg-base)] text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/50 border border-[var(--border-ghost)]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-tertiary mb-1">Hiring Cycle</label>
+                    <input
+                      type="text"
+                      placeholder="Cycle ID..."
+                      value={cycleIdFilter}
+                      onChange={e => { setCycleIdFilter(e.target.value); setPage(1); }}
                       className="w-full px-3 py-1.5 rounded-md bg-[var(--bg-base)] text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/50 border border-[var(--border-ghost)]"
                     />
                   </div>
