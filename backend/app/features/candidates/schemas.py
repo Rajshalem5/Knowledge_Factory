@@ -24,6 +24,7 @@ class CandidateRead(CandidateBase):
     id: str
     status: CandidateStatus
     display_status: str = ""
+    email_verified: bool = False
     created_at: datetime
     cycle_id: str
     phone: Optional[str] = None
@@ -77,6 +78,7 @@ class CandidateRead(CandidateBase):
             cgpa=candidate.cgpa,
             passed_out_year=candidate.passed_out_year,
             language_choice=candidate.language_choice,
+            email_verified=getattr(candidate, 'email_verified', False),
             phone=getattr(candidate, 'phone', None),
             resume_url=getattr(candidate, 'resume_url', None),
             govt_id_url=getattr(candidate, 'govt_id_url', None),

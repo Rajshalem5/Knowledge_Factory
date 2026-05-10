@@ -33,6 +33,7 @@ export interface Candidate {
   cgpa: number;
   status: string;
   display_status: string;
+  email_verified?: boolean;
   resume_url?: string;
   govt_id_url?: string;
   scores: AssessmentScore[];
