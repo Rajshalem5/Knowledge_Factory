@@ -36,8 +36,8 @@ export const analyticsApi = {
   getFunnel: (filters?: FunnelFilters) =>
     api.get<FunnelData>('/api/analytics/funnel', { params: filters as Record<string, string | number | boolean | undefined> }),
 
-  getAnalytics: (organizationId?: string) =>
-    api.get<AnalyticsData>('/api/analytics/dashboard', { params: organizationId ? { organizationId } : undefined }),
+  getAnalytics: () =>
+    api.get<AnalyticsData>('/api/analytics/dashboard'),
 
   getOrganizations: () =>
     api.get<Organization[]>('/api/admin/organizations'),

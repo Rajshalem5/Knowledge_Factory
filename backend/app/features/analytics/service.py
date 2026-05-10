@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.enums import CandidateStatus
 from app.core.filters import apply_candidate_filters
 from app.features.candidates.models import Candidate
-from app.features.analytics.schemas import FunnelResponse, DashboardResponse
+from app.features.analytics.schemas import FunnelResponse, DashboardResponse, PassRatePerRound, CollegeBreakdown, BranchPerformance, ProctoringViolation
 
 
 class AnalyticsService:
@@ -107,7 +107,7 @@ class AnalyticsService:
         return FunnelResponse(**result)
 
     async def get_dashboard(self) -> DashboardResponse:
-        """Get dashboard metrics: total candidates, status breakdown, pass rates."""
+        """Get dashboard metrics: total candidates, status breakdown, pass rates, and breakdown analytics."""
         total_q = select(func.count(Candidate.id))
         total_r = await self.db.execute(total_q)
         total = total_r.scalar() or 0
@@ -115,7 +115,7 @@ class AnalyticsService:
         stmt = select(Candidate.status, func.count(Candidate.id)).group_by(Candidate.status)
         res = await self.db.execute(stmt)
         rows = res.all()
-        status_breakdown = {s: c for s, c in rows} if rows else {}
+        status_breakdown = {str(s): c for s, c in rows} if rows else {}
 
         selected_q = select(func.count(Candidate.id)).where(Candidate.status == CandidateStatus.SELECTED)
         selected_r = await self.db.execute(selected_q)
@@ -126,10 +126,78 @@ class AnalyticsService:
         cgpa_r = await self.db.execute(cgpa_q)
         avg_cgpa = round(float(cgpa_r.scalar()) or 0, 2)
 
+        # Pass rate per round using Score table
+        from sqlalchemy import text as sa_text
+        pass_rate_q = sa_text(
+            "SELECT s.round, "
+            "COUNT(*) AS total, "
+            "SUM(CASE WHEN s.verdict = 'PASS' THEN 1 ELSE 0 END) AS passed "
+            "FROM scores s GROUP BY s.round"
+        )
+        pass_rate_rows = await self.db.execute(pass_rate_q)
+        pass_rate_per_round = []
+        for row in pass_rate_rows:
+            round_name = row[0]
+            total_count = row[1] or 1
+            passed_count = row[2] or 0
+            pass_rate_per_round.append(PassRatePerRound(
+                round=round_name,
+                pass_rate=round((passed_count / total_count) * 100, 1),
+            ))
+
+        # College breakdown
+        college_q = sa_text(
+            "SELECT c.college, COUNT(*) AS cnt, AVG(s.weighted_total) AS avg_score "
+            "FROM candidates c LEFT JOIN scores s ON c.id = s.candidate_id "
+            "GROUP BY c.college ORDER BY cnt DESC"
+        )
+        college_rows = await self.db.execute(college_q)
+        college_breakdown = []
+        for row in college_rows:
+            college_breakdown.append(CollegeBreakdown(
+                college=row[0] or "Unknown",
+                count=row[1] or 0,
+                avg_score=round(float(row[2] or 0), 2),
+            ))
+
+        # Branch performance
+        branch_q = sa_text(
+            "SELECT c.branch, COUNT(*) AS cnt, AVG(s.weighted_total) AS avg_score "
+            "FROM candidates c LEFT JOIN scores s ON c.id = s.candidate_id "
+            "GROUP BY c.branch ORDER BY cnt DESC"
+        )
+        branch_rows = await self.db.execute(branch_q)
+        branch_performance = []
+        for row in branch_rows:
+            branch_performance.append(BranchPerformance(
+                branch=row[0] or "Unknown",
+                count=row[1] or 0,
+                avg_score=round(float(row[2] or 0), 2),
+            ))
+
+        # Proctoring violations from ProctoringRecord violations_json
+        from app.features.proctoring.models import ProctoringRecord
+        proctor_q = select(ProctoringRecord.violations_json)
+        proctor_rows = await self.db.execute(proctor_q)
+        violation_type_counts: dict[str, int] = {}
+        for row in proctor_rows.all():
+            violations = row[0] or []
+            for evt in violations:
+                evt_type = evt.get("type", "unknown")
+                violation_type_counts[evt_type] = violation_type_counts.get(evt_type, 0) + 1
+        proctoring_violations = [
+            ProctoringViolation(type=t, count=c)
+            for t, c in sorted(violation_type_counts.items(), key=lambda x: -x[1])
+        ]
+
         return DashboardResponse(
             total_candidates=total,
             selected_count=selected,
             select_rate=select_rate,
             avg_cgpa=avg_cgpa,
             status_breakdown=status_breakdown,
+            pass_rate_per_round=pass_rate_per_round,
+            college_breakdown=college_breakdown,
+            branch_performance=branch_performance,
+            proctoring_violations=proctoring_violations,
         )

@@ -8,10 +8,10 @@ export function useFunnelData(filters?: FunnelFilters) {
   });
 }
 
-export function useAnalytics(organizationId?: string) {
+export function useAnalytics() {
   return useQuery({
-    queryKey: ['analytics', organizationId],
-    queryFn: () => analyticsApi.getAnalytics(organizationId),
+    queryKey: ['analytics'],
+    queryFn: analyticsApi.getAnalytics,
   });
 }
 

@@ -12,12 +12,38 @@ class FunnelResponse(BaseModel):
     selected: int = 0
 
 
+class PassRatePerRound(BaseModel):
+    round: str
+    pass_rate: float
+
+
+class CollegeBreakdown(BaseModel):
+    college: str
+    count: int
+    avg_score: float = 0.0
+
+
+class BranchPerformance(BaseModel):
+    branch: str
+    count: int
+    avg_score: float = 0.0
+
+
+class ProctoringViolation(BaseModel):
+    type: str
+    count: int
+
+
 class DashboardResponse(BaseModel):
     total_candidates: int
     selected_count: int
     select_rate: float
     avg_cgpa: float
     status_breakdown: dict[str, Any]
+    pass_rate_per_round: list[PassRatePerRound] = []
+    college_breakdown: list[CollegeBreakdown] = []
+    branch_performance: list[BranchPerformance] = []
+    proctoring_violations: list[ProctoringViolation] = []
 
 
 class OrganizationRead(BaseModel):
