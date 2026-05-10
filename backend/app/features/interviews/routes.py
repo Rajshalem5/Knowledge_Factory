@@ -1,7 +1,5 @@
 """Interview feedback routes."""
 
-from uuid import UUID
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,7 +15,7 @@ router = APIRouter()
 
 @router.post("/candidates/{candidate_id}/feedback", status_code=status.HTTP_201_CREATED)
 async def submit_feedback(
-    candidate_id: UUID,
+    candidate_id: str,
     feedback_data: dict,
     db: AsyncSession = Depends(get_db),
     current_user = Depends(require_role([Role.INTERVIEWER, Role.ADMIN])),
@@ -60,7 +58,7 @@ async def submit_feedback(
 
 
 @router.get("/candidates/{candidate_id}/feedback")
-async def get_feedback(candidate_id: UUID, db: AsyncSession = Depends(get_db), current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN]))):
+async def get_feedback(candidate_id: str, db: AsyncSession = Depends(get_db), current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN]))):
     stmt = select(InterviewFeedback).where(InterviewFeedback.candidate_id == str(candidate_id))
     res = await db.execute(stmt)
     fbs = res.scalars().all()
