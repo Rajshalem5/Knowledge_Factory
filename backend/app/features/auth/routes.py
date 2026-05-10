@@ -77,7 +77,7 @@ async def register_candidate(
     response: Response = None,
 ):
     from app.features.hiring_cycles.models import HiringCycle
-    
+
     # Get active hiring cycle
     stmt = select(HiringCycle).where(HiringCycle.status == "ACTIVE").limit(1)
     res = await db.execute(stmt)
@@ -95,10 +95,10 @@ async def register_candidate(
         candidate = await auth_service.register_candidate(register_data, cycle.id)
 
         token_data = auth_service.generate_token_response(candidate)
-        
+
         # Set refresh token as httpOnly cookie
         set_refresh_cookie(response, token_data["refresh_token"])
-        
+
         return {
             "access_token": token_data["access_token"],
             "refresh_token": token_data["refresh_token"],
