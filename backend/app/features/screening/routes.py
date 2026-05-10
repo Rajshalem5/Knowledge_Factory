@@ -39,6 +39,8 @@ async def run_screening(
     has_phone: bool | None = Query(None, description="Filter by whether candidate has provided a phone number"),
     target_statuses: str | None = Query(None, description="Comma-separated list of candidate statuses to screen (default: APPLIED). "
                                         "Useful for re-screening candidates in e.g. 'ROUND1_REVIEW' after changing eligibility criteria."),
+    updated_after: date | None = Query(None, description="Filter candidates updated after this date (ISO format, e.g. 2026-01-01)"),
+    updated_before: date | None = Query(None, description="Filter candidates updated before this date (ISO format, e.g. 2026-06-30)"),
     db: AsyncSession = Depends(get_db), current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN]))):
     """
     Auto-screen candidates based on hiring cycle config.
@@ -100,6 +102,8 @@ async def run_screening(
         email=email,
         cycle_id=cycle_id,
         has_phone=has_phone,
+        updated_after=updated_after,
+        updated_before=updated_before,
     )
 
     res = await db.execute(q)
@@ -147,6 +151,8 @@ async def pipeline_stats(
     has_phone: bool | None = Query(None, description="Filter by whether candidate has provided a phone number"),
     target_statuses: str | None = Query(None, description="Comma-separated list of statuses to include in the output "
                                         "(e.g. 'APPLIED,ROUND1_PASSED,SELECTED'). By default all statuses are shown."),
+    updated_after: date | None = Query(None, description="Filter candidates updated after this date (ISO format)"),
+    updated_before: date | None = Query(None, description="Filter candidates updated before this date (ISO format)"),
     db: AsyncSession = Depends(get_db),
     current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN])),
 ):
@@ -177,6 +183,8 @@ async def pipeline_stats(
         cycle_id=cycle_id,
         has_phone=has_phone,
         status=status,
+        updated_after=updated_after,
+        updated_before=updated_before,
     )
     base = base.group_by(Candidate.status)
 
@@ -216,6 +224,8 @@ async def pipeline_stats(
         cycle_id=cycle_id,
         has_phone=has_phone,
         status=status,
+        updated_after=updated_after,
+        updated_before=updated_before,
     )
     cgpa_res = await db.execute(cgpa_q)
     avg_cgpa = round(float(cgpa_res.scalar() or 0), 2)

@@ -26,6 +26,7 @@ class CandidateRead(CandidateBase):
     display_status: str = ""
     email_verified: bool = False
     created_at: datetime
+    updated_at: datetime
     cycle_id: str
     phone: Optional[str] = None
     resume_url: Optional[str] = None
@@ -85,6 +86,7 @@ class CandidateRead(CandidateBase):
             status=status_val,
             display_status=status_val.display_status,
             created_at=candidate.created_at,
+            updated_at=candidate.updated_at,
             cycle_id=candidate.cycle_id,
             scores=scores,
             interview_feedback=interview_feedback,

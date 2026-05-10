@@ -36,6 +36,8 @@ class AnalyticsService:
         cycle_id: str | None = None,
         status: str | None = None,
         has_phone: bool | None = None,
+        updated_after: date | None = None,
+        updated_before: date | None = None,
     ) -> FunnelResponse:
         """Get hiring funnel counts with optional filters.
 
@@ -63,6 +65,8 @@ class AnalyticsService:
                 email_verified=email_verified,
                 cycle_id=cycle_id,
                 status=status,
+                updated_after=updated_after,
+                updated_before=updated_before,
             )
             return q
 

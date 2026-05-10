@@ -38,6 +38,8 @@ async def list_candidates(
     email: str | None = Query(None, description="Filter by exact email address"),
     cycle_id: str | None = Query(None, description="Filter candidates by hiring cycle ID"),
     has_phone: bool | None = Query(None, description="Filter by whether candidate has provided a phone number"),
+    updated_after: date | None = Query(None, description="Filter candidates updated after this date (ISO format)"),
+    updated_before: date | None = Query(None, description="Filter candidates updated before this date (ISO format)"),
     sort_by: str | None = Query(None, description="Sort column (name, email, college, branch, cgpa, passed_out_year, created_at, status)"),
     sort_order: str | None = Query("desc", description="Sort direction: asc or desc"),
     db: AsyncSession = Depends(get_db),
@@ -57,6 +59,8 @@ async def list_candidates(
         email=email,
         cycle_id=cycle_id,
         has_phone=has_phone,
+        updated_after=updated_after,
+        updated_before=updated_before,
         sort_by=sort_by, sort_order=sort_order,
     )
     return {"data": candidates, "pagination": {"page": page, "limit": limit, "total": total, "total_pages": (total + limit - 1) // limit if limit else 1}}

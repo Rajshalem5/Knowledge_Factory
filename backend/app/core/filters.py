@@ -43,6 +43,8 @@ def apply_candidate_filters(
     email: str | None = None,
     cycle_id: str | None = None,
     status: str | None = None,
+    updated_after: date | None = None,
+    updated_before: date | None = None,
 ) -> Select:
     """Apply common candidate filters to a SELECT query.
 
@@ -118,6 +120,13 @@ def apply_candidate_filters(
         query = query.where(Candidate.email_verified == email_verified)
     if cycle_id:
         query = query.where(Candidate.cycle_id == cycle_id)
+
+    if updated_after:
+        dt = datetime.combine(updated_after, datetime.min.time())
+        query = query.where(Candidate.updated_at >= dt)
+    if updated_before:
+        dt = datetime.combine(updated_before, datetime.max.time())
+        query = query.where(Candidate.updated_at <= dt)
 
     # Optional status filter — accepts both raw backend values
     # (e.g. "APPLIED") and simplified frontend display_status values
