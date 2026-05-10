@@ -57,6 +57,7 @@ export function useCompleteAssessment() {
       queryClient.invalidateQueries({ queryKey: ['candidate-me'] });
       queryClient.invalidateQueries({ queryKey: ['candidates'] });
       queryClient.invalidateQueries({ queryKey: ['pipeline-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['funnel'] });
     },
   });
 }
