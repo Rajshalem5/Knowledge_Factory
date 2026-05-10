@@ -105,10 +105,14 @@ class AnalyticsService:
                     CandidateStatus.ROUND2_IN_PROGRESS,
                     CandidateStatus.ROUND2_PASSED,
                     CandidateStatus.ROUND2_REJECTED,
+                    CandidateStatus.ROUND3_IN_PROGRESS,
+                    CandidateStatus.ROUND3_PASSED,
+                    CandidateStatus.ROUND3_REJECTED,
                 ])
             ),
             "interviewed": select(func.count(Candidate.id)).where(
                 Candidate.status.in_([
+                    CandidateStatus.INTERVIEW_SCHEDULED,
                     CandidateStatus.INTERVIEW_COMPLETED,
                     CandidateStatus.SELECTED,
                 ])
