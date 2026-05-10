@@ -32,6 +32,7 @@ async def lifespan(app: FastAPI):
     from app.features.interviews.models import InterviewFeedback
     from app.features.audit.models import AuditLog
     from app.features.analytics.models import AIGenerationLog
+    from app.features.notifications.models import EmailLog
 
     if "sqlite" in settings.DATABASE_URL:
         sync_engine = create_sync_engine(settings.DATABASE_URL.replace("+aiosqlite://", "://"))
