@@ -1,10 +1,11 @@
 """Analytics service: funnel, dashboard, reports."""
 
-from datetime import date, datetime
-from sqlalchemy import func, or_, select
+from datetime import date
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.enums import CandidateStatus
+from app.core.filters import apply_candidate_filters
 from app.features.candidates.models import Candidate
 from app.features.analytics.schemas import FunnelResponse, DashboardResponse
 
@@ -45,108 +46,47 @@ class AnalyticsService:
           interviewed = INTERVIEW_SCHEDULED + INTERVIEW_COMPLETED + SELECTED
           selected   = SELECTED
         """
-        def _apply_filters(q):
-            if name:
-                q = q.where(Candidate.name.ilike(f"%{name}%"))
-            if branch:
-                q = q.where(Candidate.branch.ilike(f"%{branch}%"))
-            if college:
-                q = q.where(Candidate.college.ilike(f"%{college}%"))
-            if search:
-                q = q.where(
-                    or_(
-                        Candidate.name.ilike(f"%{search}%"),
-                        Candidate.email.ilike(f"%{search}%"),
-                        Candidate.college.ilike(f"%{search}%"),
-                    )
-                )
-            if passed_out_year:
-                q = q.where(Candidate.passed_out_year == passed_out_year)
-            if language_choice:
-                q = q.where(Candidate.language_choice.ilike(f"%{language_choice}%"))
-            if phone:
-                q = q.where(Candidate.phone.ilike(f"%{phone}%"))
-            if email:
-                q = q.where(Candidate.email == email)
-            if cgpa_min is not None:
-                q = q.where(Candidate.cgpa >= cgpa_min)
-            if cgpa_max is not None:
-                q = q.where(Candidate.cgpa <= cgpa_max)
-            if has_resume is not None:
-                if has_resume:
-                    q = q.where(Candidate.resume_url.isnot(None))
-                else:
-                    q = q.where(Candidate.resume_url.is_(None))
-            if has_govt_id is not None:
-                if has_govt_id:
-                    q = q.where(Candidate.govt_id_url.isnot(None))
-                else:
-                    q = q.where(Candidate.govt_id_url.is_(None))
-            if has_phone is not None:
-                if has_phone:
-                    q = q.where(Candidate.phone.isnot(None))
-                else:
-                    q = q.where(Candidate.phone.is_(None))
-            if created_after:
-                dt_after = datetime.combine(created_after, datetime.min.time())
-                q = q.where(Candidate.created_at >= dt_after)
-            if created_before:
-                dt_before = datetime.combine(created_before, datetime.max.time())
-                q = q.where(Candidate.created_at <= dt_before)
-            if passed_out_year_min is not None:
-                q = q.where(Candidate.passed_out_year >= passed_out_year_min)
-            if passed_out_year_max is not None:
-                q = q.where(Candidate.passed_out_year <= passed_out_year_max)
-            if email_verified is not None:
-                q = q.where(Candidate.email_verified == email_verified)
-            if cycle_id:
-                q = q.where(Candidate.cycle_id == cycle_id)
-            # Apply optional status filter (accepts both raw and display_status values)
-            if status:
-                from app.core.enums import CandidateStatus
-                parsed_status: CandidateStatus | None = None
-                try:
-                    parsed_status = CandidateStatus(status.upper())
-                except ValueError:
-                    mapped = CandidateStatus.from_display_status(status)
-                    if mapped:
-                        parsed_status = mapped
-                if parsed_status:
-                    q = q.where(Candidate.status == parsed_status)
+        def _build_q(statuses: list[CandidateStatus]) -> select:
+            """Build a filtered count query for the given statuses."""
+            q = select(func.count(Candidate.id)).where(Candidate.status.in_(statuses))
+            q = apply_candidate_filters(
+                q,
+                name=name, branch=branch, college=college, search=search,
+                passed_out_year=passed_out_year, language_choice=language_choice,
+                phone=phone, email=email,
+                cgpa_min=cgpa_min, cgpa_max=cgpa_max,
+                has_resume=has_resume, has_govt_id=has_govt_id,
+                has_phone=has_phone,
+                created_after=created_after, created_before=created_before,
+                passed_out_year_min=passed_out_year_min,
+                passed_out_year_max=passed_out_year_max,
+                email_verified=email_verified,
+                cycle_id=cycle_id,
+                status=status,
+            )
             return q
 
         stage_queries = {
-            "applied": select(func.count(Candidate.id)).where(
-                Candidate.status.in_([CandidateStatus.APPLIED, CandidateStatus.ROUND1_REVIEW])
-            ),
-            "eligible": select(func.count(Candidate.id)).where(
-                Candidate.status == CandidateStatus.ROUND1_PASSED
-            ),
-            "assessed": select(func.count(Candidate.id)).where(
-                Candidate.status.in_([
-                    CandidateStatus.ROUND2_IN_PROGRESS,
-                    CandidateStatus.ROUND2_PASSED,
-                    CandidateStatus.ROUND2_REJECTED,
-                    CandidateStatus.ROUND3_IN_PROGRESS,
-                    CandidateStatus.ROUND3_PASSED,
-                    CandidateStatus.ROUND3_REJECTED,
-                ])
-            ),
-            "interviewed": select(func.count(Candidate.id)).where(
-                Candidate.status.in_([
-                    CandidateStatus.INTERVIEW_SCHEDULED,
-                    CandidateStatus.INTERVIEW_COMPLETED,
-                    CandidateStatus.SELECTED,
-                ])
-            ),
-            "selected": select(func.count(Candidate.id)).where(
-                Candidate.status == CandidateStatus.SELECTED
-            ),
+            "applied": _build_q([CandidateStatus.APPLIED, CandidateStatus.ROUND1_REVIEW]),
+            "eligible": _build_q([CandidateStatus.ROUND1_PASSED]),
+            "assessed": _build_q([
+                CandidateStatus.ROUND2_IN_PROGRESS,
+                CandidateStatus.ROUND2_PASSED,
+                CandidateStatus.ROUND2_REJECTED,
+                CandidateStatus.ROUND3_IN_PROGRESS,
+                CandidateStatus.ROUND3_PASSED,
+                CandidateStatus.ROUND3_REJECTED,
+            ]),
+            "interviewed": _build_q([
+                CandidateStatus.INTERVIEW_SCHEDULED,
+                CandidateStatus.INTERVIEW_COMPLETED,
+                CandidateStatus.SELECTED,
+            ]),
+            "selected": _build_q([CandidateStatus.SELECTED]),
         }
 
         result: dict[str, int] = {}
         for stage_key, q in stage_queries.items():
-            q = _apply_filters(q)
             r = await self.db.execute(q)
             result[stage_key] = r.scalar() or 0
 

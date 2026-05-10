@@ -1,85 +1,18 @@
 """Screening routes: Round 1 eligibility filtering."""
 
-from datetime import date, datetime
+from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.filters import apply_candidate_filters
 from app.database import get_db
 from app.dependencies import require_role
 from app.features.candidates.models import Candidate
 from app.core.enums import Role, CandidateStatus
 
 router = APIRouter()
-
-
-def _apply_extra_filters(q, branch, college, passed_out_year, language_choice, search,
-                          name=None,
-                          cgpa_min=None, cgpa_max=None,
-                          has_resume=None, has_govt_id=None,
-                          created_after=None, created_before=None,
-                          passed_out_year_min=None, passed_out_year_max=None,
-                          email_verified=None, phone=None, email=None,
-                          cycle_id=None,
-                          has_phone=None):
-    """Apply common extra filters to a Candidate query."""
-    if name:
-        q = q.where(Candidate.name.ilike(f"%{name}%"))
-    if branch:
-        q = q.where(Candidate.branch.ilike(f"%{branch}%"))
-    if college:
-        q = q.where(Candidate.college.ilike(f"%{college}%"))
-    if passed_out_year:
-        q = q.where(Candidate.passed_out_year == passed_out_year)
-    if language_choice:
-        q = q.where(Candidate.language_choice.ilike(f"%{language_choice}%"))
-    if search:
-        q = q.where(
-            or_(
-                Candidate.name.ilike(f"%{search}%"),
-                Candidate.email.ilike(f"%{search}%"),
-                Candidate.college.ilike(f"%{search}%"),
-            )
-        )
-    if phone:
-        q = q.where(Candidate.phone.ilike(f"%{phone}%"))
-    if email:
-        q = q.where(Candidate.email == email)
-    if cgpa_min is not None:
-        q = q.where(Candidate.cgpa >= cgpa_min)
-    if cgpa_max is not None:
-        q = q.where(Candidate.cgpa <= cgpa_max)
-    if has_resume is not None:
-        if has_resume:
-            q = q.where(Candidate.resume_url.isnot(None))
-        else:
-            q = q.where(Candidate.resume_url.is_(None))
-    if has_govt_id is not None:
-        if has_govt_id:
-            q = q.where(Candidate.govt_id_url.isnot(None))
-        else:
-            q = q.where(Candidate.govt_id_url.is_(None))
-    if has_phone is not None:
-        if has_phone:
-            q = q.where(Candidate.phone.isnot(None))
-        else:
-            q = q.where(Candidate.phone.is_(None))
-    if created_after:
-        dt = datetime.combine(created_after, datetime.min.time())
-        q = q.where(Candidate.created_at >= dt)
-    if created_before:
-        dt = datetime.combine(created_before, datetime.max.time())
-        q = q.where(Candidate.created_at <= dt)
-    if passed_out_year_min is not None:
-        q = q.where(Candidate.passed_out_year >= passed_out_year_min)
-    if passed_out_year_max is not None:
-        q = q.where(Candidate.passed_out_year <= passed_out_year_max)
-    if email_verified is not None:
-        q = q.where(Candidate.email_verified == email_verified)
-    if cycle_id:
-        q = q.where(Candidate.cycle_id == cycle_id)
-    return q
 
 
 @router.post("/run")
@@ -153,8 +86,10 @@ async def run_screening(
         )
 
     # Extra optional filters
-    q = _apply_extra_filters(
-        q, branch, college, passed_out_year, language_choice, search,
+    q = apply_candidate_filters(
+        q,
+        branch=branch, college=college, passed_out_year=passed_out_year,
+        language_choice=language_choice, search=search,
         name=name,
         cgpa_min=cgpa_min, cgpa_max=cgpa_max,
         has_resume=has_resume, has_govt_id=has_govt_id,
@@ -215,8 +150,10 @@ async def pipeline_stats(
 ):
     """Get aggregated candidate counts per pipeline stage with optional extra filters."""
     base = select(Candidate.status, func.count(Candidate.id).label("count"))
-    base = _apply_extra_filters(
-        base, branch, college, passed_out_year, language_choice, search,
+    base = apply_candidate_filters(
+        base,
+        branch=branch, college=college, passed_out_year=passed_out_year,
+        language_choice=language_choice, search=search,
         name=name,
         cgpa_min=cgpa_min, cgpa_max=cgpa_max,
         has_resume=has_resume, has_govt_id=has_govt_id,
@@ -227,20 +164,8 @@ async def pipeline_stats(
         email=email,
         cycle_id=cycle_id,
         has_phone=has_phone,
+        status=status,
     )
-
-    # Apply optional status filter (accepts both raw and display_status values)
-    if status:
-        parsed_status: CandidateStatus | None = None
-        try:
-            parsed_status = CandidateStatus(status.upper())
-        except ValueError:
-            mapped = CandidateStatus.from_display_status(status)
-            if mapped:
-                parsed_status = mapped
-        if parsed_status:
-            base = base.where(Candidate.status == parsed_status)
-
     base = base.group_by(Candidate.status)
 
     res = await db.execute(base)
