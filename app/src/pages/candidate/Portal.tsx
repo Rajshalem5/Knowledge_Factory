@@ -189,6 +189,17 @@ export default function Portal() {
                   {startAssessment.isPending ? 'Starting...' : 'Start Next Assessment'}
                 </Button>
               )}
+              {/* Continue existing active assessment */}
+              {profile.status === 'ROUND2_IN_PROGRESS' && assessments && assessments.length > 0 && (
+                <Button size="sm" onClick={() => navigate('/assessment')}>
+                  Continue Assessment
+                </Button>
+              )}
+              {profile.status === 'ROUND3_IN_PROGRESS' && assessments && assessments.length > 0 && (
+                <Button size="sm" onClick={() => navigate('/assessment')}>
+                  Continue Assessment
+                </Button>
+              )}
             </div>
             {startAssessment.isError && (
               <p className="text-xs text-danger mt-2">
