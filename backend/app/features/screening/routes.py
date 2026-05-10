@@ -4,7 +4,7 @@ from datetime import date, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import func, select, update as sa_update
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -31,7 +31,6 @@ def _apply_extra_filters(q, branch, college, passed_out_year, language_choice, s
     if language_choice:
         q = q.where(Candidate.language_choice.ilike(f"%{language_choice}%"))
     if search:
-        from sqlalchemy import or_
         q = q.where(
             or_(
                 Candidate.name.ilike(f"%{search}%"),
@@ -163,7 +162,6 @@ async def pipeline_stats(
     current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN])),
 ):
     """Get aggregated candidate counts per pipeline stage with optional extra filters."""
-    from sqlalchemy import or_
     base = select(Candidate.status, func.count(Candidate.id).label("count"))
     base = _apply_extra_filters(
         base, branch, college, passed_out_year, language_choice, search,
