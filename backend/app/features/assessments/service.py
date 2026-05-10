@@ -7,7 +7,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.enums import AssessmentRound, AssessmentStatus, CandidateStatus, SubmissionSection
+from app.core.enums import AssessmentRound, AssessmentStatus, CandidateStatus
 from app.features.assessments.models import Assessment, Submission, Score
 from app.features.assessments.schemas import AssessmentStart, SubmissionCreate
 from app.features.candidates.models import Candidate
@@ -98,8 +98,8 @@ class AssessmentService:
         if status_val != AssessmentStatus.IN_PROGRESS:
             raise ValueError("Assessment is not in progress — submissions are only accepted for active assessments")
 
-        # Create submission
-        section = SubmissionSection.CODING if data.section in ("CODING", "coding") else SubmissionSection.MCQ
+        # Create submission — Pydantic has already coerced section to SubmissionSection enum
+        section = data.section
         submission = Submission(
             assessment_id=data.assessment_id,
             section=section,
