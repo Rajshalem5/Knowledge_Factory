@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, Upload, Search, Play, Filter, X, Download } from 'lucide-react';
+import { Users, Upload, Search, Play, Filter, X, Download, FileText, FileX, Phone, PhoneOff } from 'lucide-react';
 import { AppShell } from '../../components/layout/AppShell';
 import { Card, CardHeader, CardTitle, Button, Select, Badge, LoadingState, ErrorState } from '../../components/ui';
 import { DataTable, type Column } from '../../components/ui/DataTable';
@@ -191,6 +191,9 @@ export default function Dashboard() {
       { key: 'language_choice', header: 'Language' },
       { key: 'display_status', header: 'Status' },
       { key: 'email_verified', header: 'Email Verified' },
+      { key: 'resume_url', header: 'Has Resume' },
+      { key: 'govt_id_url', header: 'Has Govt ID' },
+      { key: 'phone', header: 'Phone' },
       { key: 'created_at', header: 'Applied On' },
     ];
     exportToCsv(candidatesData.data as unknown as Record<string, unknown>[], cols, 'candidates.csv');
@@ -205,6 +208,42 @@ export default function Dashboard() {
     },
     { key: 'college', header: 'College', sortable: true },
     { key: 'branch', header: 'Branch', sortable: true },
+    {
+      key: 'resume_url',
+      header: 'Docs',
+      sortable: false,
+      render: (c) => (
+        <div className="flex items-center gap-1.5">
+          {c.resume_url ? (
+            <span className="text-secondary" title="Resume uploaded">
+              <FileText size={14} />
+            </span>
+          ) : (
+            <span className="text-danger/50" title="No resume">
+              <FileX size={14} />
+            </span>
+          )}
+          {c.govt_id_url ? (
+            <span className="text-secondary" title="Govt ID uploaded">
+              <FileText size={14} />
+            </span>
+          ) : (
+            <span className="text-danger/50" title="No govt ID">
+              <FileX size={14} />
+            </span>
+          )}
+          {c.phone ? (
+            <span className="text-secondary" title={`Phone: ${c.phone}`}>
+              <Phone size={14} />
+            </span>
+          ) : (
+            <span className="text-danger/50" title="No phone">
+              <PhoneOff size={14} />
+            </span>
+          )}
+        </div>
+      ),
+    },
     { key: 'passed_out_year', header: 'Passed Out', sortable: true },
     { key: 'language_choice', header: 'Language', sortable: false },
     {
