@@ -2,10 +2,9 @@
 Assessment schemas: Questions, Submissions, Scores.
 """
 
-from uuid import UUID
 from datetime import datetime
-from typing import Any, Optional, Union
-from pydantic import BaseModel, Field
+from typing import Any, Optional
+from pydantic import BaseModel
 
 from app.core.enums import AssessmentRound, AssessmentStatus, SubmissionSection
 
@@ -15,8 +14,8 @@ class AssessmentStart(BaseModel):
 
 
 class AssessmentRead(BaseModel):
-    id: UUID
-    candidate_id: UUID
+    id: str
+    candidate_id: str
     round: AssessmentRound
     status: AssessmentStatus
     questions_json: dict
