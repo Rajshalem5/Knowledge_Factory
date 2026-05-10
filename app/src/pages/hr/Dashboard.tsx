@@ -49,6 +49,8 @@ export default function Dashboard() {
   const [cycleIdFilter, setCycleIdFilter] = useState('');
   const [hasPhoneFilter, setHasPhoneFilter] = useState('');
   const [targetStatusesFilter, setTargetStatusesFilter] = useState('');
+  const [updatedAfterFilter, setUpdatedAfterFilter] = useState('');
+  const [updatedBeforeFilter, setUpdatedBeforeFilter] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [sortBy, setSortBy] = useState('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -76,6 +78,8 @@ export default function Dashboard() {
     email: emailFilter || undefined,
     cycle_id: cycleIdFilter || undefined,
     has_phone: hasPhoneFilter ? hasPhoneFilter === 'true' : undefined,
+    updated_after: updatedAfterFilter || undefined,
+    updated_before: updatedBeforeFilter || undefined,
     sort_by: sortBy,
     sort_order: sortOrder,
   });
@@ -84,7 +88,8 @@ export default function Dashboard() {
     search || branchFilter || collegeFilter || languageChoiceFilter || cgpaMinFilter ||
     cgpaMaxFilter || hasResumeFilter || hasGovtIdFilter || createdAfterFilter ||
     createdBeforeFilter || passedOutYearFilter || passedOutYearMinFilter || passedOutYearMaxFilter ||
-    emailVerifiedFilter || phoneFilter || emailFilter || nameFilter || cycleIdFilter || hasPhoneFilter
+    emailVerifiedFilter || phoneFilter || emailFilter || nameFilter || cycleIdFilter || hasPhoneFilter ||
+    updatedAfterFilter || updatedBeforeFilter
       ? {
           branch: branchFilter || undefined,
           college: collegeFilter || undefined,
@@ -106,6 +111,8 @@ export default function Dashboard() {
           cycle_id: cycleIdFilter || undefined,
           status: statusFilter || undefined,
           has_phone: hasPhoneFilter ? hasPhoneFilter === 'true' : undefined,
+          updated_after: updatedAfterFilter || undefined,
+          updated_before: updatedBeforeFilter || undefined,
           target_statuses: targetStatusesFilter || undefined,
         }
       : undefined
@@ -134,6 +141,8 @@ export default function Dashboard() {
       if (search) p.search = search;
       if (statusFilter) p.status = statusFilter;
       if (hasPhoneFilter) p.has_phone = hasPhoneFilter === 'true';
+      if (updatedAfterFilter) p.updated_after = updatedAfterFilter;
+      if (updatedBeforeFilter) p.updated_before = updatedBeforeFilter;
       return Object.keys(p).length > 0 ? p : undefined;
     })()
   );
@@ -159,6 +168,8 @@ export default function Dashboard() {
     if (nameFilter) params.name = nameFilter;
     if (cycleIdFilter) params.cycle_id = cycleIdFilter;
     if (hasPhoneFilter) params.has_phone = hasPhoneFilter === 'true';
+    if (updatedAfterFilter) params.updated_after = updatedAfterFilter;
+    if (updatedBeforeFilter) params.updated_before = updatedBeforeFilter;
     if (targetStatusesFilter) params.target_statuses = targetStatusesFilter;
     if (search) params.search = search;
     runScreening.mutate(
@@ -480,6 +491,24 @@ export default function Dashboard() {
                       type="date"
                       value={createdBeforeFilter}
                       onChange={e => { setCreatedBeforeFilter(e.target.value); setPage(1); }}
+                      className="w-full px-3 py-1.5 rounded-md bg-[var(--bg-base)] text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/50 border border-[var(--border-ghost)]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-tertiary mb-1">Updated After</label>
+                    <input
+                      type="date"
+                      value={updatedAfterFilter}
+                      onChange={e => { setUpdatedAfterFilter(e.target.value); setPage(1); }}
+                      className="w-full px-3 py-1.5 rounded-md bg-[var(--bg-base)] text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/50 border border-[var(--border-ghost)]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-tertiary mb-1">Updated Before</label>
+                    <input
+                      type="date"
+                      value={updatedBeforeFilter}
+                      onChange={e => { setUpdatedBeforeFilter(e.target.value); setPage(1); }}
                       className="w-full px-3 py-1.5 rounded-md bg-[var(--bg-base)] text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/50 border border-[var(--border-ghost)]"
                     />
                   </div>
