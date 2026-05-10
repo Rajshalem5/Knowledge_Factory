@@ -337,7 +337,7 @@ All docs live under `docs/`:
 1. ~~**`assessment.ts`** — `start()` and `submitSection()` pass `assessmentId` in path~~ ✅ Fixed (commit `95060bd`)
 2. ~~**`assessment.ts`** — `getAssessment()` calls `/api/assessment/{id}`~~ ✅ Fixed — backend route added (commit `8255a7d`)
 3. ~~**`analytics.ts`** — paths missing `/api` prefix~~ ✅ Fixed (commit `33ca4c1`)
-4. **`analytics.ts`** — `getOrganizations()` and `updateOrganization()` call `/api/admin/organizations` which return 501 — intentional (multi-tenancy was removed, endpoints left as stubs)
+4. ~~**`analytics.ts`** — `getOrganizations()` and `updateOrganization()` call `/api/admin/organizations`~~ ✅ Fixed — endpoints now return empty list/no-op instead of 501 (commit `TBD`)
 5. ~~**`candidates.ts`** — `previewBulkUpload()` calls `/bulk-upload/preview`~~ ✅ Fixed — backend route added (commit `e181541`)
 6. ~~**`assessment.ts`** — `getAssessment()` had double `/api` prefix~~ ✅ Fixed (commit `eb7a0df`)
 7. ~~**Backend CandidateStatus (ROUND1_PASSED etc) vs Frontend CandidateStatus (eligible, round1 etc)** — mismatched status enums broke display and status updates~~ ✅ Fixed — added `display_status` property and `from_display_status()` classmethod to `CandidateStatus` enum, added `display_status` field to `CandidateRead` schema, patched frontend components to use `display_status` (commit `d5ba312`)
@@ -354,9 +354,9 @@ All docs live under `docs/`:
 | HR Dashboard "Run Screening" button | ✅ Added | Triggers screening, shows pipeline stats |
 | Candidate Portal "Start Assessment" button | ✅ Added | Starts assessment via API, transitions status, navigates to /assessment |
 
-### Known TODO
-
-- `backend/app/features/auth/routes.py:254` — password reset token generated but email never sent (placeholder only)
+| ### Known TODO
+|
+| - (none — all Phase 1 known issues resolved)
 
 ## Security Notes
 
