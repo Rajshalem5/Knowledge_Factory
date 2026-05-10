@@ -32,8 +32,8 @@ export default function SuperAdminPanel() {
         </div>
       ),
     },
-    { key: 'candidateCount', header: 'Candidates', render: o => <span className="font-mono text-xs">{o.candidateCount}</span> },
-    { key: 'activeHiringCycles', header: 'Active Cycles', render: o => <span className="font-mono text-xs">{o.activeHiringCycles}</span> },
+    { key: 'candidate_count', header: 'Candidates', render: o => <span className="font-mono text-xs">{o.candidate_count}</span> },
+    { key: 'active_hiring_cycles', header: 'Active Cycles', render: o => <span className="font-mono text-xs">{o.active_hiring_cycles}</span> },
     {
       key: 'plan',
       header: 'Plan',
@@ -64,7 +64,7 @@ export default function SuperAdminPanel() {
               </div>
               <div>
                 <p className="text-xs text-tertiary uppercase tracking-architectural">Total Candidates</p>
-                <p className="text-xl font-bold text-on-surface">{orgs.reduce((sum, o) => sum + o.candidateCount, 0).toLocaleString()}</p>
+                <p className="text-xl font-bold text-on-surface">{orgs.reduce((sum, o) => sum + o.candidate_count, 0).toLocaleString()}</p>
               </div>
             </div>
           </Card>
@@ -75,7 +75,7 @@ export default function SuperAdminPanel() {
               </div>
               <div>
                 <p className="text-xs text-tertiary uppercase tracking-architectural">Active Cycles</p>
-                <p className="text-xl font-bold text-on-surface">{orgs.reduce((sum, o) => sum + o.activeHiringCycles, 0)}</p>
+                <p className="text-xl font-bold text-on-surface">{orgs.reduce((sum, o) => sum + o.active_hiring_cycles, 0)}</p>
               </div>
             </div>
           </Card>

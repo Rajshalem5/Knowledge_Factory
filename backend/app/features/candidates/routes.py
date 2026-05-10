@@ -166,7 +166,59 @@ async def bulk_upload_candidates(
     db: AsyncSession = Depends(get_db),
     current_user=Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN])),
 ):
-    """Bulk upload candidates from CSV (preview + save)."""
-    preview = await _process_bulk_upload_csv(file)
-    # TODO: Save valid records to the database
-    return preview
+    """Bulk upload candidates from CSV — validate, preview, and save valid records."""
+    from app.features.candidates.models import Candidate
+    from app.features.hiring_cycles.models import HiringCycle
+    import csv
+    import io
+    import uuid
+
+    if not file:
+        raise HTTPException(status_code=400, detail="No file provided")
+
+    content = await file.read()
+    text = content.decode("utf-8")
+    reader = csv.DictReader(io.StringIO(text))
+    records = list(reader)
+
+    if not records:
+        raise HTTPException(status_code=400, detail="CSV file is empty")
+
+    # Get active hiring cycle
+    cycle_stmt = select(HiringCycle).where(HiringCycle.status == "ACTIVE").limit(1)
+    cycle_res = await db.execute(cycle_stmt)
+    cycle = cycle_res.scalar_one_or_none()
+
+    if not cycle:
+        raise HTTPException(status_code=500, detail="No active hiring cycle")
+
+    saved = 0
+    errors = []
+    for i, row in enumerate(records):
+        try:
+            candidate = Candidate(
+                cycle_id=cycle.id,
+                email=row.get("email", "").strip(),
+                name=row.get("name", "").strip(),
+                college=row.get("college", "").strip(),
+                branch=row.get("branch", "").strip(),
+                cgpa=float(row.get("cgpa", 0)),
+                passed_out_year=int(row.get("passed_out_year", datetime.now().year)),
+                language_choice=row.get("language_choice", "python").strip().lower(),
+                status=CandidateStatus.APPLIED,
+                phone=row.get("phone", "").strip() or None,
+            )
+            db.add(candidate)
+            saved += 1
+        except (ValueError, KeyError) as e:
+            errors.append({"row": i + 2, "error": str(e)})
+
+    if saved > 0:
+        await db.flush()
+
+    return {
+        "batch_id": str(uuid.uuid4())[:8],
+        "total_records": len(records),
+        "saved": saved,
+        "errors": errors,
+    }

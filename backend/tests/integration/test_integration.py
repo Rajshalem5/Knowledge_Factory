@@ -533,7 +533,107 @@ class TestFullPipelineE2E:
         print(f"✓ Pipeline stats: {stats}")
         assert int(stats["stats"].get("ROUND2_PASSED", 0)) >= 1
 
-        print("\n✓ FULL PIPELINE E2E WITH FILTERS PASSED!")
+        print("✓ PIPELINE STATS WITH TARGET STATUSES PASSED!")
+
+
+class TestAnalyticsDashboard:
+    """Test the analytics dashboard endpoint returns all expected fields."""
+
+    async def _auth_headers(self, client: AsyncClient) -> dict:
+        """Returns HR auth headers."""
+        resp = await client.post("/api/auth/login", json={
+            "email": "hr@knowledgefactory.com",
+            "password": "Hr@12345",
+        })
+        assert resp.status_code == 200
+        token = resp.json()["access_token"]
+        return {"Authorization": f"Bearer {token}"}
+
+    async def test_01_dashboard_returns_expected_structure(self, client: AsyncClient):
+        """Test: GET /api/analytics/dashboard returns all new analytics fields."""
+        headers = await self._auth_headers(client)
+        resp = await client.get("/api/analytics/dashboard", headers=headers)
+        assert resp.status_code == 200
+        data = resp.json()
+
+        # Core fields
+        assert "total_candidates" in data
+        assert "selected_count" in data
+        assert "select_rate" in data
+        assert "avg_cgpa" in data
+        assert "status_breakdown" in data
+
+        # New analytics fields (the ones the frontend expects)
+        assert "pass_rate_per_round" in data
+        assert isinstance(data["pass_rate_per_round"], list)
+
+        assert "college_breakdown" in data
+        assert isinstance(data["college_breakdown"], list)
+
+        assert "branch_performance" in data
+        assert isinstance(data["branch_performance"], list)
+
+        assert "proctoring_violations" in data
+        assert isinstance(data["proctoring_violations"], list)
+
+        # Verify field shapes in sub-items
+        for item in data["college_breakdown"]:
+            assert "college" in item
+            assert "count" in item
+            assert "avg_score" in item
+
+        for item in data["branch_performance"]:
+            assert "branch" in item
+            assert "count" in item
+            assert "avg_score" in item
+
+        for item in data["proctoring_violations"]:
+            assert "type" in item
+            assert "count" in item
+
+        for item in data["pass_rate_per_round"]:
+            assert "round" in item
+            assert "pass_rate" in item
+
+        print(f"✓ Dashboard analytics: {len(data['college_breakdown'])} colleges, "
+              f"{len(data['branch_performance'])} branches, "
+              f"{len(data['pass_rate_per_round'])} rounds, "
+              f"{len(data['proctoring_violations'])} violation types")
+
+
+class TestRefreshToken:
+    """Test the refresh token endpoint returns user data."""
+
+    async def test_01_refresh_returns_user_data(self, client: AsyncClient):
+        """Test: POST /api/auth/refresh returns user data alongside access_token."""
+        # Login first to get a refresh cookie
+        login_resp = await client.post("/api/auth/login", json={
+            "email": "hr@knowledgefactory.com",
+            "password": "Hr@12345",
+        })
+        assert login_resp.status_code == 200
+
+        # Get cookies from response
+        cookies = login_resp.cookies
+
+        # Use refresh endpoint with the cookie
+        refresh_resp = await client.post(
+            "/api/auth/refresh",
+            cookies=cookies,
+        )
+        assert refresh_resp.status_code == 200
+        data = refresh_resp.json()
+
+        # Must have access_token AND user object
+        assert "access_token" in data
+        assert "token_type" in data
+        assert "user" in data
+        assert "id" in data["user"]
+        assert "email" in data["user"]
+        assert "name" in data["user"]
+        assert "role" in data["user"]
+
+        print(f"✓ Refresh endpoint returns user data: {data['user']['email']}")
 
 
 if __name__ == "__main__":

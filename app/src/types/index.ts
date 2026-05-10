@@ -48,7 +48,7 @@ export interface Candidate {
 }
 
 export interface AssessmentScore {
-  round: number;
+  round: string;
   score: number;
   maxScore: number;
   completedAt: string;
@@ -64,7 +64,7 @@ export interface ProctoringFlag {
 export interface InterviewFeedback {
   technicalScore: number;
   communicationScore: number;
-  recommendation: 'select' | 'reject';
+  recommendation: 'select' | 'reject' | 'hold';
   notes: string;
   interviewerId: string;
   interviewerName: string;
@@ -118,20 +118,20 @@ export interface AnalyticsData {
 export interface Organization {
   id: string;
   name: string;
-  candidateCount: number;
-  activeHiringCycles: number;
+  candidate_count: number;
+  active_hiring_cycles: number;
   plan: string;
 }
 
 export interface HiringCycle {
   id: string;
   name: string;
-  startDate: string;
-  endDate: string;
+  start_date: string;
+  end_date: string;
   status: 'active' | 'upcoming' | 'completed' | 'cancelled';
-  eligibilityConfig: {
-    minCGPA: number;
-    allowedBranches: string[];
+  eligibility_config: {
+    min_cgpa: number;
+    allowed_branches: string[];
   };
 }
 
