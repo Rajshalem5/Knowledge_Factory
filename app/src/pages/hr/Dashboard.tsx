@@ -265,6 +265,19 @@ export default function Dashboard() {
                 <div className="text-xs text-tertiary uppercase tracking-architectural mb-1">R3 In Progress</div>
                 <p className="text-xl font-bold text-on-surface">{pipelineStats?.stats?.ROUND3_IN_PROGRESS ?? 0}</p>
               </Card>
+              {pipelineStats?.aggregates && (
+                <>
+                  <Card>
+                    <div className="text-xs text-tertiary uppercase tracking-architectural mb-1">Avg CGPA</div>
+                    <p className="text-xl font-bold text-on-surface">{pipelineStats.aggregates.avg_cgpa}</p>
+                  </Card>
+                  <Card>
+                    <div className="text-xs text-tertiary uppercase tracking-architectural mb-1">Completion Rate</div>
+                    <p className="text-xl font-bold text-on-surface">{pipelineStats.aggregates.assessment_completion_rate}%</p>
+                    <p className="text-[10px] text-tertiary mt-0.5">{pipelineStats.aggregates.completed_count} / {pipelineStats.aggregates.completed_count + pipelineStats.aggregates.in_progress_count} completed</p>
+                  </Card>
+                </>
+              )}
               <Card>
                 <div className="text-xs text-tertiary uppercase tracking-architectural mb-1">Interview Scheduled</div>
                 <p className="text-xl font-bold text-on-surface">{pipelineStats?.stats?.INTERVIEW_SCHEDULED ?? 0}</p>
