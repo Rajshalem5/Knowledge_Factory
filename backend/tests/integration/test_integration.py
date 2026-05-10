@@ -613,14 +613,13 @@ class TestRefreshToken:
         })
         assert login_resp.status_code == 200
 
-        # Get cookies from response
-        cookies = login_resp.cookies
+        # Get cookies from response and apply to client
+        refresh_cookie = login_resp.cookies.get("refresh_token")
+        if refresh_cookie:
+            client.cookies.set("refresh_token", refresh_cookie)
 
-        # Use refresh endpoint with the cookie
-        refresh_resp = await client.post(
-            "/api/auth/refresh",
-            cookies=cookies,
-        )
+        # Use refresh endpoint — cookies are automatically sent from client
+        refresh_resp = await client.post("/api/auth/refresh")
         assert refresh_resp.status_code == 200
         data = refresh_resp.json()
 
