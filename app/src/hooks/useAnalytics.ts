@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
-import { analyticsApi } from '../api/analytics';
+import { analyticsApi, type FunnelFilters } from '../api/analytics';
 
-export function useFunnelData(organizationId?: string) {
+export function useFunnelData(filters?: FunnelFilters) {
   return useQuery({
-    queryKey: ['funnel', organizationId],
-    queryFn: () => analyticsApi.getFunnel(organizationId),
+    queryKey: ['funnel', filters],
+    queryFn: () => analyticsApi.getFunnel(filters),
   });
 }
 
