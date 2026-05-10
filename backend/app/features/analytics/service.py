@@ -1,5 +1,6 @@
 """Analytics service: funnel, dashboard, reports."""
 
+from datetime import date, datetime
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,6 +18,18 @@ class AnalyticsService:
         branch: str | None = None,
         college: str | None = None,
         search: str | None = None,
+        passed_out_year: int | None = None,
+        language_choice: str | None = None,
+        cgpa_min: float | None = None,
+        cgpa_max: float | None = None,
+        has_resume: bool | None = None,
+        has_govt_id: bool | None = None,
+        created_after: date | None = None,
+        created_before: date | None = None,
+        passed_out_year_min: int | None = None,
+        passed_out_year_max: int | None = None,
+        email_verified: bool | None = None,
+        phone: str | None = None,
     ) -> FunnelResponse:
         """Get hiring funnel counts with optional filters.
 
@@ -40,6 +53,38 @@ class AnalyticsService:
                         Candidate.college.ilike(f"%{search}%"),
                     )
                 )
+            if passed_out_year:
+                q = q.where(Candidate.passed_out_year == passed_out_year)
+            if language_choice:
+                q = q.where(Candidate.language_choice.ilike(f"%{language_choice}%"))
+            if phone:
+                q = q.where(Candidate.phone.ilike(f"%{phone}%"))
+            if cgpa_min is not None:
+                q = q.where(Candidate.cgpa >= cgpa_min)
+            if cgpa_max is not None:
+                q = q.where(Candidate.cgpa <= cgpa_max)
+            if has_resume is not None:
+                if has_resume:
+                    q = q.where(Candidate.resume_url.isnot(None))
+                else:
+                    q = q.where(Candidate.resume_url.is_(None))
+            if has_govt_id is not None:
+                if has_govt_id:
+                    q = q.where(Candidate.govt_id_url.isnot(None))
+                else:
+                    q = q.where(Candidate.govt_id_url.is_(None))
+            if created_after:
+                dt_after = datetime.combine(created_after, datetime.min.time())
+                q = q.where(Candidate.created_at >= dt_after)
+            if created_before:
+                dt_before = datetime.combine(created_before, datetime.max.time())
+                q = q.where(Candidate.created_at <= dt_before)
+            if passed_out_year_min is not None:
+                q = q.where(Candidate.passed_out_year >= passed_out_year_min)
+            if passed_out_year_max is not None:
+                q = q.where(Candidate.passed_out_year <= passed_out_year_max)
+            if email_verified is not None:
+                q = q.where(Candidate.email_verified == email_verified)
             return q
 
         stage_queries = {
