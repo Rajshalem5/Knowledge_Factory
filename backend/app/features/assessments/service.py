@@ -94,6 +94,11 @@ class AssessmentService:
         if not assessment or str(assessment.candidate_id) != str(candidate_id):
             raise ValueError("Assessment not found or access denied")
 
+        # Validate assessment is in progress
+        status_val = AssessmentStatus(assessment.status) if isinstance(assessment.status, str) else assessment.status
+        if status_val != AssessmentStatus.IN_PROGRESS:
+            raise ValueError("Assessment is not in progress — submissions are only accepted for active assessments")
+
         # Create submission
         section = SubmissionSection.CODING if data.section in ("CODING", "coding") else SubmissionSection.MCQ
         submission = Submission(
