@@ -1,7 +1,6 @@
 """Candidate management routes."""
 
 from datetime import date, datetime
-from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -80,7 +79,7 @@ async def get_my_profile(db: AsyncSession = Depends(get_db), current_user = Depe
 
 
 @router.get("/{candidate_id}", response_model=CandidateRead)
-async def get_candidate(candidate_id: UUID, db: AsyncSession = Depends(get_db), current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN, Role.INTERVIEWER]))):
+async def get_candidate(candidate_id: str, db: AsyncSession = Depends(get_db), current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN, Role.INTERVIEWER]))):
     service = CandidateService(db)
     candidate = await service.get_candidate(candidate_id)
     if not candidate:
@@ -89,7 +88,7 @@ async def get_candidate(candidate_id: UUID, db: AsyncSession = Depends(get_db), 
 
 
 @router.patch("/{candidate_id}/status", response_model=CandidateRead)
-async def update_candidate_status(candidate_id: UUID, update: dict, db: AsyncSession = Depends(get_db), current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN]))):
+async def update_candidate_status(candidate_id: str, update: dict, db: AsyncSession = Depends(get_db), current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN]))):
     from app.features.candidates.models import Candidate
     raw_status = update["status"]
     # Try parsing as full backend enum first, then as simplified display status

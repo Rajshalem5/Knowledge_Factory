@@ -1,7 +1,6 @@
 """Screening routes: Round 1 eligibility filtering."""
 
 from datetime import date, datetime
-from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, or_, select

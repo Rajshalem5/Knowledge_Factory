@@ -54,7 +54,7 @@ async def create_cycle(body: dict, db: AsyncSession = Depends(get_db), current_u
 
 @router.patch("/{cycle_id}")
 async def update_cycle(cycle_id: UUID, body: dict, db: AsyncSession = Depends(get_db), current_user = Depends(require_role([Role.ADMIN, Role.SUPERADMIN]))):
-    stmt = select(HiringCycle).where(HiringCycle.id == cycle_id)
+    stmt = select(HiringCycle).where(HiringCycle.id == str(cycle_id))
     res = await db.execute(stmt)
     cycle = res.scalar_one_or_none()
     if not cycle:
