@@ -41,6 +41,7 @@ export interface Candidate {
   interview_feedback?: InterviewFeedback;
   created_at: string;
   phone?: string;
+  cycle_id?: string;
   passed_out_year: number;
   language_choice: string;
 }
