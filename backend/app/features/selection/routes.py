@@ -1,7 +1,5 @@
 """Selection routes: final hiring decisions."""
 
-from uuid import UUID
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,7 +13,7 @@ router = APIRouter()
 
 
 @router.post("/candidates/{candidate_id}/select")
-async def select_candidate(candidate_id: UUID, db: AsyncSession = Depends(get_db), current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN]))):
+async def select_candidate(candidate_id: str, db: AsyncSession = Depends(get_db), current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN]))):
     """Select a candidate — moves them to SELECTED status."""
     stmt = select(Candidate).where(Candidate.id == str(candidate_id))
     res = await db.execute(stmt)
@@ -39,7 +37,7 @@ async def bulk_select(bodies: list[dict], db: AsyncSession = Depends(get_db), cu
     """Bulk select candidates."""
     results = []
     for body in bodies:
-        cid = str(UUID(body["candidateId"]))
+        cid = body["candidateId"]
         stmt = select(Candidate).where(Candidate.id == cid)
         res = await db.execute(stmt)
         c = res.scalar_one_or_none()
@@ -53,7 +51,7 @@ async def bulk_select(bodies: list[dict], db: AsyncSession = Depends(get_db), cu
 
 
 @router.post("/candidates/{candidate_id}/reject", status_code=status.HTTP_200_OK)
-async def reject_candidate(candidate_id: UUID, reason: str | None = None, db: AsyncSession = Depends(get_db), current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN]))):
+async def reject_candidate(candidate_id: str, reason: str | None = None, db: AsyncSession = Depends(get_db), current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN]))):
     """Reject a candidate."""
     stmt = select(Candidate).where(Candidate.id == str(candidate_id))
     res = await db.execute(stmt)
