@@ -170,7 +170,8 @@ export default function Portal() {
                 <p className="text-xs text-on-surface-variant mt-1">
                   {profile.display_status === 'applied' && 'Your application is being reviewed for eligibility.'}
                   {profile.display_status === 'eligible' && 'You are eligible! Start your assessment now.'}
-                  {(profile.status === 'ROUND2_PASSED' || profile.status === 'ROUND3_PASSED') && 'You passed! Start the next round assessment.'}
+                  {profile.status === 'ROUND2_PASSED' && 'You passed Round 1! Start Round 2 assessment.'}
+                  {profile.status === 'ROUND3_PASSED' && 'You passed the assessments! Awaiting interview scheduling by HR.'}
                   {(profile.display_status === 'round1' && profile.status !== 'ROUND2_PASSED') && 'Your Round 1 assessment is in progress. Continue coding.'}
                   {(profile.display_status === 'round2' && profile.status !== 'ROUND3_PASSED') && 'Your Round 2 assessment is in progress. Continue working.'}
                   {profile.display_status === 'round3' && 'Your application is in the final round.'}
@@ -183,12 +184,17 @@ export default function Portal() {
                 </Button>
               )}
               {/* Show button for next rounds after completing previous assessment */}
-              {(profile.status === 'ROUND2_PASSED' || profile.status === 'ROUND3_PASSED') && (
+              {profile.status === 'ROUND2_PASSED' && (
                 <Button size="sm" onClick={handleStartAssessment} disabled={startAssessment.isPending}>
                   {startAssessment.isPending ? 'Starting...' : 'Start Next Assessment'}
                 </Button>
               )}
             </div>
+            {startAssessment.isError && (
+              <p className="text-xs text-danger mt-2">
+                Failed to start assessment: {(startAssessment.error as Error)?.message || 'Unknown error'}
+              </p>
+            )}
           </div>
         )}
       </div>
