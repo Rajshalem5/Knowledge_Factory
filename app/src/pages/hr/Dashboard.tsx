@@ -69,7 +69,11 @@ export default function Dashboard() {
     sort_order: sortOrder,
   });
 
-  const { data: funnelData, isLoading: funnelLoading } = useFunnelData();
+  const { data: funnelData, isLoading: funnelLoading } = useFunnelData(
+    search || branchFilter || collegeFilter
+      ? { branch: branchFilter || undefined, college: collegeFilter || undefined, search: search || undefined }
+      : undefined
+  );
   const runScreening = useRunScreening();
   const { data: pipelineStats } = usePipelineStats(
     (() => {

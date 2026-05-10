@@ -1,6 +1,6 @@
 """Analytics service: funnel, dashboard, reports."""
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.enums import CandidateStatus
@@ -12,23 +12,67 @@ class AnalyticsService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def get_hiring_funnel(self) -> FunnelResponse:
-        base = select(func.count(Candidate.id))
-        res = await self.db.execute(base)
-        applied = res.scalar() or 0
+    async def get_hiring_funnel(
+        self,
+        branch: str | None = None,
+        college: str | None = None,
+        search: str | None = None,
+    ) -> FunnelResponse:
+        """Get hiring funnel counts with optional filters.
 
-        stages = {
-            "eligible": [CandidateStatus.ROUND1_REVIEW, CandidateStatus.ROUND1_PASSED],
-            "assessed": [CandidateStatus.ROUND2_IN_PROGRESS, CandidateStatus.ROUND2_PASSED, CandidateStatus.ROUND2_REJECTED],
-            "interviewed": [CandidateStatus.INTERVIEW_COMPLETED, CandidateStatus.SELECTED],
-            "selected": [CandidateStatus.SELECTED],
+        Stages:
+          applied    = APPLIED + ROUND1_REVIEW (awaiting screening decision)
+          eligible   = ROUND1_PASSED (passed screening)
+          assessed   = ROUND2_IN_PROGRESS + ROUND2_PASSED + ROUND2_REJECTED
+          interviewed = INTERVIEW_COMPLETED + SELECTED
+          selected   = SELECTED
+        """
+        def _apply_filters(q):
+            if branch:
+                q = q.where(Candidate.branch.ilike(f"%{branch}%"))
+            if college:
+                q = q.where(Candidate.college.ilike(f"%{college}%"))
+            if search:
+                q = q.where(
+                    or_(
+                        Candidate.name.ilike(f"%{search}%"),
+                        Candidate.email.ilike(f"%{search}%"),
+                        Candidate.college.ilike(f"%{search}%"),
+                    )
+                )
+            return q
+
+        stage_queries = {
+            "applied": select(func.count(Candidate.id)).where(
+                Candidate.status.in_([CandidateStatus.APPLIED, CandidateStatus.ROUND1_REVIEW])
+            ),
+            "eligible": select(func.count(Candidate.id)).where(
+                Candidate.status == CandidateStatus.ROUND1_PASSED
+            ),
+            "assessed": select(func.count(Candidate.id)).where(
+                Candidate.status.in_([
+                    CandidateStatus.ROUND2_IN_PROGRESS,
+                    CandidateStatus.ROUND2_PASSED,
+                    CandidateStatus.ROUND2_REJECTED,
+                ])
+            ),
+            "interviewed": select(func.count(Candidate.id)).where(
+                Candidate.status.in_([
+                    CandidateStatus.INTERVIEW_COMPLETED,
+                    CandidateStatus.SELECTED,
+                ])
+            ),
+            "selected": select(func.count(Candidate.id)).where(
+                Candidate.status == CandidateStatus.SELECTED
+            ),
         }
 
-        result = {"applied": applied, "eligible": 0, "assessed": 0, "interviewed": 0, "selected": 0}
-        for stage_key, statuses in stages.items():
-            q = select(func.count(Candidate.id)).where(Candidate.status.in_(statuses))
+        result: dict[str, int] = {}
+        for stage_key, q in stage_queries.items():
+            q = _apply_filters(q)
             r = await self.db.execute(q)
             result[stage_key] = r.scalar() or 0
+
         return FunnelResponse(**result)
 
     async def get_dashboard(self) -> DashboardResponse:

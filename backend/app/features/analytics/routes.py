@@ -1,6 +1,6 @@
 """Analytics routes."""
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -13,9 +13,15 @@ router = APIRouter()
 
 
 @router.get("/funnel", response_model=FunnelResponse)
-async def get_hiring_funnel(db: AsyncSession = Depends(get_db), current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN]))):
+async def get_hiring_funnel(
+    branch: str | None = Query(None, description="Optional filter: only candidates from this branch"),
+    college: str | None = Query(None, description="Optional filter: only candidates from this college"),
+    search: str | None = Query(None, description="Optional search term (name, email, college)"),
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN])),
+):
     service = AnalyticsService(db)
-    return await service.get_hiring_funnel()
+    return await service.get_hiring_funnel(branch=branch, college=college, search=search)
 
 
 @router.get("/dashboard", response_model=DashboardResponse)
