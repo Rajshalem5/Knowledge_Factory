@@ -70,8 +70,26 @@ export default function Dashboard() {
   });
 
   const { data: funnelData, isLoading: funnelLoading } = useFunnelData(
-    search || branchFilter || collegeFilter
-      ? { branch: branchFilter || undefined, college: collegeFilter || undefined, search: search || undefined }
+    search || branchFilter || collegeFilter || languageChoiceFilter || cgpaMinFilter ||
+    cgpaMaxFilter || hasResumeFilter || hasGovtIdFilter || createdAfterFilter ||
+    createdBeforeFilter || passedOutYearMinFilter || passedOutYearMaxFilter ||
+    emailVerifiedFilter || phoneFilter
+      ? {
+          branch: branchFilter || undefined,
+          college: collegeFilter || undefined,
+          search: search || undefined,
+          language_choice: languageChoiceFilter || undefined,
+          cgpa_min: cgpaMinFilter ? parseFloat(cgpaMinFilter) : undefined,
+          cgpa_max: cgpaMaxFilter ? parseFloat(cgpaMaxFilter) : undefined,
+          has_resume: hasResumeFilter ? hasResumeFilter === 'true' : undefined,
+          has_govt_id: hasGovtIdFilter ? hasGovtIdFilter === 'true' : undefined,
+          created_after: createdAfterFilter || undefined,
+          created_before: createdBeforeFilter || undefined,
+          passed_out_year_min: passedOutYearMinFilter ? parseInt(passedOutYearMinFilter, 10) : undefined,
+          passed_out_year_max: passedOutYearMaxFilter ? parseInt(passedOutYearMaxFilter, 10) : undefined,
+          email_verified: emailVerifiedFilter ? emailVerifiedFilter === 'true' : undefined,
+          phone: phoneFilter || undefined,
+        }
       : undefined
   );
   const runScreening = useRunScreening();
