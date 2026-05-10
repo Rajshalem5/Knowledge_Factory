@@ -33,6 +33,7 @@ export function useSubmitSection() {
     mutationFn: (data: SubmissionCreateRequest) => assessmentApi.submitSection(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['assessment'] });
+      queryClient.invalidateQueries({ queryKey: ['candidate-me'] });
     },
   });
 }
