@@ -158,7 +158,9 @@ class AssessmentService:
                 CandidateStatus.ROUND3_PASSED,
             ),
         }
-        transition = round_transitions.get(assessment.round)
+        # Normalize round value (SQLite returns enums as raw strings)
+        round_val = AssessmentRound(assessment.round) if isinstance(assessment.round, str) else assessment.round
+        transition = round_transitions.get(round_val)
         if transition:
             expected_status, next_status = transition
             current = CandidateStatus(candidate.status) if isinstance(candidate.status, str) else candidate.status
