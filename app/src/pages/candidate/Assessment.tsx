@@ -29,6 +29,7 @@ export default function Assessment() {
   const [topic, setTopic]               = useState('arrays and loops');
   const [evalResult, setEvalResult]     = useState<EvaluationResponse | null>(null);
   const [runOutput, setRunOutput]       = useState<{ status: string; output: string } | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { question, isGenerating, generate } = useQuestion();
   const { runCode, isExecuting, isEvaluating } = useCodeExecution();
@@ -89,6 +90,7 @@ export default function Assessment() {
   // SUBMIT — evaluate against ALL test cases (public + private) via question id
   const handleSubmit = async () => {
     if (!question) return;
+    setIsSubmitting(true);
     setRunOutput(null);
     setEvalResult(null);
     try {
@@ -108,6 +110,8 @@ export default function Assessment() {
       }
     } catch (e: unknown) {
       setRunOutput({ status: 'ERROR', output: (e as Error)?.message || 'Evaluation failed' });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -119,7 +123,7 @@ export default function Assessment() {
       {/* ── Header ── */}
       <div className="flex items-center justify-between px-4 h-12 bg-[var(--bg-layer1)] shrink-0">
         <div className="flex items-center gap-3">
-          <Badge variant="warning">Round 2</Badge>
+          <Badge variant="warning">Round {activeAssessment?.round === 'ROUND_3' ? '3' : '2'}</Badge>
           <span className="text-sm font-medium text-on-surface">Coding Assessment</span>
         </div>
         <Timer initialSeconds={3600} className="!text-base" />
@@ -130,7 +134,7 @@ export default function Assessment() {
             {isExecuting ? 'Running...' : 'Run'}
           </Button>
           <Button size="sm" onClick={handleSubmit}
-            isLoading={isEvaluating} disabled={!question}>
+            isLoading={isSubmitting} disabled={!question}>
             <Send size={12} />
             Submit
           </Button>
