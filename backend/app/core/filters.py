@@ -35,6 +35,7 @@ def apply_candidate_filters(
     has_govt_id: bool | None = None,
     has_phone: bool | None = None,
     has_assessment: bool | None = None,
+    has_interview_feedback: bool | None = None,
     created_after: date | None = None,
     created_before: date | None = None,
     passed_out_year_min: int | None = None,
@@ -114,6 +115,15 @@ def apply_candidate_filters(
         from app.features.assessments.models import Assessment
         subq = select(Assessment.candidate_id).distinct()
         if has_assessment:
+            query = query.where(Candidate.id.in_(subq))
+        else:
+            query = query.where(Candidate.id.notin_(subq))
+
+    # Interview feedback filter — find candidates who have (or don't have) interview feedback records
+    if has_interview_feedback is not None:
+        from app.features.interviews.models import InterviewFeedback
+        subq = select(InterviewFeedback.candidate_id).distinct()
+        if has_interview_feedback:
             query = query.where(Candidate.id.in_(subq))
         else:
             query = query.where(Candidate.id.notin_(subq))
