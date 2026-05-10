@@ -1,12 +1,13 @@
 """Candidate management service."""
 
-from datetime import date, datetime
+from datetime import date
 from uuid import UUID
 
-from sqlalchemy import select, func, or_
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.enums import CandidateStatus
+from app.core.filters import apply_candidate_filters
 from app.features.candidates.models import Candidate
 from app.features.candidates.schemas import CandidateRead
 
@@ -40,61 +41,23 @@ class CandidateService:
 
         if status:
             query = query.where(Candidate.status == status)
-        if search:
-            query = query.where(
-                or_(
-                    Candidate.name.ilike(f"%{search}%"),
-                    Candidate.email.ilike(f"%{search}%"),
-                    Candidate.college.ilike(f"%{search}%"),
-                )
-            )
-        if name:
-            query = query.where(Candidate.name.ilike(f"%{name}%"))
-        if branch:
-            query = query.where(Candidate.branch.ilike(f"%{branch}%"))
-        if college:
-            query = query.where(Candidate.college.ilike(f"%{college}%"))
-        if cgpa_min is not None:
-            query = query.where(Candidate.cgpa >= cgpa_min)
-        if cgpa_max is not None:
-            query = query.where(Candidate.cgpa <= cgpa_max)
-        if passed_out_year:
-            query = query.where(Candidate.passed_out_year == passed_out_year)
-        if language_choice:
-            query = query.where(Candidate.language_choice.ilike(f"%{language_choice}%"))
-        if has_resume is not None:
-            if has_resume:
-                query = query.where(Candidate.resume_url.isnot(None))
-            else:
-                query = query.where(Candidate.resume_url.is_(None))
-        if has_govt_id is not None:
-            if has_govt_id:
-                query = query.where(Candidate.govt_id_url.isnot(None))
-            else:
-                query = query.where(Candidate.govt_id_url.is_(None))
-        if has_phone is not None:
-            if has_phone:
-                query = query.where(Candidate.phone.isnot(None))
-            else:
-                query = query.where(Candidate.phone.is_(None))
-        if created_after:
-            dt = datetime.combine(created_after, datetime.min.time())
-            query = query.where(Candidate.created_at >= dt)
-        if created_before:
-            dt = datetime.combine(created_before, datetime.max.time())
-            query = query.where(Candidate.created_at <= dt)
-        if passed_out_year_min is not None:
-            query = query.where(Candidate.passed_out_year >= passed_out_year_min)
-        if passed_out_year_max is not None:
-            query = query.where(Candidate.passed_out_year <= passed_out_year_max)
-        if email_verified is not None:
-            query = query.where(Candidate.email_verified == email_verified)
-        if phone:
-            query = query.where(Candidate.phone.ilike(f"%{phone}%"))
-        if email:
-            query = query.where(Candidate.email == email)
-        if cycle_id:
-            query = query.where(Candidate.cycle_id == cycle_id)
+
+        query = apply_candidate_filters(
+            query,
+            search=search, name=name,
+            branch=branch, college=college,
+            cgpa_min=cgpa_min, cgpa_max=cgpa_max,
+            passed_out_year=passed_out_year,
+            language_choice=language_choice,
+            has_resume=has_resume, has_govt_id=has_govt_id,
+            has_phone=has_phone,
+            created_after=created_after, created_before=created_before,
+            passed_out_year_min=passed_out_year_min,
+            passed_out_year_max=passed_out_year_max,
+            email_verified=email_verified,
+            phone=phone, email=email,
+            cycle_id=cycle_id,
+        )
 
         count_q = select(func.count()).select_from(query.subquery())
         count_result = await self.db.execute(count_q)
@@ -165,7 +128,7 @@ class CandidateService:
         allowed = valid_transitions.get(current, set())
 
         if new_status not in allowed:
-            raise ValueError(f"Invalid transition: {current.value} → {new_status.value}")
+            raise ValueError(f"Invalid transition: {current.value} \u2192 {new_status.value}")
 
         candidate.status = new_status.value
         await self.db.flush()
