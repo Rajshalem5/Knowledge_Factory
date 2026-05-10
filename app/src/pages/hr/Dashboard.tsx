@@ -206,6 +206,7 @@ export default function Dashboard() {
     { key: 'college', header: 'College', sortable: true },
     { key: 'branch', header: 'Branch', sortable: true },
     { key: 'passed_out_year', header: 'Passed Out', sortable: true },
+    { key: 'language_choice', header: 'Language', sortable: false },
     {
       key: 'cgpa',
       header: 'CGPA',
