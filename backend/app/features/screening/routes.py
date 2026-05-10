@@ -104,15 +104,22 @@ async def run_screening(
     email: str | None = Query(None, description="Filter candidates by exact email address"),
     cycle_id: str | None = Query(None, description="Filter candidates by hiring cycle ID"),
     has_phone: bool | None = Query(None, description="Filter by whether candidate has provided a phone number"),
+    target_statuses: str | None = Query(None, description="Comma-separated list of candidate statuses to screen (default: APPLIED). "
+                                        "Useful for re-screening candidates in e.g. 'ROUND1_REVIEW' after changing eligibility criteria."),
     db: AsyncSession = Depends(get_db), current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN]))):
     """
     Auto-screen candidates based on hiring cycle config.
-    Candidates meeting CGPA/branch criteria transition from APPLIED to ROUND1_PASSED.
+    Candidates meeting CGPA/branch criteria transition to ROUND1_PASSED.
     Others go to ROUND1_REJECTED.
 
-    Supports optional extra filtering (branch, college, passed_out_year, language_choice,
-    has_resume, has_govt_id, created_after, created_before, phone) and
-    min_cgpa_override to run targeted screening rounds.
+    By default, screens only APPLIED candidates. Use `target_statuses` to
+    target specific statuses (e.g. 'ROUND1_REVIEW' for re-screening after
+    eligibility criteria changes).
+
+    Supports optional extra filtering (branch, college, passed_out_year,
+    language_choice, has_resume, has_govt_id, has_phone, created_after,
+    created_before, phone, email, name, cgpa_min/max, passed_out_year_min/max,
+    email_verified, cycle_id) and min_cgpa_override for targeted screening rounds.
     """
     # Get the active cycle
     from app.features.hiring_cycles.models import HiringCycle
@@ -127,9 +134,23 @@ async def run_screening(
     min_cgpa = float(min_cgpa_override) if min_cgpa_override is not None else float(cfg.get("min_cgpa", 6.0))
     allowed_branches = cfg.get("allowed_branches", [])
 
-    q = select(Candidate).where(
-        Candidate.status == CandidateStatus.APPLIED,
-    )
+    # Determine which statuses to target for screening
+    if target_statuses:
+        target_list = [s.strip().upper() for s in target_statuses.split(",")]
+        parsed_statuses = []
+        for raw in target_list:
+            try:
+                parsed_statuses.append(CandidateStatus(raw))
+            except ValueError:
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Invalid target_status: '{raw}'. Valid values: {[s.value for s in CandidateStatus]}",
+                )
+        q = select(Candidate).where(Candidate.status.in_(parsed_statuses))
+    else:
+        q = select(Candidate).where(
+            Candidate.status == CandidateStatus.APPLIED,
+        )
 
     # Extra optional filters
     q = _apply_extra_filters(
