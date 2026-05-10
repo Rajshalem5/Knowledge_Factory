@@ -33,6 +33,7 @@ class AnalyticsService:
         phone: str | None = None,
         email: str | None = None,
         cycle_id: str | None = None,
+        status: str | None = None,
     ) -> FunnelResponse:
         """Get hiring funnel counts with optional filters.
 
@@ -94,6 +95,18 @@ class AnalyticsService:
                 q = q.where(Candidate.email_verified == email_verified)
             if cycle_id:
                 q = q.where(Candidate.cycle_id == cycle_id)
+            # Apply optional status filter (accepts both raw and display_status values)
+            if status:
+                from app.core.enums import CandidateStatus
+                parsed_status: CandidateStatus | None = None
+                try:
+                    parsed_status = CandidateStatus(status.upper())
+                except ValueError:
+                    mapped = CandidateStatus.from_display_status(status)
+                    if mapped:
+                        parsed_status = mapped
+                if parsed_status:
+                    q = q.where(Candidate.status == parsed_status)
             return q
 
         stage_queries = {

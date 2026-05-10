@@ -37,6 +37,7 @@ export interface ScreeningFilters {
   phone?: string;
   email?: string;
   cycle_id?: string;
+  status?: string;
 }
 
 export const screeningApi = {

@@ -101,6 +101,7 @@ export default function Dashboard() {
           phone: phoneFilter || undefined,
           email: emailFilter || undefined,
           cycle_id: cycleIdFilter || undefined,
+          status: statusFilter || undefined,
         }
       : undefined
   );
@@ -126,6 +127,7 @@ export default function Dashboard() {
       if (emailFilter) p.email = emailFilter;
       if (nameFilter) p.name = nameFilter;
       if (search) p.search = search;
+      if (statusFilter) p.status = statusFilter;
       return Object.keys(p).length > 0 ? p : undefined;
     })()
   );
