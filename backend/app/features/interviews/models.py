@@ -10,6 +10,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.enums import InterviewRecommendation
 from app.database import Base
 
+if TYPE_CHECKING:
+    from app.features.auth.models import User
+
 
 class InterviewFeedback(Base):
     __tablename__ = "interview_feedback"
@@ -26,3 +29,4 @@ class InterviewFeedback(Base):
     submitted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
 
     candidate: Mapped["Candidate"] = relationship(back_populates="interview_feedback", lazy="selectin")
+    interviewer: Mapped["User | None"] = relationship(foreign_keys=[interviewer_id], lazy="selectin")

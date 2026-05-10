@@ -32,5 +32,5 @@ class SubmissionCreate(BaseModel):
     assessment_id: str
     section: SubmissionSection
     content: dict # MCQ answers or Code string
-    time_spent_seconds: int
+    time_spent_seconds: int = 0
 
