@@ -220,13 +220,16 @@ async def forgot_password(data: ForgotPasswordRequest, db: AsyncSession = Depend
 
     if user:
         from app.core.security import create_access_token
+        from app.integrations.email import send_password_reset_email
         # Generate password reset token (would normally send via email)
         reset_token = create_access_token(
             subject=str(user.id),
             email=user.email,
-            role=user.role + "_RESET"
+            role=user.role + "_RESET",
+            token_type="password_reset",
         )
-        # TODO: Send reset_token via email
+        # Send reset token via email
+        await send_password_reset_email(to=user.email, reset_token=reset_token)
         return {"message": "If email exists, a reset link has been sent."}
     
     # Don't reveal if email exists
