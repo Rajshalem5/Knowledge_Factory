@@ -149,6 +149,7 @@ export default function Dashboard() {
     if (phoneFilter) params.phone = phoneFilter;
     if (emailFilter) params.email = emailFilter;
     if (nameFilter) params.name = nameFilter;
+    if (cycleIdFilter) params.cycle_id = cycleIdFilter;
     if (search) params.search = search;
     runScreening.mutate(
       Object.keys(params).length > 0 ? params : undefined
