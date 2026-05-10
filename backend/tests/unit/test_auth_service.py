@@ -29,7 +29,7 @@ async def test_authenticate_user_success():
     
     # Mock the DB result
     mock_result = MagicMock()
-    mock_result.scalar_one_or_none.return_value = mock_user
+    mock_result.scalars.return_value.first.return_value = mock_user
     mock_db.execute.return_value = mock_result
     
     login_data = LoginRequest(email="test@example.com", password=password)
@@ -39,8 +39,10 @@ async def test_authenticate_user_success():
     
     # Assert
     assert authenticated_user is not None
-    assert authenticated_user.email == "test@example.com"
-    assert authenticated_user.id == "user-id"
+    user, is_candidate = authenticated_user
+    assert user.email == "test@example.com"
+    assert user.id == "user-id"
+    assert is_candidate is False
 
 @pytest.mark.asyncio
 async def test_authenticate_user_failure():
@@ -50,7 +52,7 @@ async def test_authenticate_user_failure():
     
     # Mock the DB result (user not found)
     mock_result = MagicMock()
-    mock_result.scalar_one_or_none.return_value = None
+    mock_result.scalars.return_value.first.return_value = None
     mock_db.execute.return_value = mock_result
     
     login_data = LoginRequest(email="wrong@example.com", password="any")
