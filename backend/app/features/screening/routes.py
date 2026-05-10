@@ -16,12 +16,15 @@ router = APIRouter()
 
 
 def _apply_extra_filters(q, branch, college, passed_out_year, language_choice, search,
+                          name=None,
                           cgpa_min=None, cgpa_max=None,
                           has_resume=None, has_govt_id=None,
                           created_after=None, created_before=None,
                           passed_out_year_min=None, passed_out_year_max=None,
                           email_verified=None, phone=None, email=None):
     """Apply common extra filters to a Candidate query."""
+    if name:
+        q = q.where(Candidate.name.ilike(f"%{name}%"))
     if branch:
         q = q.where(Candidate.branch.ilike(f"%{branch}%"))
     if college:
@@ -79,6 +82,7 @@ async def run_screening(
     language_choice: str | None = Query(None, description="Optional filter: only screen candidates with this language choice"),
     min_cgpa_override: float | None = Query(None, ge=0.0, le=10.0, description="Override the cycle's min_cgpa threshold"),
     search: str | None = Query(None, description="Optional search term (name, email, college)"),
+    name: str | None = Query(None, description="Optional filter: only screen candidates matching this name"),
     cgpa_min: float | None = Query(None, ge=0.0, le=10.0, description="Optional min CGPA filter"),
     cgpa_max: float | None = Query(None, ge=0.0, le=10.0, description="Optional max CGPA filter"),
     has_resume: bool | None = Query(None, description="Filter by whether candidate has uploaded a resume"),
@@ -120,6 +124,7 @@ async def run_screening(
     # Extra optional filters
     q = _apply_extra_filters(
         q, branch, college, passed_out_year, language_choice, search,
+        name=name,
         cgpa_min=cgpa_min, cgpa_max=cgpa_max,
         has_resume=has_resume, has_govt_id=has_govt_id,
         created_after=created_after, created_before=created_before,
@@ -159,6 +164,7 @@ async def pipeline_stats(
     cgpa_min: float | None = Query(None, ge=0.0, le=10.0, description="Optional min CGPA filter"),
     cgpa_max: float | None = Query(None, ge=0.0, le=10.0, description="Optional max CGPA filter"),
     search: str | None = Query(None, description="Optional search term (name, email, college)"),
+    name: str | None = Query(None, description="Optional filter by name"),
     has_resume: bool | None = Query(None, description="Filter by whether candidate has uploaded a resume"),
     has_govt_id: bool | None = Query(None, description="Filter by whether candidate has uploaded govt ID"),
     created_after: date | None = Query(None, description="Filter candidates created after this date (ISO format)"),
@@ -175,6 +181,7 @@ async def pipeline_stats(
     base = select(Candidate.status, func.count(Candidate.id).label("count"))
     base = _apply_extra_filters(
         base, branch, college, passed_out_year, language_choice, search,
+        name=name,
         cgpa_min=cgpa_min, cgpa_max=cgpa_max,
         has_resume=has_resume, has_govt_id=has_govt_id,
         created_after=created_after, created_before=created_before,

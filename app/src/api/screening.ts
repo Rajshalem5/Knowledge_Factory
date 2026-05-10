@@ -24,6 +24,7 @@ export interface ScreeningFilters {
   language_choice?: string;
   min_cgpa_override?: number;
   search?: string;
+  name?: string;
   cgpa_min?: number;
   cgpa_max?: number;
   has_resume?: boolean;

@@ -18,6 +18,7 @@ async def get_hiring_funnel(
     branch: str | None = Query(None, description="Optional filter: only candidates from this branch"),
     college: str | None = Query(None, description="Optional filter: only candidates from this college"),
     search: str | None = Query(None, description="Optional search term (name, email, college)"),
+    name: str | None = Query(None, description="Optional filter: only candidates matching this name"),
     passed_out_year: int | None = Query(None, description="Optional filter: only candidates from this passed-out year"),
     language_choice: str | None = Query(None, description="Optional filter: only candidates with this language choice"),
     cgpa_min: float | None = Query(None, ge=0.0, le=10.0, description="Optional min CGPA filter"),
@@ -37,6 +38,7 @@ async def get_hiring_funnel(
     service = AnalyticsService(db)
     return await service.get_hiring_funnel(
         branch=branch, college=college, search=search,
+        name=name,
         passed_out_year=passed_out_year, language_choice=language_choice,
         cgpa_min=cgpa_min, cgpa_max=cgpa_max,
         has_resume=has_resume, has_govt_id=has_govt_id,

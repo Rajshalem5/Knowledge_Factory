@@ -21,6 +21,7 @@ async def list_candidates(
     limit: int = Query(50, ge=1, le=100),
     status: str | None = None,
     search: str | None = None,
+    name: str | None = None,
     branch: str | None = None,
     college: str | None = None,
     cgpa_min: float | None = Query(None, ge=0.0, le=10.0),
@@ -57,6 +58,7 @@ async def list_candidates(
             parsed_status = mapped
     candidates, total = await service.list_candidates(
         page=page, limit=limit, status=parsed_status, search=search,
+        name=name,
         branch=branch, college=college, cgpa_min=cgpa_min, cgpa_max=cgpa_max,
         passed_out_year=passed_out_year, language_choice=language_choice,
         has_resume=has_resume, has_govt_id=has_govt_id,

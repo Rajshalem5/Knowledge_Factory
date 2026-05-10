@@ -17,7 +17,8 @@ class CandidateService:
 
     async def list_candidates(
         self, page: int = 1, limit: int = 50, status: CandidateStatus | None = None,
-        search: str | None = None, branch: str | None = None,
+        search: str | None = None, name: str | None = None,
+        branch: str | None = None,
         college: str | None = None, cgpa_min: float | None = None,
         cgpa_max: float | None = None, passed_out_year: int | None = None,
         language_choice: str | None = None,
@@ -45,6 +46,8 @@ class CandidateService:
                     Candidate.college.ilike(f"%{search}%"),
                 )
             )
+        if name:
+            query = query.where(Candidate.name.ilike(f"%{name}%"))
         if branch:
             query = query.where(Candidate.branch.ilike(f"%{branch}%"))
         if college:
