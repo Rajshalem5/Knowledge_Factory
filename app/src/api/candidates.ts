@@ -29,6 +29,7 @@ export const candidatesApi = {
     passed_out_year_min?: number;
     passed_out_year_max?: number;
     email_verified?: boolean;
+    phone?: string;
     sort_by?: string;
     sort_order?: string;
   }) =>

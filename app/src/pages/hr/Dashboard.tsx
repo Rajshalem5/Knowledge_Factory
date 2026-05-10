@@ -42,6 +42,7 @@ export default function Dashboard() {
   const [passedOutYearMinFilter, setPassedOutYearMinFilter] = useState('');
   const [passedOutYearMaxFilter, setPassedOutYearMaxFilter] = useState('');
   const [emailVerifiedFilter, setEmailVerifiedFilter] = useState('');
+  const [phoneFilter, setPhoneFilter] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [sortBy, setSortBy] = useState('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -63,6 +64,7 @@ export default function Dashboard() {
     passed_out_year_min: passedOutYearMinFilter ? parseInt(passedOutYearMinFilter, 10) : undefined,
     passed_out_year_max: passedOutYearMaxFilter ? parseInt(passedOutYearMaxFilter, 10) : undefined,
     email_verified: emailVerifiedFilter ? emailVerifiedFilter === 'true' : undefined,
+    phone: phoneFilter || undefined,
     sort_by: sortBy,
     sort_order: sortOrder,
   });
@@ -84,6 +86,7 @@ export default function Dashboard() {
       if (passedOutYearMinFilter) p.passed_out_year_min = parseInt(passedOutYearMinFilter, 10);
       if (passedOutYearMaxFilter) p.passed_out_year_max = parseInt(passedOutYearMaxFilter, 10);
       if (emailVerifiedFilter) p.email_verified = emailVerifiedFilter === 'true';
+      if (phoneFilter) p.phone = phoneFilter;
       if (search) p.search = search;
       return Object.keys(p).length > 0 ? p : undefined;
     })()
@@ -104,6 +107,7 @@ export default function Dashboard() {
     if (passedOutYearMinFilter) params.passed_out_year_min = parseInt(passedOutYearMinFilter, 10);
     if (passedOutYearMaxFilter) params.passed_out_year_max = parseInt(passedOutYearMaxFilter, 10);
     if (emailVerifiedFilter) params.email_verified = emailVerifiedFilter === 'true';
+    if (phoneFilter) params.phone = phoneFilter;
     if (search) params.search = search;
     runScreening.mutate(
       Object.keys(params).length > 0 ? params : undefined
@@ -371,6 +375,16 @@ export default function Dashboard() {
                       <option value="true">Yes</option>
                       <option value="false">No</option>
                     </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-tertiary mb-1">Phone</label>
+                    <input
+                      type="text"
+                      placeholder="Phone number..."
+                      value={phoneFilter}
+                      onChange={e => { setPhoneFilter(e.target.value); setPage(1); }}
+                      className="w-full px-3 py-1.5 rounded-md bg-[var(--bg-base)] text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/50 border border-[var(--border-ghost)]"
+                    />
                   </div>
                 </div>
               )}
