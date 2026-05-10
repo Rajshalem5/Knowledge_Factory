@@ -44,21 +44,8 @@ async def list_candidates(
     current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN])),
 ):
     service = CandidateService(db)
-    # Accept both raw backend status (e.g. "APPLIED") and frontend display_status (e.g. "applied")
-    parsed_status: CandidateStatus | None = None
-    if status:
-        try:
-            parsed_status = CandidateStatus(status.upper())
-        except ValueError:
-            mapped = CandidateStatus.from_display_status(status)
-            if not mapped:
-                raise HTTPException(
-                    status_code=422,
-                    detail=f"Invalid status filter: '{status}'. Use a valid CandidateStatus or display_status value.",
-                )
-            parsed_status = mapped
     candidates, total = await service.list_candidates(
-        page=page, limit=limit, status=parsed_status, search=search,
+        page=page, limit=limit, status=status, search=search,
         name=name,
         branch=branch, college=college, cgpa_min=cgpa_min, cgpa_max=cgpa_max,
         passed_out_year=passed_out_year, language_choice=language_choice,

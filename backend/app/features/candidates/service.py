@@ -15,7 +15,7 @@ class CandidateService:
         self.db = db
 
     async def list_candidates(
-        self, page: int = 1, limit: int = 50, status: CandidateStatus | None = None,
+        self, page: int = 1, limit: int = 50, status: str | None = None,
         search: str | None = None, name: str | None = None,
         branch: str | None = None,
         college: str | None = None, cgpa_min: float | None = None,
@@ -37,9 +37,6 @@ class CandidateService:
     ):
         query = select(Candidate)
 
-        if status:
-            query = query.where(Candidate.status == status)
-
         query = apply_candidate_filters(
             query,
             search=search, name=name,
@@ -55,6 +52,7 @@ class CandidateService:
             email_verified=email_verified,
             phone=phone, email=email,
             cycle_id=cycle_id,
+            status=status,
         )
 
         count_q = select(func.count()).select_from(query.subquery())
