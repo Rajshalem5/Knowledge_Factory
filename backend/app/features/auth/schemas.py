@@ -1,7 +1,7 @@
 """Authentication schemas - simplified without multi-tenancy."""
 
 from uuid import UUID
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, model_validator
 
 
 class TokenResponse(BaseModel):
@@ -48,7 +48,8 @@ class ResetPasswordRequest(BaseModel):
     new_password: str = Field(..., min_length=8)
     confirm_password: str = Field(..., min_length=8)
 
-    def model_validator(self):
+    @model_validator(mode='after')
+    def check_passwords_match(self):
         if self.new_password != self.confirm_password:
             raise ValueError("Passwords do not match")
         return self
