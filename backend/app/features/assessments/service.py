@@ -124,8 +124,12 @@ class AssessmentService:
         if not assessment or str(assessment.candidate_id) != str(candidate_id):
             raise ValueError("Assessment not found or access denied")
 
-        if assessment.status == AssessmentStatus.COMPLETED:
-            raise ValueError("Assessment is already completed")
+        # Validate assessment is in progress (not already completed, terminated, or not-started)
+        assessment_status = AssessmentStatus(assessment.status) if isinstance(assessment.status, str) else assessment.status
+        if assessment_status != AssessmentStatus.IN_PROGRESS:
+            if assessment_status == AssessmentStatus.COMPLETED:
+                raise ValueError("Assessment is already completed")
+            raise ValueError(f"Assessment cannot be completed in its current state: {assessment_status.value}")
 
         candidate_stmt = select(Candidate).where(Candidate.id == str(candidate_id))
         candidate_res = await self.db.execute(candidate_stmt)
