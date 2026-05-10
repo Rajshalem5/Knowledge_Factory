@@ -23,6 +23,10 @@ export function useStartAssessment() {
     mutationFn: (data: AssessmentStartRequest) => assessmentApi.start(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['assessments-active'] });
+      queryClient.invalidateQueries({ queryKey: ['candidate-me'] });
+      queryClient.invalidateQueries({ queryKey: ['candidates'] });
+      queryClient.invalidateQueries({ queryKey: ['pipeline-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['funnel'] });
     },
   });
 }
