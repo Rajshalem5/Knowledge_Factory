@@ -89,7 +89,7 @@ export default function Dashboard() {
     cgpaMaxFilter || hasResumeFilter || hasGovtIdFilter || createdAfterFilter ||
     createdBeforeFilter || passedOutYearFilter || passedOutYearMinFilter || passedOutYearMaxFilter ||
     emailVerifiedFilter || phoneFilter || emailFilter || nameFilter || cycleIdFilter || hasPhoneFilter ||
-    updatedAfterFilter || updatedBeforeFilter
+    updatedAfterFilter || updatedBeforeFilter || targetStatusesFilter
       ? {
           branch: branchFilter || undefined,
           college: collegeFilter || undefined,
