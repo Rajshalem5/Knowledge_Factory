@@ -205,6 +205,7 @@ export default function Dashboard() {
     },
     { key: 'college', header: 'College', sortable: true },
     { key: 'branch', header: 'Branch', sortable: true },
+    { key: 'passed_out_year', header: 'Passed Out', sortable: true },
     {
       key: 'cgpa',
       header: 'CGPA',
@@ -214,6 +215,7 @@ export default function Dashboard() {
     {
       key: 'status',
       header: 'Status',
+      sortable: true,
       render: (c) => (
         <Badge variant={c.display_status === 'selected' ? 'success' : c.display_status === 'rejected' ? 'danger' : 'default'}>
           {STATUS_LABELS[c.display_status as CandidateStatus] || c.status}
