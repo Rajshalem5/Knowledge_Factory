@@ -48,6 +48,7 @@ export default function Dashboard() {
   const [nameFilter, setNameFilter] = useState('');
   const [cycleIdFilter, setCycleIdFilter] = useState('');
   const [hasPhoneFilter, setHasPhoneFilter] = useState('');
+  const [targetStatusesFilter, setTargetStatusesFilter] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [sortBy, setSortBy] = useState('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -157,6 +158,7 @@ export default function Dashboard() {
     if (nameFilter) params.name = nameFilter;
     if (cycleIdFilter) params.cycle_id = cycleIdFilter;
     if (hasPhoneFilter) params.has_phone = hasPhoneFilter === 'true';
+    if (targetStatusesFilter) params.target_statuses = targetStatusesFilter;
     if (search) params.search = search;
     runScreening.mutate(
       Object.keys(params).length > 0 ? params : undefined
@@ -494,6 +496,16 @@ export default function Dashboard() {
                       placeholder="Cycle ID..."
                       value={cycleIdFilter}
                       onChange={e => { setCycleIdFilter(e.target.value); setPage(1); }}
+                      className="w-full px-3 py-1.5 rounded-md bg-[var(--bg-base)] text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/50 border border-[var(--border-ghost)]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-tertiary mb-1">Target Statuses (screening only)</label>
+                    <input
+                      type="text"
+                      placeholder="APPLIED,ROUND1_REVIEW"
+                      value={targetStatusesFilter}
+                      onChange={e => setTargetStatusesFilter(e.target.value)}
                       className="w-full px-3 py-1.5 rounded-md bg-[var(--bg-base)] text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/50 border border-[var(--border-ghost)]"
                     />
                   </div>
