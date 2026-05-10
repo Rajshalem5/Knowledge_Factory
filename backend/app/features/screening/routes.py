@@ -179,6 +179,7 @@ async def pipeline_stats(
     phone: str | None = Query(None, description="Filter by phone number"),
     email: str | None = Query(None, description="Filter by exact email address"),
     cycle_id: str | None = Query(None, description="Filter by hiring cycle ID"),
+    status: str | None = Query(None, description="Filter by candidate status (raw or display_status)"),
     db: AsyncSession = Depends(get_db),
     current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN])),
 ):
@@ -196,6 +197,19 @@ async def pipeline_stats(
         email=email,
         cycle_id=cycle_id,
     )
+
+    # Apply optional status filter (accepts both raw and display_status values)
+    if status:
+        parsed_status: CandidateStatus | None = None
+        try:
+            parsed_status = CandidateStatus(status.upper())
+        except ValueError:
+            mapped = CandidateStatus.from_display_status(status)
+            if mapped:
+                parsed_status = mapped
+        if parsed_status:
+            base = base.where(Candidate.status == parsed_status)
+
     base = base.group_by(Candidate.status)
 
     res = await db.execute(base)
