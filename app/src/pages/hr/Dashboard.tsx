@@ -39,6 +39,7 @@ export default function Dashboard() {
   const [hasGovtIdFilter, setHasGovtIdFilter] = useState('');
   const [createdAfterFilter, setCreatedAfterFilter] = useState('');
   const [createdBeforeFilter, setCreatedBeforeFilter] = useState('');
+  const [passedOutYearFilter, setPassedOutYearFilter] = useState('');
   const [passedOutYearMinFilter, setPassedOutYearMinFilter] = useState('');
   const [passedOutYearMaxFilter, setPassedOutYearMaxFilter] = useState('');
   const [emailVerifiedFilter, setEmailVerifiedFilter] = useState('');
@@ -64,6 +65,7 @@ export default function Dashboard() {
     has_govt_id: hasGovtIdFilter ? hasGovtIdFilter === 'true' : undefined,
     created_after: createdAfterFilter || undefined,
     created_before: createdBeforeFilter || undefined,
+    passed_out_year: passedOutYearFilter ? parseInt(passedOutYearFilter, 10) : undefined,
     passed_out_year_min: passedOutYearMinFilter ? parseInt(passedOutYearMinFilter, 10) : undefined,
     passed_out_year_max: passedOutYearMaxFilter ? parseInt(passedOutYearMaxFilter, 10) : undefined,
     email_verified: emailVerifiedFilter ? emailVerifiedFilter === 'true' : undefined,
@@ -76,7 +78,7 @@ export default function Dashboard() {
   const { data: funnelData, isLoading: funnelLoading } = useFunnelData(
     search || branchFilter || collegeFilter || languageChoiceFilter || cgpaMinFilter ||
     cgpaMaxFilter || hasResumeFilter || hasGovtIdFilter || createdAfterFilter ||
-    createdBeforeFilter || passedOutYearMinFilter || passedOutYearMaxFilter ||
+    createdBeforeFilter || passedOutYearFilter || passedOutYearMinFilter || passedOutYearMaxFilter ||
     emailVerifiedFilter || phoneFilter || emailFilter || nameFilter
       ? {
           branch: branchFilter || undefined,
@@ -90,6 +92,7 @@ export default function Dashboard() {
           has_govt_id: hasGovtIdFilter ? hasGovtIdFilter === 'true' : undefined,
           created_after: createdAfterFilter || undefined,
           created_before: createdBeforeFilter || undefined,
+          passed_out_year: passedOutYearFilter ? parseInt(passedOutYearFilter, 10) : undefined,
           passed_out_year_min: passedOutYearMinFilter ? parseInt(passedOutYearMinFilter, 10) : undefined,
           passed_out_year_max: passedOutYearMaxFilter ? parseInt(passedOutYearMaxFilter, 10) : undefined,
           email_verified: emailVerifiedFilter ? emailVerifiedFilter === 'true' : undefined,
@@ -111,6 +114,7 @@ export default function Dashboard() {
       if (hasGovtIdFilter) p.has_govt_id = hasGovtIdFilter === 'true';
       if (createdAfterFilter) p.created_after = createdAfterFilter;
       if (createdBeforeFilter) p.created_before = createdBeforeFilter;
+      if (passedOutYearFilter) p.passed_out_year = parseInt(passedOutYearFilter, 10);
       if (passedOutYearMinFilter) p.passed_out_year_min = parseInt(passedOutYearMinFilter, 10);
       if (passedOutYearMaxFilter) p.passed_out_year_max = parseInt(passedOutYearMaxFilter, 10);
       if (emailVerifiedFilter) p.email_verified = emailVerifiedFilter === 'true';
@@ -134,6 +138,7 @@ export default function Dashboard() {
     if (hasGovtIdFilter) params.has_govt_id = hasGovtIdFilter === 'true';
     if (createdAfterFilter) params.created_after = createdAfterFilter;
     if (createdBeforeFilter) params.created_before = createdBeforeFilter;
+    if (passedOutYearFilter) params.passed_out_year = parseInt(passedOutYearFilter, 10);
     if (passedOutYearMinFilter) params.passed_out_year_min = parseInt(passedOutYearMinFilter, 10);
     if (passedOutYearMaxFilter) params.passed_out_year_max = parseInt(passedOutYearMaxFilter, 10);
     if (emailVerifiedFilter) params.email_verified = emailVerifiedFilter === 'true';
@@ -435,6 +440,16 @@ export default function Dashboard() {
                       placeholder="Candidate name..."
                       value={nameFilter}
                       onChange={e => { setNameFilter(e.target.value); setPage(1); }}
+                      className="w-full px-3 py-1.5 rounded-md bg-[var(--bg-base)] text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/50 border border-[var(--border-ghost)]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-tertiary mb-1">Passed Out Year (exact)</label>
+                    <input
+                      type="number"
+                      placeholder="e.g. 2025"
+                      value={passedOutYearFilter}
+                      onChange={e => { setPassedOutYearFilter(e.target.value); setPage(1); }}
                       className="w-full px-3 py-1.5 rounded-md bg-[var(--bg-base)] text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/50 border border-[var(--border-ghost)]"
                     />
                   </div>
