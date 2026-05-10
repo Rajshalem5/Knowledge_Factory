@@ -15,7 +15,7 @@ router = APIRouter()
 
 
 @router.get("/")
-async def list_cycles(db: AsyncSession = Depends(get_db), current_user = Depends(require_role([Role.ADMIN, Role.SUPERADMIN]))):
+async def list_cycles(db: AsyncSession = Depends(get_db), current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN]))):
     stmt = select(HiringCycle).order_by(HiringCycle.created_at.desc())
     res = await db.execute(stmt)
     cycles = res.scalars().all()
