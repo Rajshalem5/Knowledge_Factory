@@ -24,7 +24,7 @@ async def select_candidate(candidate_id: UUID, db: AsyncSession = Depends(get_db
     if not c:
         raise HTTPException(status_code=404, detail="Candidate not found")
 
-    allowed = {CandidateStatus.INTERVIEW_COMPLETED}
+    allowed = {CandidateStatus.INTERVIEW_COMPLETED, CandidateStatus.ROUND3_PASSED}
     current = CandidateStatus(c.status) if isinstance(c.status, str) else c.status
     if current not in allowed:
         raise HTTPException(status_code=422, detail=f"Cannot select from status {current.value}")
