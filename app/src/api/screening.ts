@@ -15,6 +15,13 @@ export interface ScreeningResult {
 
 export interface PipelineStats {
   stats: Record<string, number>;
+  aggregates?: {
+    total_filtered: number;
+    avg_cgpa: number;
+    assessment_completion_rate: number;
+    in_progress_count: number;
+    completed_count: number;
+  };
 }
 
 export interface ScreeningFilters {
