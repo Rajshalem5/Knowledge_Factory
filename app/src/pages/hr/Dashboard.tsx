@@ -195,6 +195,7 @@ export default function Dashboard() {
       { key: 'govt_id_url', header: 'Has Govt ID' },
       { key: 'phone', header: 'Phone' },
       { key: 'created_at', header: 'Applied On' },
+      { key: 'updated_at', header: 'Updated' },
     ];
     exportToCsv(candidatesData.data as unknown as Record<string, unknown>[], cols, 'candidates.csv');
   };
