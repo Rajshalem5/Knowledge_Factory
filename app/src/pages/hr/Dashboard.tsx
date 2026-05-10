@@ -43,6 +43,7 @@ export default function Dashboard() {
   const [passedOutYearMaxFilter, setPassedOutYearMaxFilter] = useState('');
   const [emailVerifiedFilter, setEmailVerifiedFilter] = useState('');
   const [phoneFilter, setPhoneFilter] = useState('');
+  const [emailFilter, setEmailFilter] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [sortBy, setSortBy] = useState('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -65,6 +66,7 @@ export default function Dashboard() {
     passed_out_year_max: passedOutYearMaxFilter ? parseInt(passedOutYearMaxFilter, 10) : undefined,
     email_verified: emailVerifiedFilter ? emailVerifiedFilter === 'true' : undefined,
     phone: phoneFilter || undefined,
+    email: emailFilter || undefined,
     sort_by: sortBy,
     sort_order: sortOrder,
   });
@@ -73,7 +75,7 @@ export default function Dashboard() {
     search || branchFilter || collegeFilter || languageChoiceFilter || cgpaMinFilter ||
     cgpaMaxFilter || hasResumeFilter || hasGovtIdFilter || createdAfterFilter ||
     createdBeforeFilter || passedOutYearMinFilter || passedOutYearMaxFilter ||
-    emailVerifiedFilter || phoneFilter
+    emailVerifiedFilter || phoneFilter || emailFilter
       ? {
           branch: branchFilter || undefined,
           college: collegeFilter || undefined,
@@ -89,6 +91,7 @@ export default function Dashboard() {
           passed_out_year_max: passedOutYearMaxFilter ? parseInt(passedOutYearMaxFilter, 10) : undefined,
           email_verified: emailVerifiedFilter ? emailVerifiedFilter === 'true' : undefined,
           phone: phoneFilter || undefined,
+          email: emailFilter || undefined,
         }
       : undefined
   );
@@ -109,6 +112,7 @@ export default function Dashboard() {
       if (passedOutYearMaxFilter) p.passed_out_year_max = parseInt(passedOutYearMaxFilter, 10);
       if (emailVerifiedFilter) p.email_verified = emailVerifiedFilter === 'true';
       if (phoneFilter) p.phone = phoneFilter;
+      if (emailFilter) p.email = emailFilter;
       if (search) p.search = search;
       return Object.keys(p).length > 0 ? p : undefined;
     })()
@@ -130,6 +134,7 @@ export default function Dashboard() {
     if (passedOutYearMaxFilter) params.passed_out_year_max = parseInt(passedOutYearMaxFilter, 10);
     if (emailVerifiedFilter) params.email_verified = emailVerifiedFilter === 'true';
     if (phoneFilter) params.phone = phoneFilter;
+    if (emailFilter) params.email = emailFilter;
     if (search) params.search = search;
     runScreening.mutate(
       Object.keys(params).length > 0 ? params : undefined
@@ -405,6 +410,16 @@ export default function Dashboard() {
                       placeholder="Phone number..."
                       value={phoneFilter}
                       onChange={e => { setPhoneFilter(e.target.value); setPage(1); }}
+                      className="w-full px-3 py-1.5 rounded-md bg-[var(--bg-base)] text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/50 border border-[var(--border-ghost)]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-tertiary mb-1">Email</label>
+                    <input
+                      type="text"
+                      placeholder="exact email..."
+                      value={emailFilter}
+                      onChange={e => { setEmailFilter(e.target.value); setPage(1); }}
                       className="w-full px-3 py-1.5 rounded-md bg-[var(--bg-base)] text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/50 border border-[var(--border-ghost)]"
                     />
                   </div>
