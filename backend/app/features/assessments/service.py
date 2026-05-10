@@ -3,7 +3,6 @@
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
-from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,7 +18,7 @@ class AssessmentService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def start_assessment(self, candidate_id: UUID, req: AssessmentStart) -> Assessment:
+    async def start_assessment(self, candidate_id: str, req: AssessmentStart) -> Assessment:
         # Validate candidate exists and has correct pipeline status
         c_stmt = select(Candidate).where(Candidate.id == str(candidate_id))
         c_res = await self.db.execute(c_stmt)
@@ -84,7 +83,7 @@ class AssessmentService:
         await self.db.flush()
         return assessment
 
-    async def submit_section(self, candidate_id: UUID, data: SubmissionCreate) -> dict[str, Any]:
+    async def submit_section(self, candidate_id: str, data: SubmissionCreate) -> dict[str, Any]:
         """Submit a section. Returns passed/failed test case counts."""
         # Verify the candidate owns this assessment
         stmt = select(Assessment).where(Assessment.id == data.assessment_id)
@@ -115,7 +114,7 @@ class AssessmentService:
         await self.db.flush()
         return {"submission_id": submission.id, "passed": passed, "failed": failed}
 
-    async def complete_assessment(self, candidate_id: UUID, assessment_id: str) -> Assessment:
+    async def complete_assessment(self, candidate_id: str, assessment_id: str) -> Assessment:
         """Mark an assessment as completed and transition the candidate to the next pipeline stage."""
         stmt = select(Assessment).where(Assessment.id == assessment_id)
         res = await self.db.execute(stmt)
@@ -173,7 +172,7 @@ class AssessmentService:
         await self.db.flush()
         return assessment
 
-    async def get_assessment(self, candidate_id: UUID) -> list[Assessment]:
+    async def get_assessment(self, candidate_id: str) -> list[Assessment]:
         stmt = (
             select(Assessment)
             .where(Assessment.candidate_id == str(candidate_id))
