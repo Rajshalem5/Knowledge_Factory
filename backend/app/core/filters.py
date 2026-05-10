@@ -54,13 +54,25 @@ def apply_candidate_filters(
     if name:
         query = query.where(Candidate.name.ilike(f"%{name}%"))
     if branch:
-        query = query.where(Candidate.branch.ilike(f"%{branch}%"))
+        branches = [b.strip() for b in branch.split(",") if b.strip()]
+        if len(branches) == 1:
+            query = query.where(Candidate.branch.ilike(f"%{branches[0]}%"))
+        else:
+            query = query.where(
+                or_(Candidate.branch.ilike(f"%{b}%") for b in branches)
+            )
     if college:
         query = query.where(Candidate.college.ilike(f"%{college}%"))
     if passed_out_year:
         query = query.where(Candidate.passed_out_year == passed_out_year)
     if language_choice:
-        query = query.where(Candidate.language_choice.ilike(f"%{language_choice}%"))
+        languages = [l.strip() for l in language_choice.split(",") if l.strip()]
+        if len(languages) == 1:
+            query = query.where(Candidate.language_choice.ilike(f"%{languages[0]}%"))
+        else:
+            query = query.where(
+                or_(Candidate.language_choice.ilike(f"%{lang}%") for lang in languages)
+            )
     if search:
         query = query.where(
             or_(
