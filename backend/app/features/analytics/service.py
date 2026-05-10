@@ -124,7 +124,7 @@ class AnalyticsService:
 
         cgpa_q = select(func.avg(Candidate.cgpa))
         cgpa_r = await self.db.execute(cgpa_q)
-        avg_cgpa = round(float(cgpa_r.scalar()) or 0, 2)
+        avg_cgpa = round(float(cgpa_r.scalar() or 0), 2)
 
         # Pass rate per round using Score table
         from sqlalchemy import text as sa_text

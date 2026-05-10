@@ -109,10 +109,15 @@ export interface FunnelData {
 }
 
 export interface AnalyticsData {
-  passRatePerRound: { round: string; passRate: number }[];
-  collegeBreakdown: { college: string; count: number; avgScore: number }[];
-  branchPerformance: { branch: string; count: number; avgScore: number }[];
-  proctoringViolations: { type: string; count: number }[];
+  total_candidates: number;
+  selected_count: number;
+  select_rate: number;
+  avg_cgpa: number;
+  status_breakdown: Record<string, unknown>;
+  pass_rate_per_round: { round: string; pass_rate: number }[];
+  college_breakdown: { college: string; count: number; avg_score: number }[];
+  branch_performance: { branch: string; count: number; avg_score: number }[];
+  proctoring_violations: { type: string; count: number }[];
 }
 
 export interface Organization {

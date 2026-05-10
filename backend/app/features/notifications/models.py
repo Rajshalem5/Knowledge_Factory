@@ -8,7 +8,6 @@ Per architecture doc Section 5.1 and Table 13:
 
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     DateTime,
@@ -16,13 +15,9 @@ from sqlalchemy import (
     String,
     Text,
 )
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
-
-if TYPE_CHECKING:
-    pass
 
 
 class EmailLog(Base):
@@ -39,10 +34,10 @@ class EmailLog(Base):
     """
     __tablename__ = "email_logs"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+    id: Mapped[str] = mapped_column(
+        String(36),
         primary_key=True,
-        default=uuid.uuid4,
+        default=lambda: str(uuid.uuid4()),
     )
     template_name: Mapped[str] = mapped_column(
         String(100),
@@ -73,7 +68,7 @@ class EmailLog(Base):
     sent_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        server_default="now()",
+        default=lambda: datetime.now(timezone.utc),
     )
 
     def __repr__(self) -> str:
