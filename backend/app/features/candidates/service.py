@@ -28,6 +28,8 @@ class CandidateService:
         passed_out_year_min: int | None = None,
         passed_out_year_max: int | None = None,
         email_verified: bool | None = None,
+        sort_by: str | None = None,
+        sort_order: str | None = "desc",
     ):
         query = select(Candidate)
 
@@ -80,7 +82,25 @@ class CandidateService:
         count_result = await self.db.execute(count_q)
         total = count_result.scalar()
 
-        query = query.order_by(Candidate.created_at.desc()).offset((page - 1) * limit).limit(limit)
+        # Dynamic sorting
+        allowed_sort_columns = {
+            "name": Candidate.name,
+            "email": Candidate.email,
+            "college": Candidate.college,
+            "branch": Candidate.branch,
+            "cgpa": Candidate.cgpa,
+            "passed_out_year": Candidate.passed_out_year,
+            "created_at": Candidate.created_at,
+            "status": Candidate.status,
+        }
+        if sort_by and sort_by in allowed_sort_columns:
+            col = allowed_sort_columns[sort_by]
+            order_fn = col.asc if sort_order and sort_order.lower() == "asc" else col.desc
+            query = query.order_by(order_fn())
+        else:
+            query = query.order_by(Candidate.created_at.desc())
+
+        query = query.offset((page - 1) * limit).limit(limit)
         result = await self.db.execute(query)
         candidates = result.scalars().all()
 

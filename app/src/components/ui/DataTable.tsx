@@ -1,5 +1,5 @@
 import { type ReactNode, useState } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { cn } from '../../utils/cn';
 
 export interface Column<T> {
@@ -7,6 +7,7 @@ export interface Column<T> {
   header: string;
   render?: (item: T) => ReactNode;
   className?: string;
+  sortable?: boolean;
 }
 
 interface DataTableProps<T> {
@@ -18,6 +19,9 @@ interface DataTableProps<T> {
   onPageChange?: (page: number) => void;
   onRowClick?: (item: T) => void;
   className?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  onSort?: (column: string) => void;
 }
 
 /* Design.md: Forbid horizontal and vertical divider lines.
@@ -31,8 +35,16 @@ export function DataTable<T>({
   onPageChange,
   onRowClick,
   className,
+  sortBy,
+  sortOrder,
+  onSort,
 }: DataTableProps<T>) {
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
+
+  const renderSortIcon = (colKey: string) => {
+    if (sortBy !== colKey) return <ArrowUpDown size={11} className="ml-1 opacity-30" />;
+    return sortOrder === 'asc' ? <ArrowUp size={11} className="ml-1" /> : <ArrowDown size={11} className="ml-1" />;
+  };
 
   return (
     <div className={cn('overflow-x-auto', className)}>
@@ -44,10 +56,15 @@ export function DataTable<T>({
                 key={col.key}
                 className={cn(
                   'text-left px-4 py-3 text-[11px] font-medium uppercase tracking-architectural text-tertiary',
+                  col.sortable && 'cursor-pointer select-none hover:text-on-surface transition-colors',
                   col.className,
                 )}
+                onClick={() => col.sortable && onSort?.(col.key)}
               >
-                {col.header}
+                <span className="inline-flex items-center">
+                  {col.header}
+                  {col.sortable && renderSortIcon(col.key)}
+                </span>
               </th>
             ))}
           </tr>
