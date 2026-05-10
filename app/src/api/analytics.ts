@@ -23,6 +23,7 @@ export interface FunnelFilters {
   status?: string;
   has_phone?: boolean;
   has_assessment?: boolean;
+  has_interview_feedback?: boolean;
   target_statuses?: string;
   updated_after?: string;
   updated_before?: string;

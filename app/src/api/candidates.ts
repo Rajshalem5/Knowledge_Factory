@@ -35,6 +35,7 @@ export const candidatesApi = {
     cycle_id?: string;
     has_phone?: boolean;
     has_assessment?: boolean;
+    has_interview_feedback?: boolean;
     updated_after?: string;
     updated_before?: string;
     assessment_status?: string;
