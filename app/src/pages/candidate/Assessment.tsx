@@ -98,8 +98,8 @@ export default function Assessment() {
     `/api/code/evaluate-question/${question.id}`,
     { language, code, stdin: '' }
   );
-      setEvalResult(result);
-      // Record the submission in the assessment pipeline
+      // Record the submission in the assessment pipeline FIRST,
+      // so the submission is persisted before enabling "Complete & Advance"
       if (activeAssessment) {
         await submitSection.mutateAsync({
           assessment_id: activeAssessment.id,
@@ -108,6 +108,7 @@ export default function Assessment() {
           time_spent_seconds: 0,
         });
       }
+      setEvalResult(result);
     } catch (e: unknown) {
       setRunOutput({ status: 'ERROR', output: (e as Error)?.message || 'Evaluation failed' });
     } finally {
