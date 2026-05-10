@@ -150,7 +150,17 @@ async def pipeline_stats(
     db: AsyncSession = Depends(get_db),
     current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN])),
 ):
-    """Get aggregated candidate counts per pipeline stage with optional extra filters."""
+    """Get aggregated candidate counts per pipeline stage with optional extra filters.
+
+    Returns both `stats` (per-status counts) and `aggregates` (summary metrics).
+    The `aggregates` object includes:
+
+    - `total_filtered`: total candidates matching all active filters
+    - `avg_cgpa`: average CGPA across filtered candidates
+    - `assessment_completion_rate`: percentage of started assessments that completed
+    - `in_progress_count`: number of active (in-progress) assessments
+    - `completed_count`: number of completed assessments
+    """
     base = select(Candidate.status, func.count(Candidate.id).label("count"))
     base = apply_candidate_filters(
         base,
