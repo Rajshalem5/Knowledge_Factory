@@ -30,7 +30,6 @@ export default function Dashboard() {
   const [statusFilter, setStatusFilter] = useState('');
   const [branchFilter, setBranchFilter] = useState('');
   const [collegeFilter, setCollegeFilter] = useState('');
-  const [passedOutYearFilter, setPassedOutYearFilter] = useState('');
   const [minCgpaOverride, setMinCgpaOverride] = useState('');
   const [cgpaMinFilter, setCgpaMinFilter] = useState('');
   const [cgpaMaxFilter, setCgpaMaxFilter] = useState('');
@@ -39,6 +38,8 @@ export default function Dashboard() {
   const [hasGovtIdFilter, setHasGovtIdFilter] = useState('');
   const [createdAfterFilter, setCreatedAfterFilter] = useState('');
   const [createdBeforeFilter, setCreatedBeforeFilter] = useState('');
+  const [passedOutYearMinFilter, setPassedOutYearMinFilter] = useState('');
+  const [passedOutYearMaxFilter, setPassedOutYearMaxFilter] = useState('');
   const [showFilters, setShowFilters] = useState(false);
 
   const { data: candidatesData, isLoading, error } = useCandidates({
@@ -48,7 +49,6 @@ export default function Dashboard() {
     status: statusFilter || undefined,
     branch: branchFilter || undefined,
     college: collegeFilter || undefined,
-    passed_out_year: passedOutYearFilter ? parseInt(passedOutYearFilter, 10) : undefined,
     cgpa_min: cgpaMinFilter ? parseFloat(cgpaMinFilter) : undefined,
     cgpa_max: cgpaMaxFilter ? parseFloat(cgpaMaxFilter) : undefined,
     language_choice: languageChoiceFilter || undefined,
@@ -56,6 +56,8 @@ export default function Dashboard() {
     has_govt_id: hasGovtIdFilter ? hasGovtIdFilter === 'true' : undefined,
     created_after: createdAfterFilter || undefined,
     created_before: createdBeforeFilter || undefined,
+    passed_out_year_min: passedOutYearMinFilter ? parseInt(passedOutYearMinFilter, 10) : undefined,
+    passed_out_year_max: passedOutYearMaxFilter ? parseInt(passedOutYearMaxFilter, 10) : undefined,
   });
 
   const { data: funnelData, isLoading: funnelLoading } = useFunnelData();
@@ -65,7 +67,6 @@ export default function Dashboard() {
       const p: Record<string, string | number | boolean> = {};
       if (branchFilter) p.branch = branchFilter;
       if (collegeFilter) p.college = collegeFilter;
-      if (passedOutYearFilter) p.passed_out_year = parseInt(passedOutYearFilter, 10);
       if (languageChoiceFilter) p.language_choice = languageChoiceFilter;
       if (cgpaMinFilter) p.cgpa_min = parseFloat(cgpaMinFilter);
       if (cgpaMaxFilter) p.cgpa_max = parseFloat(cgpaMaxFilter);
@@ -73,6 +74,8 @@ export default function Dashboard() {
       if (hasGovtIdFilter) p.has_govt_id = hasGovtIdFilter === 'true';
       if (createdAfterFilter) p.created_after = createdAfterFilter;
       if (createdBeforeFilter) p.created_before = createdBeforeFilter;
+      if (passedOutYearMinFilter) p.passed_out_year_min = parseInt(passedOutYearMinFilter, 10);
+      if (passedOutYearMaxFilter) p.passed_out_year_max = parseInt(passedOutYearMaxFilter, 10);
       if (search) p.search = search;
       return Object.keys(p).length > 0 ? p : undefined;
     })()
@@ -82,7 +85,6 @@ export default function Dashboard() {
     const params: Record<string, string | number | boolean> = {};
     if (branchFilter) params.branch = branchFilter;
     if (collegeFilter) params.college = collegeFilter;
-    if (passedOutYearFilter) params.passed_out_year = parseInt(passedOutYearFilter, 10);
     if (languageChoiceFilter) params.language_choice = languageChoiceFilter;
     if (minCgpaOverride) params.min_cgpa_override = parseFloat(minCgpaOverride);
     if (cgpaMinFilter) params.cgpa_min = parseFloat(cgpaMinFilter);
@@ -91,6 +93,8 @@ export default function Dashboard() {
     if (hasGovtIdFilter) params.has_govt_id = hasGovtIdFilter === 'true';
     if (createdAfterFilter) params.created_after = createdAfterFilter;
     if (createdBeforeFilter) params.created_before = createdBeforeFilter;
+    if (passedOutYearMinFilter) params.passed_out_year_min = parseInt(passedOutYearMinFilter, 10);
+    if (passedOutYearMaxFilter) params.passed_out_year_max = parseInt(passedOutYearMaxFilter, 10);
     if (search) params.search = search;
     runScreening.mutate(
       Object.keys(params).length > 0 ? params : undefined
@@ -209,12 +213,22 @@ export default function Dashboard() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-tertiary mb-1">Passed Out Year</label>
+                    <label className="block text-xs text-tertiary mb-1">Passed Out Year Min</label>
+                    <input
+                      type="number"
+                      placeholder="e.g. 2020"
+                      value={passedOutYearMinFilter}
+                      onChange={e => { setPassedOutYearMinFilter(e.target.value); setPage(1); }}
+                      className="w-full px-3 py-1.5 rounded-md bg-[var(--bg-base)] text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/50 border border-[var(--border-ghost)]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-tertiary mb-1">Passed Out Year Max</label>
                     <input
                       type="number"
                       placeholder="e.g. 2026"
-                      value={passedOutYearFilter}
-                      onChange={e => setPassedOutYearFilter(e.target.value)}
+                      value={passedOutYearMaxFilter}
+                      onChange={e => { setPassedOutYearMaxFilter(e.target.value); setPage(1); }}
                       className="w-full px-3 py-1.5 rounded-md bg-[var(--bg-base)] text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/50 border border-[var(--border-ghost)]"
                     />
                   </div>

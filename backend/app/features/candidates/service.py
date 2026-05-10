@@ -25,6 +25,8 @@ class CandidateService:
         has_govt_id: bool | None = None,
         created_after: date | None = None,
         created_before: date | None = None,
+        passed_out_year_min: int | None = None,
+        passed_out_year_max: int | None = None,
     ):
         query = select(Candidate)
 
@@ -66,6 +68,10 @@ class CandidateService:
         if created_before:
             dt = datetime.combine(created_before, datetime.max.time())
             query = query.where(Candidate.created_at <= dt)
+        if passed_out_year_min is not None:
+            query = query.where(Candidate.passed_out_year >= passed_out_year_min)
+        if passed_out_year_max is not None:
+            query = query.where(Candidate.passed_out_year <= passed_out_year_max)
 
         count_q = select(func.count()).select_from(query.subquery())
         count_result = await self.db.execute(count_q)
