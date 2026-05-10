@@ -344,6 +344,41 @@ export default function Dashboard() {
                   Pipeline Filters
                   {showFilters ? <X size={14} /> : null}
                 </button>
+                {showFilters && (
+                  <button
+                    onClick={() => {
+                      setBranchFilter('');
+                      setCollegeFilter('');
+                      setPassedOutYearFilter('');
+                      setPassedOutYearMinFilter('');
+                      setPassedOutYearMaxFilter('');
+                      setLanguageChoiceFilter('');
+                      setMinCgpaOverride('');
+                      setCgpaMinFilter('');
+                      setCgpaMaxFilter('');
+                      setHasResumeFilter('');
+                      setHasGovtIdFilter('');
+                      setHasPhoneFilter('');
+                      setCreatedAfterFilter('');
+                      setCreatedBeforeFilter('');
+                      setUpdatedAfterFilter('');
+                      setUpdatedBeforeFilter('');
+                      setEmailVerifiedFilter('');
+                      setPhoneFilter('');
+                      setEmailFilter('');
+                      setNameFilter('');
+                      setSearch('');
+                      setCycleIdFilter('');
+                      setTargetStatusesFilter('');
+                      setStatusFilter('');
+                      setPage(1);
+                    }}
+                    className="flex items-center gap-1 text-xs text-danger hover:text-danger/80 transition-colors"
+                  >
+                    <X size={12} />
+                    Reset All Filters
+                  </button>
+                )}
                 {runScreening.data && (
                   <span className="text-xs text-secondary">
                     ✓ Screened: {runScreening.data.passed} passed, {runScreening.data.rejected} rejected
