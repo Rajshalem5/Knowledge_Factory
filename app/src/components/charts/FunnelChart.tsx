@@ -15,12 +15,13 @@ const LABELS: { key: keyof FunnelData; label: string }[] = [
 ];
 
 export function FunnelChart({ data, className }: FunnelChartProps) {
-  const max = data.applied || 1;
+  const values = LABELS.map(({ key }) => data[key] ?? 0);
+  const max = Math.max(...values, 1);
 
   return (
     <div className={cn('space-y-3', className)}>
       {LABELS.map(({ key, label }, index) => {
-        const value = data[key];
+        const value = data[key] ?? 0;
         const width = Math.max((value / max) * 100, 4);
         const isLast = index === LABELS.length - 1;
 
