@@ -34,14 +34,15 @@ class AnalyticsService:
         email: str | None = None,
         cycle_id: str | None = None,
         status: str | None = None,
+        has_phone: bool | None = None,
     ) -> FunnelResponse:
         """Get hiring funnel counts with optional filters.
 
         Stages:
           applied    = APPLIED + ROUND1_REVIEW (awaiting screening decision)
           eligible   = ROUND1_PASSED (passed screening)
-          assessed   = ROUND2_IN_PROGRESS + ROUND2_PASSED + ROUND2_REJECTED
-          interviewed = INTERVIEW_COMPLETED + SELECTED
+          assessed   = ROUND2_IN_PROGRESS + ROUND2_PASSED + ROUND2_REJECTED + ROUND3_IN_PROGRESS + ROUND3_PASSED + ROUND3_REJECTED
+          interviewed = INTERVIEW_SCHEDULED + INTERVIEW_COMPLETED + SELECTED
           selected   = SELECTED
         """
         def _apply_filters(q):
@@ -81,6 +82,11 @@ class AnalyticsService:
                     q = q.where(Candidate.govt_id_url.isnot(None))
                 else:
                     q = q.where(Candidate.govt_id_url.is_(None))
+            if has_phone is not None:
+                if has_phone:
+                    q = q.where(Candidate.phone.isnot(None))
+                else:
+                    q = q.where(Candidate.phone.is_(None))
             if created_after:
                 dt_after = datetime.combine(created_after, datetime.min.time())
                 q = q.where(Candidate.created_at >= dt_after)

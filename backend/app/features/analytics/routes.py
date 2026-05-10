@@ -34,6 +34,7 @@ async def get_hiring_funnel(
     email: str | None = Query(None, description="Filter candidates by exact email address"),
     cycle_id: str | None = Query(None, description="Filter by hiring cycle ID"),
     status: str | None = Query(None, description="Filter by candidate status (raw or display_status)"),
+    has_phone: bool | None = Query(None, description="Filter by whether candidate has provided a phone number"),
     db: AsyncSession = Depends(get_db),
     current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN])),
 ):
@@ -49,6 +50,7 @@ async def get_hiring_funnel(
         email_verified=email_verified, phone=phone, email=email,
         cycle_id=cycle_id,
         status=status,
+        has_phone=has_phone,
     )
 
 
