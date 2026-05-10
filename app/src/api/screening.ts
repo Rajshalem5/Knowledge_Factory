@@ -34,6 +34,7 @@ export interface ScreeningFilters {
   passed_out_year_max?: number;
   email_verified?: boolean;
   phone?: string;
+  email?: string;
 }
 
 export const screeningApi = {
