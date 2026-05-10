@@ -40,6 +40,8 @@ class AnalyticsService:
         updated_after: date | None = None,
         updated_before: date | None = None,
         assessment_status: str | None = None,
+        min_score: float | None = None,
+        max_score: float | None = None,
     ) -> FunnelResponse:
         """Get hiring funnel counts with optional filters.
 
@@ -71,6 +73,8 @@ class AnalyticsService:
                 updated_after=updated_after,
                 updated_before=updated_before,
                 assessment_status=assessment_status,
+                min_score=min_score,
+                max_score=max_score,
             )
             return q
 

@@ -42,6 +42,8 @@ async def list_candidates(
     updated_after: date | None = Query(None, description="Filter candidates updated after this date (ISO format)"),
     updated_before: date | None = Query(None, description="Filter candidates updated before this date (ISO format)"),
     assessment_status: str | None = Query(None, description="Filter candidates whose assessment has this status (e.g. IN_PROGRESS, COMPLETED)"),
+    min_score: float | None = Query(None, ge=0.0, le=100.0, description="Filter candidates whose assessment score is >= this value"),
+    max_score: float | None = Query(None, ge=0.0, le=100.0, description="Filter candidates whose assessment score is <= this value"),
     sort_by: str | None = Query(None, description="Sort column (name, email, college, branch, cgpa, passed_out_year, created_at, status)"),
     sort_order: str | None = Query("desc", description="Sort direction: asc or desc"),
     db: AsyncSession = Depends(get_db),
@@ -65,6 +67,8 @@ async def list_candidates(
         updated_after=updated_after,
         updated_before=updated_before,
         assessment_status=assessment_status,
+        min_score=min_score,
+        max_score=max_score,
         sort_by=sort_by, sort_order=sort_order,
     )
     return {"data": candidates, "pagination": {"page": page, "limit": limit, "total": total, "total_pages": (total + limit - 1) // limit if limit else 1}}
