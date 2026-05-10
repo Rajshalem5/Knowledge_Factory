@@ -59,10 +59,10 @@ class CandidateRegisterRequest(BaseModel):
     name: str = Field(..., min_length=2, max_length=255)
     email: EmailStr
     password: str = Field(..., min_length=8)
-    college: str
-    branch: str
-    cgpa: float = Field(..., ge=0, le=10)
-    passed_out_year: int
+    college: str = ""
+    branch: str = ""
+    cgpa: float = Field(default=0.0, ge=0, le=10)
+    passed_out_year: int = 0
     language_choice: str = "english"
 
 

@@ -635,5 +635,168 @@ class TestRefreshToken:
         print(f"✓ Refresh endpoint returns user data: {data['user']['email']}")
 
 
+class TestInterviewFeedbackPipeline:
+    """Test the complete pipeline from registration through interview feedback."""
+
+    async def _reg_candidate(self, client: AsyncClient) -> tuple[str, str]:
+        """Register a candidate and return (token, candidate_id)."""
+        import uuid
+        email = f"fp-{uuid.uuid4().hex[:8]}@test.com"
+        reg = await client.post("/api/auth/register", json={
+            "name": "Pipeline Test", "email": email, "password": "Candidate@123",
+            "college": "Test Uni", "branch": "CSE", "cgpa": 8.5,
+            "passed_out_year": 2026, "language_choice": "python",
+        })
+        assert reg.status_code == 201, reg.text
+        token = reg.json()["access_token"]
+        me = await client.get("/api/candidates/me", headers={"Authorization": f"Bearer {token}"})
+        assert me.status_code == 200
+        return token, me.json()["id"]
+
+    async def _auth_headers(self, client: AsyncClient, email: str, password: str) -> dict:
+        """Get authorization headers for a given user."""
+        resp = await client.post("/api/auth/login", json={"email": email, "password": password})
+        assert resp.status_code == 200, resp.text
+        return {"Authorization": f"Bearer {resp.json()['access_token']}"}
+
+    async def test_01_full_pipeline_to_interview_feedback(self, client: AsyncClient):
+        """Test: Register → Screen → Start R2 assessment → Start R3 → Advance to INTERVIEW_SCHEDULED → Submit feedback."""
+        import uuid
+
+        # ── 1. Register candidate ──
+        c_token, c_id = await self._reg_candidate(client)
+        c_hdrs = {"Authorization": f"Bearer {c_token}"}
+        print(f"✓ Candidate registered: {c_id}")
+
+        # ── 2. Verify APPLIED status ──
+        me = await client.get("/api/candidates/me", headers=c_hdrs)
+        assert me.json()["status"] == "APPLIED"
+
+        # ── 3. Admin runs screening ──
+        admin_hdrs = await self._auth_headers(client, "admin@knowledgefactory.io", "Admin@12345")
+        hr_hdrs = await self._auth_headers(client, "hr@knowledgefactory.com", "Hr@12345")
+        screen = await client.post("/api/screening/run", headers=hr_hdrs)
+        assert screen.status_code == 200
+        assert screen.json()["passed"] >= 1
+        print(f"✓ Screening passed: at least {screen.json()['passed']} candidates")
+
+        # ── 4. Verify ROUND1_PASSED ──
+        me = await client.get("/api/candidates/me", headers=c_hdrs)
+        assert me.json()["status"] == "ROUND1_PASSED"
+
+        # ── 5. Start ROUND_2 assessment ──
+        r2 = await client.post("/api/assessment/start", headers=c_hdrs, json={"round": "ROUND_2"})
+        assert r2.status_code == 200
+        r2_id = r2.json()["id"]
+        assert r2.json()["status"] == "IN_PROGRESS"
+
+        # ── 6. Verify ROUND2_IN_PROGRESS ──
+        me = await client.get("/api/candidates/me", headers=c_hdrs)
+        assert me.json()["status"] == "ROUND2_IN_PROGRESS"
+
+        # ── 7. Submit CODING section ──
+        sub = await client.post("/api/assessment/submit-section", headers=c_hdrs, json={
+            "assessment_id": r2_id, "section": "CODING",
+            "content": {"code": "print('hello')", "problemId": "r2_p1"},
+            "time_spent_seconds": 120,
+        })
+        assert sub.status_code == 200
+        submission_id = sub.json()["submission_id"]
+        print(f"✓ ROUND_2 CODING submitted: {submission_id}")
+
+        # ── 8. Complete ROUND_2 assessment ──
+        comp = await client.post(f"/api/assessment/{r2_id}/complete", headers=c_hdrs)
+        assert comp.status_code == 200
+        assert comp.json()["status"] == "COMPLETED"
+
+        # ── 9. Verify ROUND2_PASSED ──
+        me = await client.get("/api/candidates/me", headers=c_hdrs)
+        assert me.json()["status"] == "ROUND2_PASSED"
+
+        # ── 10. Start ROUND_3 assessment ──
+        r3 = await client.post("/api/assessment/start", headers=c_hdrs, json={"round": "ROUND_3"})
+        assert r3.status_code == 200
+        r3_id = r3.json()["id"]
+
+        # ── 11. Submit ROUND_3 section ──
+        sub3 = await client.post("/api/assessment/submit-section", headers=c_hdrs, json={
+            "assessment_id": r3_id, "section": "MCQ",
+            "content": {"answers": {"q1": "A", "q2": "B"}},
+            "time_spent_seconds": 90,
+        })
+        assert sub3.status_code == 200
+
+        # ── 12. Complete ROUND_3 assessment ──
+        comp3 = await client.post(f"/api/assessment/{r3_id}/complete", headers=c_hdrs)
+        assert comp3.status_code == 200
+        assert comp3.json()["status"] == "COMPLETED"
+
+        # ── 13. Verify ROUND3_PASSED ──
+        me = await client.get("/api/candidates/me", headers=c_hdrs)
+        assert me.json()["status"] == "ROUND3_PASSED"
+
+        # ── 14. Admin advances candidate to INTERVIEW_SCHEDULED ──
+        adv = await client.patch(
+            f"/api/candidates/{c_id}/status",
+            headers=admin_hdrs,
+            json={"status": "INTERVIEW_SCHEDULED"},
+        )
+        assert adv.status_code == 200
+        assert adv.json()["status"] == "INTERVIEW_SCHEDULED"
+
+        # ── 15. Verify the candidate shows up in InterviewPanel query (display_status='round3') ──
+        round3_list = await client.get(
+            "/api/candidates/?status=round3",
+            headers=admin_hdrs,
+        )
+        assert round3_list.status_code == 200
+        cand_ids = [c["id"] for c in round3_list.json()["data"]]
+        assert c_id in cand_ids, "Candidate should appear with status=round3 filter"
+        print(f"✓ Candidate visible via round3 display status filter")
+
+        # ── 16. Submit interview feedback as admin ──
+        fb = await client.post(
+            f"/api/candidates/{c_id}/feedback",
+            headers=admin_hdrs,
+            json={
+                "technicalScore": 8, "communicationScore": 7,
+                "recommendation": "SELECT", "notes": "Strong all-round candidate",
+            },
+        )
+        assert fb.status_code == 201
+        assert fb.json()["message"] == "Feedback submitted"
+
+        # ── 17. Verify INTERVIEW_COMPLETED status ──
+        me = await client.get("/api/candidates/me", headers=c_hdrs)
+        assert me.json()["status"] == "INTERVIEW_COMPLETED"
+
+        # ── 18. Verify interview feedback in candidate read ──
+        cand = await client.get(f"/api/candidates/{c_id}", headers=admin_hdrs)
+        assert cand.status_code == 200
+        assert cand.json()["interview_feedback"] is not None
+        assert cand.json()["interview_feedback"]["technicalScore"] == 8
+        assert cand.json()["interview_feedback"]["recommendation"] == "select"
+
+        # ── 19. Verify pipeline stats show the progression ──
+        stats = await client.get("/api/screening/pipeline-stats", headers=admin_hdrs)
+        assert stats.status_code == 200
+        assert int(stats.json()["stats"].get("INTERVIEW_COMPLETED", 0)) >= 1
+        print(f"✓ Pipeline stats updated: INTERVIEW_COMPLETED={stats.json()['stats'].get('INTERVIEW_COMPLETED')}")
+
+        print("✓ FULL INTERVIEW FEEDBACK PIPELINE PASSED!")
+
+    async def test_02_candidate_cannot_submit_feedback(self, client: AsyncClient):
+        """Test: A candidate (not staff) cannot submit interview feedback."""
+        c_token, c_id = await self._reg_candidate(client)
+        c_hdrs = {"Authorization": f"Bearer {c_token}"}
+        fb = await client.post(
+            f"/api/candidates/{c_id}/feedback",
+            headers=c_hdrs,
+            json={"technicalScore": 5, "communicationScore": 5, "recommendation": "HOLD", "notes": "hack"},
+        )
+        # Should be 403 (Candidate has no auth, or 401)
+        assert fb.status_code in (401, 403), f"Expected 401/403, got {fb.status_code}"
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "-s"])
