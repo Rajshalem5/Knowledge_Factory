@@ -93,10 +93,10 @@ export default function CandidateDetail() {
               label: 'Proctoring',
               content: (
                 <div className="space-y-2">
-                  {candidate.proctoringFlags.length === 0 ? (
+                  {(!candidate.proctoring_flags || candidate.proctoring_flags.length === 0) ? (
                     <p className="text-sm text-tertiary">No flags recorded.</p>
                   ) : (
-                    candidate.proctoringFlags.map(flag => (
+                    candidate.proctoring_flags.map(flag => (
                       <div key={flag.id} className="flex items-center gap-3 p-3 rounded-md bg-danger/5">
                         <AlertTriangle size={14} className="text-danger" />
                         <div className="flex-1">
@@ -115,30 +115,30 @@ export default function CandidateDetail() {
             {
               id: 'interview',
               label: 'Interview',
-              content: candidate.interviewFeedback ? (
+              content: candidate.interview_feedback ? (
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="p-3 rounded-md bg-[var(--bg-layer1)] text-center">
                       <p className="text-xs text-tertiary uppercase tracking-architectural mb-1">Technical</p>
                       <p className="text-2xl font-bold text-on-surface">
-                        {candidate.interviewFeedback.technicalScore}
+                        {candidate.interview_feedback.technicalScore}
                         <span className="text-sm text-tertiary">/10</span>
                       </p>
                     </div>
                     <div className="p-3 rounded-md bg-[var(--bg-layer1)] text-center">
                       <p className="text-xs text-tertiary uppercase tracking-architectural mb-1">Communication</p>
                       <p className="text-2xl font-bold text-on-surface">
-                        {candidate.interviewFeedback.communicationScore}
+                        {candidate.interview_feedback.communicationScore}
                         <span className="text-sm text-tertiary">/10</span>
                       </p>
                     </div>
                   </div>
                   <div>
                     <p className="text-xs text-tertiary uppercase tracking-architectural mb-1">Notes</p>
-                    <p className="text-sm text-on-surface-variant">{candidate.interviewFeedback.notes}</p>
+                    <p className="text-sm text-on-surface-variant">{candidate.interview_feedback.notes}</p>
                   </div>
-                  <Badge variant={candidate.interviewFeedback.recommendation === 'select' ? 'success' : 'danger'}>
-                    Recommended: {candidate.interviewFeedback.recommendation === 'select' ? 'Select' : 'Reject'}
+                  <Badge variant={candidate.interview_feedback.recommendation === 'select' ? 'success' : 'danger'}>
+                    Recommended: {candidate.interview_feedback.recommendation === 'select' ? 'Select' : 'Reject'}
                   </Badge>
                 </div>
               ) : (
@@ -148,7 +148,7 @@ export default function CandidateDetail() {
             {
               id: 'resume',
               label: 'Resume',
-              content: candidate.resumeUrl ? (
+              content: candidate.resume_url ? (
                 <div className="flex items-center gap-3 p-4 rounded-md bg-[var(--bg-layer1)]">
                   <FileText size={20} className="text-secondary" />
                   <div className="flex-1">

@@ -1,6 +1,8 @@
 /**
  * Core types for the application
  * Matches backend models (without multi-tenant fields)
+ *
+ * All field names use snake_case to match the backend Pydantic serialization.
  */
 
 export type Role = 'candidate' | 'hr' | 'admin' | 'superadmin' | 'interviewer';
@@ -31,15 +33,15 @@ export interface Candidate {
   cgpa: number;
   status: string;
   display_status: string;
-  resumeUrl?: string;
-  govtIdUrl?: string;
+  resume_url?: string;
+  govt_id_url?: string;
   scores: AssessmentScore[];
-  proctoringFlags: ProctoringFlag[];
-  interviewFeedback?: InterviewFeedback;
-  appliedAt: string;
+  proctoring_flags: ProctoringFlag[];
+  interview_feedback?: InterviewFeedback;
+  created_at: string;
   phone?: string;
-  passedOutYear: number;
-  languageChoice: string;
+  passed_out_year: number;
+  language_choice: string;
 }
 
 export interface AssessmentScore {
