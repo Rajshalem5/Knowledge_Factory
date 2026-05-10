@@ -26,6 +26,7 @@ export interface FunnelFilters {
   target_statuses?: string;
   updated_after?: string;
   updated_before?: string;
+  assessment_status?: string;
 }
 
 export const analyticsApi = {

@@ -35,6 +35,7 @@ class CandidateService:
         has_assessment: bool | None = None,
         updated_after: date | None = None,
         updated_before: date | None = None,
+        assessment_status: str | None = None,
         sort_by: str | None = None,
         sort_order: str | None = "desc",
     ):
@@ -59,6 +60,7 @@ class CandidateService:
             status=status,
             updated_after=updated_after,
             updated_before=updated_before,
+            assessment_status=assessment_status,
         )
 
         count_q = select(func.count()).select_from(query.subquery())

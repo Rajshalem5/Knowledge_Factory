@@ -40,6 +40,7 @@ async def get_hiring_funnel(
                                         "(e.g. 'applied,eligible,assessed'). Only these stage labels are returned."),
     updated_after: date | None = Query(None, description="Filter funnel by candidates updated after this date (ISO format)"),
     updated_before: date | None = Query(None, description="Filter funnel by candidates updated before this date (ISO format)"),
+    assessment_status: str | None = Query(None, description="Filter funnel by candidates whose assessment has this status (e.g. IN_PROGRESS, COMPLETED)"),
     db: AsyncSession = Depends(get_db),
     current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN])),
 ):
@@ -59,6 +60,7 @@ async def get_hiring_funnel(
         has_assessment=has_assessment,
         updated_after=updated_after,
         updated_before=updated_before,
+        assessment_status=assessment_status,
     )
 
     # When target_statuses filters to a subset of stages, return only those

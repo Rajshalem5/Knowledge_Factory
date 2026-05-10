@@ -37,6 +37,7 @@ export const candidatesApi = {
     has_assessment?: boolean;
     updated_after?: string;
     updated_before?: string;
+    assessment_status?: string;
     sort_by?: string;
     sort_order?: string;
   }) =>
