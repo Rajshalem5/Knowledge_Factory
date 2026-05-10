@@ -68,6 +68,10 @@ class Settings(BaseSettings):
     LOGIN_RATE_LIMIT: str = "5/15min"
     CODE_EXEC_RATE_LIMIT: str = "20/minute"
 
+    # ── Seed Credentials (read from env, never hardcoded) ──────────
+    SEED_ADMIN_PASSWORD: str = ""
+    SEED_HR_PASSWORD: str = ""
+
 
 @lru_cache
 def get_settings() -> Settings:

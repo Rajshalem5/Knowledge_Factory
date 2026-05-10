@@ -105,7 +105,7 @@ def create_test_database() -> AsyncGenerator[AsyncSession, None]:
             # Seed admin user
             admin_user = User(
                 email="admin@knowledgefactory.io",
-                password_hash=hash_password("Admin@12345"),
+                password_hash=hash_password(settings.SEED_ADMIN_PASSWORD or "Admin@12345"),
                 name="Admin User",
                 role="SUPERADMIN",
                 status="ACTIVE",
@@ -115,7 +115,7 @@ def create_test_database() -> AsyncGenerator[AsyncSession, None]:
             # Seed HR user
             hr_user = User(
                 email="hr@knowledgefactory.com",
-                password_hash=hash_password("Hr@12345"),
+                password_hash=hash_password(settings.SEED_HR_PASSWORD or "Hr@12345"),
                 name="HR Manager",
                 role="HR",
                 status="ACTIVE",
