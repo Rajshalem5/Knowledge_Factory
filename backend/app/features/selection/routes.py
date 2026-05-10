@@ -37,7 +37,7 @@ async def bulk_select(bodies: list[dict], db: AsyncSession = Depends(get_db), cu
     """Bulk select candidates."""
     results = []
     for body in bodies:
-        cid = body["candidateId"]
+        cid = body["candidate_id"]
         stmt = select(Candidate).where(Candidate.id == cid)
         res = await db.execute(stmt)
         c = res.scalar_one_or_none()
