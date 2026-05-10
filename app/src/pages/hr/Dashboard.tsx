@@ -260,6 +260,14 @@ export default function Dashboard() {
                 <p className="text-xl font-bold text-on-surface">{pipelineStats?.stats?.ROUND2_IN_PROGRESS ?? 0}</p>
               </Card>
               <Card>
+                <div className="text-xs text-tertiary uppercase tracking-architectural mb-1">R3 In Progress</div>
+                <p className="text-xl font-bold text-on-surface">{pipelineStats?.stats?.ROUND3_IN_PROGRESS ?? 0}</p>
+              </Card>
+              <Card>
+                <div className="text-xs text-tertiary uppercase tracking-architectural mb-1">Interview Scheduled</div>
+                <p className="text-xl font-bold text-on-surface">{pipelineStats?.stats?.INTERVIEW_SCHEDULED ?? 0}</p>
+              </Card>
+              <Card>
                 <div className="text-xs text-tertiary uppercase tracking-architectural mb-1">Selected</div>
                 <p className="text-xl font-bold text-on-surface">{pipelineStats?.stats?.SELECTED ?? 0}</p>
               </Card>
