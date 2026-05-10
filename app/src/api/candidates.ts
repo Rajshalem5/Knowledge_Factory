@@ -38,6 +38,8 @@ export const candidatesApi = {
     updated_after?: string;
     updated_before?: string;
     assessment_status?: string;
+    min_score?: number;
+    max_score?: number;
     sort_by?: string;
     sort_order?: string;
   }) =>

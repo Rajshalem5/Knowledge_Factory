@@ -27,6 +27,8 @@ export interface FunnelFilters {
   updated_after?: string;
   updated_before?: string;
   assessment_status?: string;
+  min_score?: number;
+  max_score?: number;
 }
 
 export const analyticsApi = {

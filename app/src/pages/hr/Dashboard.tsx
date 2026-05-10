@@ -53,6 +53,8 @@ export default function Dashboard() {
   const [updatedAfterFilter, setUpdatedAfterFilter] = useState('');
   const [updatedBeforeFilter, setUpdatedBeforeFilter] = useState('');
   const [assessmentStatusFilter, setAssessmentStatusFilter] = useState('');
+  const [minScoreFilter, setMinScoreFilter] = useState('');
+  const [maxScoreFilter, setMaxScoreFilter] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [sortBy, setSortBy] = useState('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -84,6 +86,8 @@ export default function Dashboard() {
     updated_after: updatedAfterFilter || undefined,
     updated_before: updatedBeforeFilter || undefined,
     assessment_status: assessmentStatusFilter || undefined,
+    min_score: minScoreFilter ? parseFloat(minScoreFilter) : undefined,
+    max_score: maxScoreFilter ? parseFloat(maxScoreFilter) : undefined,
     sort_by: sortBy,
     sort_order: sortOrder,
   });
@@ -94,7 +98,8 @@ export default function Dashboard() {
     createdBeforeFilter || passedOutYearFilter || passedOutYearMinFilter || passedOutYearMaxFilter ||
     emailVerifiedFilter || phoneFilter || emailFilter || nameFilter || cycleIdFilter || hasPhoneFilter ||
     hasAssessmentFilter ||
-    updatedAfterFilter || updatedBeforeFilter || targetStatusesFilter || assessmentStatusFilter
+    updatedAfterFilter || updatedBeforeFilter || targetStatusesFilter || assessmentStatusFilter ||
+    minScoreFilter || maxScoreFilter
       ? {
           branch: branchFilter || undefined,
           college: collegeFilter || undefined,
@@ -121,6 +126,8 @@ export default function Dashboard() {
           updated_before: updatedBeforeFilter || undefined,
           target_statuses: targetStatusesFilter || undefined,
           assessment_status: assessmentStatusFilter || undefined,
+          min_score: minScoreFilter ? parseFloat(minScoreFilter) : undefined,
+          max_score: maxScoreFilter ? parseFloat(maxScoreFilter) : undefined,
         }
       : undefined
   );
@@ -153,6 +160,8 @@ export default function Dashboard() {
       if (updatedBeforeFilter) p.updated_before = updatedBeforeFilter;
       if (targetStatusesFilter) p.target_statuses = targetStatusesFilter;
       if (assessmentStatusFilter) p.assessment_status = assessmentStatusFilter;
+      if (minScoreFilter) p.min_score = parseFloat(minScoreFilter);
+      if (maxScoreFilter) p.max_score = parseFloat(maxScoreFilter);
       return Object.keys(p).length > 0 ? p : undefined;
     })()
   );
@@ -183,6 +192,8 @@ export default function Dashboard() {
     if (updatedBeforeFilter) params.updated_before = updatedBeforeFilter;
     if (targetStatusesFilter) params.target_statuses = targetStatusesFilter;
     if (assessmentStatusFilter) params.assessment_status = assessmentStatusFilter;
+    if (minScoreFilter) params.min_score = parseFloat(minScoreFilter);
+    if (maxScoreFilter) params.max_score = parseFloat(maxScoreFilter);
     if (search) params.search = search;
     runScreening.mutate(
       Object.keys(params).length > 0 ? params : undefined
@@ -440,6 +451,8 @@ export default function Dashboard() {
                       setUpdatedAfterFilter('');
                       setUpdatedBeforeFilter('');
                       setAssessmentStatusFilter('');
+                      setMinScoreFilter('');
+                      setMaxScoreFilter('');
                       setEmailVerifiedFilter('');
                       setPhoneFilter('');
                       setEmailFilter('');
@@ -649,6 +662,32 @@ export default function Dashboard() {
                       <option value="COMPLETED">Completed</option>
                       <option value="NOT_STARTED">Not Started</option>
                     </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-tertiary mb-1">Min Score</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      max="100"
+                      placeholder="e.g. 70.0"
+                      value={minScoreFilter}
+                      onChange={e => { setMinScoreFilter(e.target.value); setPage(1); }}
+                      className="w-full px-3 py-1.5 rounded-md bg-[var(--bg-base)] text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/50 border border-[var(--border-ghost)]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-tertiary mb-1">Max Score</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      max="100"
+                      placeholder="e.g. 90.0"
+                      value={maxScoreFilter}
+                      onChange={e => { setMaxScoreFilter(e.target.value); setPage(1); }}
+                      className="w-full px-3 py-1.5 rounded-md bg-[var(--bg-base)] text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/50 border border-[var(--border-ghost)]"
+                    />
                   </div>
                   <div>
                     <label className="block text-xs text-tertiary mb-1">Email Verified</label>
