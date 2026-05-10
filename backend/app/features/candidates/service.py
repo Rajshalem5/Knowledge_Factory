@@ -32,6 +32,7 @@ class CandidateService:
         phone: str | None = None,
         email: str | None = None,
         cycle_id: str | None = None,
+        has_phone: bool | None = None,
         sort_by: str | None = None,
         sort_order: str | None = "desc",
     ):
@@ -71,6 +72,11 @@ class CandidateService:
                 query = query.where(Candidate.govt_id_url.isnot(None))
             else:
                 query = query.where(Candidate.govt_id_url.is_(None))
+        if has_phone is not None:
+            if has_phone:
+                query = query.where(Candidate.phone.isnot(None))
+            else:
+                query = query.where(Candidate.phone.is_(None))
         if created_after:
             dt = datetime.combine(created_after, datetime.min.time())
             query = query.where(Candidate.created_at >= dt)

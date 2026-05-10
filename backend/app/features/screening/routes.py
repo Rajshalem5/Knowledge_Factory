@@ -21,7 +21,8 @@ def _apply_extra_filters(q, branch, college, passed_out_year, language_choice, s
                           created_after=None, created_before=None,
                           passed_out_year_min=None, passed_out_year_max=None,
                           email_verified=None, phone=None, email=None,
-                          cycle_id=None):
+                          cycle_id=None,
+                          has_phone=None):
     """Apply common extra filters to a Candidate query."""
     if name:
         q = q.where(Candidate.name.ilike(f"%{name}%"))
@@ -59,6 +60,11 @@ def _apply_extra_filters(q, branch, college, passed_out_year, language_choice, s
             q = q.where(Candidate.govt_id_url.isnot(None))
         else:
             q = q.where(Candidate.govt_id_url.is_(None))
+    if has_phone is not None:
+        if has_phone:
+            q = q.where(Candidate.phone.isnot(None))
+        else:
+            q = q.where(Candidate.phone.is_(None))
     if created_after:
         dt = datetime.combine(created_after, datetime.min.time())
         q = q.where(Candidate.created_at >= dt)
@@ -97,6 +103,7 @@ async def run_screening(
     phone: str | None = Query(None, description="Filter candidates by phone number"),
     email: str | None = Query(None, description="Filter candidates by exact email address"),
     cycle_id: str | None = Query(None, description="Filter candidates by hiring cycle ID"),
+    has_phone: bool | None = Query(None, description="Filter by whether candidate has provided a phone number"),
     db: AsyncSession = Depends(get_db), current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN]))):
     """
     Auto-screen candidates based on hiring cycle config.
@@ -136,6 +143,7 @@ async def run_screening(
         phone=phone,
         email=email,
         cycle_id=cycle_id,
+        has_phone=has_phone,
     )
 
     res = await db.execute(q)
@@ -180,6 +188,7 @@ async def pipeline_stats(
     email: str | None = Query(None, description="Filter by exact email address"),
     cycle_id: str | None = Query(None, description="Filter by hiring cycle ID"),
     status: str | None = Query(None, description="Filter by candidate status (raw or display_status)"),
+    has_phone: bool | None = Query(None, description="Filter by whether candidate has provided a phone number"),
     db: AsyncSession = Depends(get_db),
     current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN])),
 ):
@@ -196,6 +205,7 @@ async def pipeline_stats(
         phone=phone,
         email=email,
         cycle_id=cycle_id,
+        has_phone=has_phone,
     )
 
     # Apply optional status filter (accepts both raw and display_status values)
