@@ -28,6 +28,7 @@ class Assessment(Base):
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     status: Mapped[AssessmentStatus] = mapped_column(String(20), nullable=False, default=AssessmentStatus.NOT_STARTED)
+    time_limit: Mapped[int] = mapped_column(Integer, nullable=False, default=60)
     termination_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     candidate: Mapped["Candidate"] = relationship(back_populates="assessments", lazy="selectin")
@@ -41,6 +42,7 @@ class Submission(Base):
     assessment_id: Mapped[str] = mapped_column(String(36), ForeignKey("assessments.id", ondelete="CASCADE"), nullable=False, index=True)
     section: Mapped[SubmissionSection] = mapped_column(String(20), nullable=False)
     payload_json: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    time_spent_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
     submitted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
 
     assessment: Mapped["Assessment"] = relationship(back_populates="submissions", lazy="selectin")

@@ -18,7 +18,7 @@ async def submit_feedback(
     candidate_id: str,
     feedback_data: dict,
     db: AsyncSession = Depends(get_db),
-    current_user = Depends(require_role([Role.INTERVIEWER, Role.ADMIN])),
+    current_user = Depends(require_role([Role.INTERVIEWER, Role.ADMIN, Role.SUPERADMIN])),
 ):
     """Submit interviewer feedback for a candidate.
     
