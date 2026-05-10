@@ -5,11 +5,11 @@ from pydantic import BaseModel
 
 
 class FunnelResponse(BaseModel):
-    applied: int
-    eligible: int
-    assessed: int
-    interviewed: int
-    selected: int
+    applied: int = 0
+    eligible: int = 0
+    assessed: int = 0
+    interviewed: int = 0
+    selected: int = 0
 
 
 class DashboardResponse(BaseModel):
