@@ -2,10 +2,9 @@
 Candidate schemas: Lists, Details, Updates.
 """
 
-from uuid import UUID
 from datetime import datetime
 from typing import Any, Optional
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr
 from decimal import Decimal
 
 from app.core.enums import CandidateStatus
@@ -22,11 +21,11 @@ class CandidateBase(BaseModel):
 
 
 class CandidateRead(CandidateBase):
-    id: UUID
+    id: str
     status: CandidateStatus
     display_status: str = ""
     created_at: datetime
-    cycle_id: UUID
+    cycle_id: str
     phone: Optional[str] = None
     resume_url: Optional[str] = None
     govt_id_url: Optional[str] = None
