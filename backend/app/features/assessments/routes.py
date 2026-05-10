@@ -57,5 +57,8 @@ async def submit_section(submission_data: SubmissionCreate, db: AsyncSession = D
     try:
         result = await service.submit_section(current_user.id, submission_data)
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        msg = str(e)
+        if "not found" in msg.lower() or "access denied" in msg.lower():
+            raise HTTPException(status_code=404, detail=msg)
+        raise HTTPException(status_code=400, detail=msg)
     return result
