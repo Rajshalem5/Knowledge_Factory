@@ -145,6 +145,8 @@ async def pipeline_stats(
     cycle_id: str | None = Query(None, description="Filter by hiring cycle ID"),
     status: str | None = Query(None, description="Filter by candidate status (raw or display_status)"),
     has_phone: bool | None = Query(None, description="Filter by whether candidate has provided a phone number"),
+    target_statuses: str | None = Query(None, description="Comma-separated list of statuses to include in the output "
+                                        "(e.g. 'APPLIED,ROUND1_PASSED,SELECTED'). By default all statuses are shown."),
     db: AsyncSession = Depends(get_db),
     current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN])),
 ):
@@ -172,8 +174,15 @@ async def pipeline_stats(
     rows = res.all()
     stats = {row.status: row.count for row in rows}
 
-    # Ensure all statuses appear even when 0
-    for s in CandidateStatus:
-        stats.setdefault(s.value, 0)
+    # Ensure all statuses appear even when 0, or only target statuses if specified
+    if target_statuses:
+        target_list = [s.strip().upper() for s in target_statuses.split(",") if s.strip()]
+        target_set = set(target_list)
+        for s in CandidateStatus:
+            if s.value in target_set:
+                stats.setdefault(s.value, 0)
+    else:
+        for s in CandidateStatus:
+            stats.setdefault(s.value, 0)
 
     return {"stats": dict(sorted(stats.items()))}

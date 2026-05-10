@@ -121,16 +121,22 @@ def apply_candidate_filters(
 
     # Optional status filter — accepts both raw backend values
     # (e.g. "APPLIED") and simplified frontend display_status values
-    # (e.g. "eligible").
+    # (e.g. "eligible"), as well as comma-separated multi-value combinations
+    # (e.g. "APPLIED,ROUND1_PASSED" or "eligible,round1").
     if status:
-        parsed_status: CandidateStatus | None = None
-        try:
-            parsed_status = CandidateStatus(status.upper())
-        except ValueError:
-            mapped = CandidateStatus.from_display_status(status)
-            if mapped:
-                parsed_status = mapped
-        if parsed_status:
-            query = query.where(Candidate.status == parsed_status)
+        parts = [s.strip() for s in status.split(",") if s.strip()]
+        parsed_statuses: list[CandidateStatus] = []
+        for part in parts:
+            try:
+                parsed_statuses.append(CandidateStatus(part.upper()))
+            except ValueError:
+                mapped = CandidateStatus.from_display_status(part)
+                if mapped:
+                    parsed_statuses.append(mapped)
+        if parsed_statuses:
+            if len(parsed_statuses) == 1:
+                query = query.where(Candidate.status == parsed_statuses[0])
+            else:
+                query = query.where(Candidate.status.in_(parsed_statuses))
 
     return query
