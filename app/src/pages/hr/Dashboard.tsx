@@ -49,6 +49,7 @@ export default function Dashboard() {
   const [cycleIdFilter, setCycleIdFilter] = useState('');
   const [hasPhoneFilter, setHasPhoneFilter] = useState('');
   const [hasAssessmentFilter, setHasAssessmentFilter] = useState('');
+  const [hasInterviewFeedbackFilter, setHasInterviewFeedbackFilter] = useState('');
   const [targetStatusesFilter, setTargetStatusesFilter] = useState('');
   const [updatedAfterFilter, setUpdatedAfterFilter] = useState('');
   const [updatedBeforeFilter, setUpdatedBeforeFilter] = useState('');
@@ -83,6 +84,7 @@ export default function Dashboard() {
     cycle_id: cycleIdFilter || undefined,
     has_phone: hasPhoneFilter ? hasPhoneFilter === 'true' : undefined,
     has_assessment: hasAssessmentFilter ? hasAssessmentFilter === 'true' : undefined,
+    has_interview_feedback: hasInterviewFeedbackFilter ? hasInterviewFeedbackFilter === 'true' : undefined,
     updated_after: updatedAfterFilter || undefined,
     updated_before: updatedBeforeFilter || undefined,
     assessment_status: assessmentStatusFilter || undefined,
@@ -97,7 +99,7 @@ export default function Dashboard() {
     cgpaMaxFilter || hasResumeFilter || hasGovtIdFilter || createdAfterFilter ||
     createdBeforeFilter || passedOutYearFilter || passedOutYearMinFilter || passedOutYearMaxFilter ||
     emailVerifiedFilter || phoneFilter || emailFilter || nameFilter || cycleIdFilter || hasPhoneFilter ||
-    hasAssessmentFilter ||
+    hasAssessmentFilter || hasInterviewFeedbackFilter ||
     updatedAfterFilter || updatedBeforeFilter || targetStatusesFilter || assessmentStatusFilter ||
     minScoreFilter || maxScoreFilter
       ? {
@@ -122,6 +124,7 @@ export default function Dashboard() {
           status: statusFilter || undefined,
           has_phone: hasPhoneFilter ? hasPhoneFilter === 'true' : undefined,
           has_assessment: hasAssessmentFilter ? hasAssessmentFilter === 'true' : undefined,
+          has_interview_feedback: hasInterviewFeedbackFilter ? hasInterviewFeedbackFilter === 'true' : undefined,
           updated_after: updatedAfterFilter || undefined,
           updated_before: updatedBeforeFilter || undefined,
           target_statuses: targetStatusesFilter || undefined,
@@ -156,6 +159,7 @@ export default function Dashboard() {
       if (statusFilter) p.status = statusFilter;
       if (hasPhoneFilter) p.has_phone = hasPhoneFilter === 'true';
       if (hasAssessmentFilter) p.has_assessment = hasAssessmentFilter === 'true';
+      if (hasInterviewFeedbackFilter) p.has_interview_feedback = hasInterviewFeedbackFilter === 'true';
       if (updatedAfterFilter) p.updated_after = updatedAfterFilter;
       if (updatedBeforeFilter) p.updated_before = updatedBeforeFilter;
       if (targetStatusesFilter) p.target_statuses = targetStatusesFilter;
@@ -188,6 +192,7 @@ export default function Dashboard() {
     if (cycleIdFilter) params.cycle_id = cycleIdFilter;
     if (hasPhoneFilter) params.has_phone = hasPhoneFilter === 'true';
     if (hasAssessmentFilter) params.has_assessment = hasAssessmentFilter === 'true';
+    if (hasInterviewFeedbackFilter) params.has_interview_feedback = hasInterviewFeedbackFilter === 'true';
     if (updatedAfterFilter) params.updated_after = updatedAfterFilter;
     if (updatedBeforeFilter) params.updated_before = updatedBeforeFilter;
     if (targetStatusesFilter) params.target_statuses = targetStatusesFilter;
@@ -446,6 +451,7 @@ export default function Dashboard() {
                       setHasGovtIdFilter('');
                       setHasPhoneFilter('');
                       setHasAssessmentFilter('');
+                      setHasInterviewFeedbackFilter('');
                       setCreatedAfterFilter('');
                       setCreatedBeforeFilter('');
                       setUpdatedAfterFilter('');
@@ -607,6 +613,18 @@ export default function Dashboard() {
                     <select
                       value={hasAssessmentFilter}
                       onChange={e => { setHasAssessmentFilter(e.target.value); setPage(1); }}
+                      className="w-full px-3 py-1.5 rounded-md bg-[var(--bg-base)] text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/50 border border-[var(--border-ghost)]"
+                    >
+                      <option value="">All</option>
+                      <option value="true">Yes</option>
+                      <option value="false">No</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-tertiary mb-1">Has Interview Feedback</label>
+                    <select
+                      value={hasInterviewFeedbackFilter}
+                      onChange={e => { setHasInterviewFeedbackFilter(e.target.value); setPage(1); }}
                       className="w-full px-3 py-1.5 rounded-md bg-[var(--bg-base)] text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/50 border border-[var(--border-ghost)]"
                     >
                       <option value="">All</option>
