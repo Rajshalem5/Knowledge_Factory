@@ -36,7 +36,7 @@ export default function Assessment() {
   const completeAssessment = useCompleteAssessment();
   const submitSection = useSubmitSection();
   const activeAssessment = activeAssessments?.[0];
-  const hasSubmitted = evalResult !== null || runOutput !== null;
+  const hasSubmitted = evalResult !== null;
 
   const handleComplete = () => {
     if (!activeAssessment) return;
