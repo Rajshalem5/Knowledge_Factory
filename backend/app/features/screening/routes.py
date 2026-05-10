@@ -187,4 +187,42 @@ async def pipeline_stats(
         for s in CandidateStatus:
             stats.setdefault(s.value, 0)
 
-    return {"stats": dict(sorted(stats.items()))}
+    # Compute aggregate metrics
+    total_filtered = sum(stats.values())
+
+    # Average CGPA across filtered candidates
+    cgpa_q = select(func.avg(Candidate.cgpa))
+    cgpa_q = apply_candidate_filters(
+        select(func.avg(Candidate.cgpa)),
+        branch=branch, college=college, passed_out_year=passed_out_year,
+        language_choice=language_choice, search=search,
+        name=name,
+        cgpa_min=cgpa_min, cgpa_max=cgpa_max,
+        has_resume=has_resume, has_govt_id=has_govt_id,
+        created_after=created_after, created_before=created_before,
+        passed_out_year_min=passed_out_year_min, passed_out_year_max=passed_out_year_max,
+        email_verified=email_verified,
+        phone=phone, email=email,
+        cycle_id=cycle_id,
+        has_phone=has_phone,
+        status=status,
+    )
+    cgpa_res = await db.execute(cgpa_q)
+    avg_cgpa = round(float(cgpa_res.scalar() or 0), 2)
+
+    # Assessment completion rate = COMPLETED / (IN_PROGRESS + COMPLETED)
+    in_progress = stats.get(CandidateStatus.ROUND2_IN_PROGRESS.value, 0) + stats.get(CandidateStatus.ROUND3_IN_PROGRESS.value, 0)
+    completed = stats.get(CandidateStatus.ROUND2_PASSED.value, 0) + stats.get(CandidateStatus.ROUND3_PASSED.value, 0)
+    total_assessments = in_progress + completed
+    assessment_completion_rate = round((completed / total_assessments * 100), 1) if total_assessments > 0 else 0.0
+
+    return {
+        "stats": dict(sorted(stats.items())),
+        "aggregates": {
+            "total_filtered": total_filtered,
+            "avg_cgpa": avg_cgpa,
+            "assessment_completion_rate": assessment_completion_rate,
+            "in_progress_count": in_progress,
+            "completed_count": completed,
+        },
+    }
