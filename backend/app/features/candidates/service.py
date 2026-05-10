@@ -72,6 +72,7 @@ class CandidateService:
             "cgpa": Candidate.cgpa,
             "passed_out_year": Candidate.passed_out_year,
             "created_at": Candidate.created_at,
+            "updated_at": Candidate.updated_at,
             "status": Candidate.status,
         }
         if sort_by and sort_by in allowed_sort_columns:
