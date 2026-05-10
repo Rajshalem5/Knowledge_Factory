@@ -19,7 +19,8 @@ def _apply_extra_filters(q, branch, college, passed_out_year, language_choice, s
                           cgpa_min=None, cgpa_max=None,
                           has_resume=None, has_govt_id=None,
                           created_after=None, created_before=None,
-                          passed_out_year_min=None, passed_out_year_max=None):
+                          passed_out_year_min=None, passed_out_year_max=None,
+                          email_verified=None):
     """Apply common extra filters to a Candidate query."""
     if branch:
         q = q.where(Candidate.branch.ilike(f"%{branch}%"))
@@ -62,6 +63,8 @@ def _apply_extra_filters(q, branch, college, passed_out_year, language_choice, s
         q = q.where(Candidate.passed_out_year >= passed_out_year_min)
     if passed_out_year_max is not None:
         q = q.where(Candidate.passed_out_year <= passed_out_year_max)
+    if email_verified is not None:
+        q = q.where(Candidate.email_verified == email_verified)
     return q
 
 
@@ -81,6 +84,7 @@ async def run_screening(
     created_before: date | None = Query(None, description="Filter candidates created before this date (ISO format, e.g. 2026-06-30)"),
     passed_out_year_min: int | None = Query(None, ge=1900, le=2100, description="Filter by minimum passed-out year"),
     passed_out_year_max: int | None = Query(None, ge=1900, le=2100, description="Filter by maximum passed-out year"),
+    email_verified: bool | None = Query(None, description="Filter by email verification status"),
     db: AsyncSession = Depends(get_db), current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN]))):
     """
     Auto-screen candidates based on hiring cycle config.
@@ -115,6 +119,7 @@ async def run_screening(
         has_resume=has_resume, has_govt_id=has_govt_id,
         created_after=created_after, created_before=created_before,
         passed_out_year_min=passed_out_year_min, passed_out_year_max=passed_out_year_max,
+        email_verified=email_verified,
     )
 
     res = await db.execute(q)
@@ -153,6 +158,7 @@ async def pipeline_stats(
     created_before: date | None = Query(None, description="Filter candidates created before this date (ISO format)"),
     passed_out_year_min: int | None = Query(None, ge=1900, le=2100, description="Filter by minimum passed-out year"),
     passed_out_year_max: int | None = Query(None, ge=1900, le=2100, description="Filter by maximum passed-out year"),
+    email_verified: bool | None = Query(None, description="Filter by email verification status"),
     db: AsyncSession = Depends(get_db),
     current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN])),
 ):
@@ -165,6 +171,7 @@ async def pipeline_stats(
         has_resume=has_resume, has_govt_id=has_govt_id,
         created_after=created_after, created_before=created_before,
         passed_out_year_min=passed_out_year_min, passed_out_year_max=passed_out_year_max,
+        email_verified=email_verified,
     )
     base = base.group_by(Candidate.status)
 

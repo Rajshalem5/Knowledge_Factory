@@ -33,6 +33,7 @@ async def list_candidates(
     created_before: date | None = Query(None, description="Filter candidates created before this date (ISO format)"),
     passed_out_year_min: int | None = Query(None, ge=1900, le=2100, description="Filter by minimum passed-out year"),
     passed_out_year_max: int | None = Query(None, ge=1900, le=2100, description="Filter by maximum passed-out year"),
+    email_verified: bool | None = Query(None, description="Filter by email verification status"),
     db: AsyncSession = Depends(get_db),
     current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN])),
 ):
@@ -57,6 +58,7 @@ async def list_candidates(
         has_resume=has_resume, has_govt_id=has_govt_id,
         created_after=created_after, created_before=created_before,
         passed_out_year_min=passed_out_year_min, passed_out_year_max=passed_out_year_max,
+        email_verified=email_verified,
     )
     return {"data": candidates, "pagination": {"page": page, "limit": limit, "total": total, "total_pages": (total + limit - 1) // limit if limit else 1}}
 
