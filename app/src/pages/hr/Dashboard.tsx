@@ -156,12 +156,14 @@ export default function Dashboard() {
     const cols = [
       { key: 'name', header: 'Name' },
       { key: 'email', header: 'Email' },
+      { key: 'phone', header: 'Phone' },
       { key: 'college', header: 'College' },
       { key: 'branch', header: 'Branch' },
       { key: 'cgpa', header: 'CGPA' },
       { key: 'passed_out_year', header: 'Passed Out Year' },
       { key: 'language_choice', header: 'Language' },
       { key: 'display_status', header: 'Status' },
+      { key: 'email_verified', header: 'Email Verified' },
       { key: 'created_at', header: 'Applied On' },
     ];
     exportToCsv(candidatesData.data as unknown as Record<string, unknown>[], cols, 'candidates.csv');
