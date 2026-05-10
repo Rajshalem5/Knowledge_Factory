@@ -247,6 +247,27 @@ export default function Dashboard() {
     { key: 'passed_out_year', header: 'Passed Out', sortable: true },
     { key: 'language_choice', header: 'Language', sortable: false },
     {
+      key: 'updated_at',
+      header: 'Updated',
+      sortable: true,
+      render: (c) => {
+        if (!c.updated_at) return <span className="text-tertiary text-xs">-</span>;
+        const d = new Date(c.updated_at);
+        const now = new Date();
+        const diffMs = now.getTime() - d.getTime();
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMins / 60);
+        const diffDays = Math.floor(diffHours / 24);
+        let label: string;
+        if (diffMins < 1) label = 'Just now';
+        else if (diffMins < 60) label = `${diffMins}m ago`;
+        else if (diffHours < 24) label = `${diffHours}h ago`;
+        else if (diffDays < 7) label = `${diffDays}d ago`;
+        else label = d.toLocaleDateString();
+        return <span className="text-xs text-tertiary" title={d.toLocaleString()}>{label}</span>;
+      },
+    },
+    {
       key: 'cgpa',
       header: 'CGPA',
       sortable: true,
