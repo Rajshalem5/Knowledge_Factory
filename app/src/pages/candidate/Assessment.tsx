@@ -101,7 +101,7 @@ export default function Assessment() {
       setEvalResult(result);
       // Record the submission in the assessment pipeline
       if (activeAssessment) {
-        submitSection.mutate({
+        await submitSection.mutateAsync({
           assessment_id: activeAssessment.id,
           section: 'CODING',
           content: { code, problemId: question.id },
