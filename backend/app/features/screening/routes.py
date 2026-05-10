@@ -20,7 +20,7 @@ def _apply_extra_filters(q, branch, college, passed_out_year, language_choice, s
                           has_resume=None, has_govt_id=None,
                           created_after=None, created_before=None,
                           passed_out_year_min=None, passed_out_year_max=None,
-                          email_verified=None, phone=None):
+                          email_verified=None, phone=None, email=None):
     """Apply common extra filters to a Candidate query."""
     if branch:
         q = q.where(Candidate.branch.ilike(f"%{branch}%"))
@@ -40,6 +40,8 @@ def _apply_extra_filters(q, branch, college, passed_out_year, language_choice, s
         )
     if phone:
         q = q.where(Candidate.phone.ilike(f"%{phone}%"))
+    if email:
+        q = q.where(Candidate.email == email)
     if cgpa_min is not None:
         q = q.where(Candidate.cgpa >= cgpa_min)
     if cgpa_max is not None:
@@ -87,6 +89,7 @@ async def run_screening(
     passed_out_year_max: int | None = Query(None, ge=1900, le=2100, description="Filter by maximum passed-out year"),
     email_verified: bool | None = Query(None, description="Filter by email verification status"),
     phone: str | None = Query(None, description="Filter candidates by phone number"),
+    email: str | None = Query(None, description="Filter candidates by exact email address"),
     db: AsyncSession = Depends(get_db), current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN]))):
     """
     Auto-screen candidates based on hiring cycle config.
@@ -123,6 +126,7 @@ async def run_screening(
         passed_out_year_min=passed_out_year_min, passed_out_year_max=passed_out_year_max,
         email_verified=email_verified,
         phone=phone,
+        email=email,
     )
 
     res = await db.execute(q)
@@ -163,6 +167,7 @@ async def pipeline_stats(
     passed_out_year_max: int | None = Query(None, ge=1900, le=2100, description="Filter by maximum passed-out year"),
     email_verified: bool | None = Query(None, description="Filter by email verification status"),
     phone: str | None = Query(None, description="Filter by phone number"),
+    email: str | None = Query(None, description="Filter by exact email address"),
     db: AsyncSession = Depends(get_db),
     current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN])),
 ):
@@ -176,6 +181,7 @@ async def pipeline_stats(
         passed_out_year_min=passed_out_year_min, passed_out_year_max=passed_out_year_max,
         email_verified=email_verified,
         phone=phone,
+        email=email,
     )
     base = base.group_by(Candidate.status)
 

@@ -30,6 +30,7 @@ class AnalyticsService:
         passed_out_year_max: int | None = None,
         email_verified: bool | None = None,
         phone: str | None = None,
+        email: str | None = None,
     ) -> FunnelResponse:
         """Get hiring funnel counts with optional filters.
 
@@ -59,6 +60,8 @@ class AnalyticsService:
                 q = q.where(Candidate.language_choice.ilike(f"%{language_choice}%"))
             if phone:
                 q = q.where(Candidate.phone.ilike(f"%{phone}%"))
+            if email:
+                q = q.where(Candidate.email == email)
             if cgpa_min is not None:
                 q = q.where(Candidate.cgpa >= cgpa_min)
             if cgpa_max is not None:
