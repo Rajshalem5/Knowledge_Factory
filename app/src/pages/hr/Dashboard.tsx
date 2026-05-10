@@ -143,6 +143,7 @@ export default function Dashboard() {
       if (hasPhoneFilter) p.has_phone = hasPhoneFilter === 'true';
       if (updatedAfterFilter) p.updated_after = updatedAfterFilter;
       if (updatedBeforeFilter) p.updated_before = updatedBeforeFilter;
+      if (targetStatusesFilter) p.target_statuses = targetStatusesFilter;
       return Object.keys(p).length > 0 ? p : undefined;
     })()
   );
