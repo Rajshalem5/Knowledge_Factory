@@ -38,6 +38,7 @@ class Candidate(Base):
     email_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     custom_fields: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     cycle: Mapped["HiringCycle"] = relationship(back_populates="candidates", lazy="selectin")
     assessments: Mapped[list["Assessment"]] = relationship(back_populates="candidate", lazy="selectin")
