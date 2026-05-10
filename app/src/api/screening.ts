@@ -30,6 +30,7 @@ export interface ScreeningFilters {
   has_govt_id?: boolean;
   created_after?: string;
   created_before?: string;
+  email_verified?: boolean;
 }
 
 export const screeningApi = {
