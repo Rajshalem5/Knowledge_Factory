@@ -28,6 +28,7 @@ class CandidateService:
         passed_out_year_min: int | None = None,
         passed_out_year_max: int | None = None,
         email_verified: bool | None = None,
+        phone: str | None = None,
         sort_by: str | None = None,
         sort_order: str | None = "desc",
     ):
@@ -77,6 +78,8 @@ class CandidateService:
             query = query.where(Candidate.passed_out_year <= passed_out_year_max)
         if email_verified is not None:
             query = query.where(Candidate.email_verified == email_verified)
+        if phone:
+            query = query.where(Candidate.phone.ilike(f"%{phone}%"))
 
         count_q = select(func.count()).select_from(query.subquery())
         count_result = await self.db.execute(count_q)
