@@ -31,6 +31,7 @@ class CandidateService:
         email_verified: bool | None = None,
         phone: str | None = None,
         email: str | None = None,
+        cycle_id: str | None = None,
         sort_by: str | None = None,
         sort_order: str | None = "desc",
     ):
@@ -86,6 +87,8 @@ class CandidateService:
             query = query.where(Candidate.phone.ilike(f"%{phone}%"))
         if email:
             query = query.where(Candidate.email == email)
+        if cycle_id:
+            query = query.where(Candidate.cycle_id == cycle_id)
 
         count_q = select(func.count()).select_from(query.subquery())
         count_result = await self.db.execute(count_q)

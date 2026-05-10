@@ -32,6 +32,7 @@ class AnalyticsService:
         email_verified: bool | None = None,
         phone: str | None = None,
         email: str | None = None,
+        cycle_id: str | None = None,
     ) -> FunnelResponse:
         """Get hiring funnel counts with optional filters.
 
@@ -91,6 +92,8 @@ class AnalyticsService:
                 q = q.where(Candidate.passed_out_year <= passed_out_year_max)
             if email_verified is not None:
                 q = q.where(Candidate.email_verified == email_verified)
+            if cycle_id:
+                q = q.where(Candidate.cycle_id == cycle_id)
             return q
 
         stage_queries = {
