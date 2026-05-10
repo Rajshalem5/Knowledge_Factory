@@ -43,6 +43,8 @@ async def run_screening(
     updated_after: date | None = Query(None, description="Filter candidates updated after this date (ISO format, e.g. 2026-01-01)"),
     updated_before: date | None = Query(None, description="Filter candidates updated before this date (ISO format, e.g. 2026-06-30)"),
     assessment_status: str | None = Query(None, description="Filter candidates whose assessment has this status (e.g. IN_PROGRESS, COMPLETED)"),
+    min_score: float | None = Query(None, ge=0.0, le=100.0, description="Filter candidates whose assessment score is >= this value"),
+    max_score: float | None = Query(None, ge=0.0, le=100.0, description="Filter candidates whose assessment score is <= this value"),
     db: AsyncSession = Depends(get_db), current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN]))):
     """
     Auto-screen candidates based on hiring cycle config.
@@ -108,6 +110,8 @@ async def run_screening(
         updated_after=updated_after,
         updated_before=updated_before,
         assessment_status=assessment_status,
+        min_score=min_score,
+        max_score=max_score,
     )
 
     res = await db.execute(q)
@@ -159,6 +163,8 @@ async def pipeline_stats(
     updated_after: date | None = Query(None, description="Filter candidates updated after this date (ISO format)"),
     updated_before: date | None = Query(None, description="Filter candidates updated before this date (ISO format)"),
     assessment_status: str | None = Query(None, description="Filter candidates whose assessment has this status (e.g. IN_PROGRESS, COMPLETED)"),
+    min_score: float | None = Query(None, ge=0.0, le=100.0, description="Filter candidates whose assessment score is >= this value"),
+    max_score: float | None = Query(None, ge=0.0, le=100.0, description="Filter candidates whose assessment score is <= this value"),
     db: AsyncSession = Depends(get_db),
     current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN])),
 ):
@@ -193,6 +199,8 @@ async def pipeline_stats(
         updated_after=updated_after,
         updated_before=updated_before,
         assessment_status=assessment_status,
+        min_score=min_score,
+        max_score=max_score,
     )
     base = base.group_by(Candidate.status)
 
@@ -236,6 +244,8 @@ async def pipeline_stats(
         updated_after=updated_after,
         updated_before=updated_before,
         assessment_status=assessment_status,
+        min_score=min_score,
+        max_score=max_score,
     )
     cgpa_res = await db.execute(cgpa_q)
     avg_cgpa = round(float(cgpa_res.scalar() or 0), 2)

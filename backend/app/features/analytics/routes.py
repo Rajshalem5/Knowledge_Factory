@@ -41,6 +41,8 @@ async def get_hiring_funnel(
     updated_after: date | None = Query(None, description="Filter funnel by candidates updated after this date (ISO format)"),
     updated_before: date | None = Query(None, description="Filter funnel by candidates updated before this date (ISO format)"),
     assessment_status: str | None = Query(None, description="Filter funnel by candidates whose assessment has this status (e.g. IN_PROGRESS, COMPLETED)"),
+    min_score: float | None = Query(None, ge=0.0, le=100.0, description="Filter candidates whose assessment score is >= this value"),
+    max_score: float | None = Query(None, ge=0.0, le=100.0, description="Filter candidates whose assessment score is <= this value"),
     db: AsyncSession = Depends(get_db),
     current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN])),
 ):
@@ -61,6 +63,8 @@ async def get_hiring_funnel(
         updated_after=updated_after,
         updated_before=updated_before,
         assessment_status=assessment_status,
+        min_score=min_score,
+        max_score=max_score,
     )
 
     # When target_statuses filters to a subset of stages, return only those

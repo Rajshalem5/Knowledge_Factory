@@ -47,6 +47,8 @@ def apply_candidate_filters(
     updated_after: date | None = None,
     updated_before: date | None = None,
     assessment_status: str | None = None,
+    min_score: float | None = None,
+    max_score: float | None = None,
 ) -> Select:
     """Apply common candidate filters to a SELECT query.
 
@@ -148,6 +150,16 @@ def apply_candidate_filters(
             from app.features.assessments.models import Assessment
             subq = select(Assessment.candidate_id).where(Assessment.status == st.value)
             query = query.where(Candidate.id.in_(subq))
+
+    # Score range filters — find candidates whose score weighted_total is within range
+    if min_score is not None:
+        from app.features.assessments.models import Score as Scr
+        subq = select(Scr.candidate_id).where(Scr.weighted_total >= min_score)
+        query = query.where(Candidate.id.in_(subq))
+    if max_score is not None:
+        from app.features.assessments.models import Score as Scr
+        subq = select(Scr.candidate_id).where(Scr.weighted_total <= max_score)
+        query = query.where(Candidate.id.in_(subq))
 
     # Optional status filter — accepts both raw backend values
     # (e.g. "APPLIED") and simplified frontend display_status values
