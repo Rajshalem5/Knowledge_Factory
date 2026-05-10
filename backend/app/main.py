@@ -1,6 +1,7 @@
 """FastAPI app bootstrap — all routers wired with security middleware."""
 
 import logging
+from contextlib import asynccontextmanager
 from datetime import date, datetime, timezone
 
 from fastapi import FastAPI, Request
@@ -13,11 +14,40 @@ from app.core.enums import Role, UserStatus, CycleStatus
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(name)s - %(message)s")
 logger = logging.getLogger(__name__)
 
+
+# ── Lifespan Events ────────────────────────────────────────────
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Startup and shutdown event handling."""
+    logger.info("Starting Knowledge Factory API...")
+    from app.database import async_session_factory, Base
+    from sqlalchemy import create_engine as create_sync_engine
+
+    # Import ALL models so SQLAlchemy discovers them
+    from app.features.auth.models import User
+    from app.features.candidates.models import Candidate
+    from app.features.hiring_cycles.models import HiringCycle
+    from app.features.assessments.models import Assessment, Submission, Score
+    from app.features.proctoring.models import ProctoringRecord
+    from app.features.interviews.models import InterviewFeedback
+    from app.features.audit.models import AuditLog
+    from app.features.analytics.models import AIGenerationLog
+
+    if "sqlite" in settings.DATABASE_URL:
+        sync_engine = create_sync_engine(settings.DATABASE_URL.replace("+aiosqlite://", "://"))
+        Base.metadata.create_all(bind=sync_engine)
+        sync_engine.dispose()
+
+    logger.info("Database initialized.")
+    yield
+
+
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
     docs_url="/docs" if settings.DEBUG else None,
     redoc_url="/redoc" if settings.DEBUG else None,
+    lifespan=lifespan,
 )
 
 # ── CORS — strict, no wildcard fallback ─────────────────────────
@@ -92,27 +122,3 @@ app.include_router(audit_router, prefix="/api/admin", tags=["Audit"])
 @app.get("/health")
 def health_check():
     return {"status": "ok", "version": settings.APP_VERSION, "debug": settings.DEBUG}
-
-
-@app.on_event("startup")
-async def startup():
-    logger.info("Starting Knowledge Factory API...")
-    from app.database import async_session_factory, Base
-    from sqlalchemy import create_engine as create_sync_engine
-
-    # Import ALL models so SQLAlchemy discovers them
-    from app.features.auth.models import User
-    from app.features.candidates.models import Candidate
-    from app.features.hiring_cycles.models import HiringCycle
-    from app.features.assessments.models import Assessment, Submission, Score
-    from app.features.proctoring.models import ProctoringRecord
-    from app.features.interviews.models import InterviewFeedback
-    from app.features.audit.models import AuditLog
-    from app.features.analytics.models import AIGenerationLog
-
-    if "sqlite" in settings.DATABASE_URL:
-        sync_engine = create_sync_engine(settings.DATABASE_URL.replace("+aiosqlite://", "://"))
-        Base.metadata.create_all(bind=sync_engine)
-        sync_engine.dispose()
-
-    logger.info("Database initialized.")

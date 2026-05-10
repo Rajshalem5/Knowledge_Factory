@@ -1,7 +1,7 @@
 """Authentication schemas - simplified without multi-tenancy."""
 
 from uuid import UUID
-from pydantic import BaseModel, EmailStr, Field, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
 
 class TokenResponse(BaseModel):
@@ -72,5 +72,4 @@ class UserResponse(BaseModel):
     name: str
     role: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

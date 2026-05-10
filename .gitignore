@@ -27,6 +27,10 @@ Thumbs.db
 # Skills folder (not needed in repo)
 /skills/
 
+# Agent artifacts (local, machine-specific)
+.agents/
+.facts
+
 # Unnecessary documentation and project files
 AUDIT_REPORT*.md
 ~*.md.saved.bak*
