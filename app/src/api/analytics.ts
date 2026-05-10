@@ -22,7 +22,7 @@ export interface FunnelFilters {
 
 export const analyticsApi = {
   getFunnel: (filters?: FunnelFilters) =>
-    api.get<FunnelData>('/api/analytics/funnel', { params: filters as Record<string, string | undefined> }),
+    api.get<FunnelData>('/api/analytics/funnel', { params: filters as Record<string, string | number | boolean | undefined> }),
 
   getAnalytics: (organizationId?: string) =>
     api.get<AnalyticsData>('/api/analytics/dashboard', { params: organizationId ? { organizationId } : undefined }),
