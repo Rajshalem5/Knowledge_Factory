@@ -21,6 +21,7 @@ export interface FunnelFilters {
   email?: string;
   cycle_id?: string;
   status?: string;
+  has_phone?: boolean;
 }
 
 export const analyticsApi = {

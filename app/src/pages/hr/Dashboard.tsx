@@ -47,6 +47,7 @@ export default function Dashboard() {
   const [emailFilter, setEmailFilter] = useState('');
   const [nameFilter, setNameFilter] = useState('');
   const [cycleIdFilter, setCycleIdFilter] = useState('');
+  const [hasPhoneFilter, setHasPhoneFilter] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [sortBy, setSortBy] = useState('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -73,6 +74,7 @@ export default function Dashboard() {
     phone: phoneFilter || undefined,
     email: emailFilter || undefined,
     cycle_id: cycleIdFilter || undefined,
+    has_phone: hasPhoneFilter ? hasPhoneFilter === 'true' : undefined,
     sort_by: sortBy,
     sort_order: sortOrder,
   });
@@ -81,7 +83,7 @@ export default function Dashboard() {
     search || branchFilter || collegeFilter || languageChoiceFilter || cgpaMinFilter ||
     cgpaMaxFilter || hasResumeFilter || hasGovtIdFilter || createdAfterFilter ||
     createdBeforeFilter || passedOutYearFilter || passedOutYearMinFilter || passedOutYearMaxFilter ||
-    emailVerifiedFilter || phoneFilter || emailFilter || nameFilter || cycleIdFilter
+    emailVerifiedFilter || phoneFilter || emailFilter || nameFilter || cycleIdFilter || hasPhoneFilter
       ? {
           branch: branchFilter || undefined,
           college: collegeFilter || undefined,
@@ -102,6 +104,7 @@ export default function Dashboard() {
           email: emailFilter || undefined,
           cycle_id: cycleIdFilter || undefined,
           status: statusFilter || undefined,
+          has_phone: hasPhoneFilter ? hasPhoneFilter === 'true' : undefined,
         }
       : undefined
   );
@@ -128,6 +131,7 @@ export default function Dashboard() {
       if (nameFilter) p.name = nameFilter;
       if (search) p.search = search;
       if (statusFilter) p.status = statusFilter;
+      if (hasPhoneFilter) p.has_phone = hasPhoneFilter === 'true';
       return Object.keys(p).length > 0 ? p : undefined;
     })()
   );
@@ -152,6 +156,7 @@ export default function Dashboard() {
     if (emailFilter) params.email = emailFilter;
     if (nameFilter) params.name = nameFilter;
     if (cycleIdFilter) params.cycle_id = cycleIdFilter;
+    if (hasPhoneFilter) params.has_phone = hasPhoneFilter === 'true';
     if (search) params.search = search;
     runScreening.mutate(
       Object.keys(params).length > 0 ? params : undefined
@@ -385,6 +390,18 @@ export default function Dashboard() {
                     <select
                       value={hasGovtIdFilter}
                       onChange={e => { setHasGovtIdFilter(e.target.value); setPage(1); }}
+                      className="w-full px-3 py-1.5 rounded-md bg-[var(--bg-base)] text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/50 border border-[var(--border-ghost)]"
+                    >
+                      <option value="">All</option>
+                      <option value="true">Yes</option>
+                      <option value="false">No</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-tertiary mb-1">Has Phone</label>
+                    <select
+                      value={hasPhoneFilter}
+                      onChange={e => { setHasPhoneFilter(e.target.value); setPage(1); }}
                       className="w-full px-3 py-1.5 rounded-md bg-[var(--bg-base)] text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/50 border border-[var(--border-ghost)]"
                     >
                       <option value="">All</option>

@@ -33,6 +33,7 @@ export const candidatesApi = {
     phone?: string;
     email?: string;
     cycle_id?: string;
+    has_phone?: boolean;
     sort_by?: string;
     sort_order?: string;
   }) =>
