@@ -48,6 +48,7 @@ export default function Dashboard() {
   const [nameFilter, setNameFilter] = useState('');
   const [cycleIdFilter, setCycleIdFilter] = useState('');
   const [hasPhoneFilter, setHasPhoneFilter] = useState('');
+  const [hasAssessmentFilter, setHasAssessmentFilter] = useState('');
   const [targetStatusesFilter, setTargetStatusesFilter] = useState('');
   const [updatedAfterFilter, setUpdatedAfterFilter] = useState('');
   const [updatedBeforeFilter, setUpdatedBeforeFilter] = useState('');
@@ -78,6 +79,7 @@ export default function Dashboard() {
     email: emailFilter || undefined,
     cycle_id: cycleIdFilter || undefined,
     has_phone: hasPhoneFilter ? hasPhoneFilter === 'true' : undefined,
+    has_assessment: hasAssessmentFilter ? hasAssessmentFilter === 'true' : undefined,
     updated_after: updatedAfterFilter || undefined,
     updated_before: updatedBeforeFilter || undefined,
     sort_by: sortBy,
@@ -89,6 +91,7 @@ export default function Dashboard() {
     cgpaMaxFilter || hasResumeFilter || hasGovtIdFilter || createdAfterFilter ||
     createdBeforeFilter || passedOutYearFilter || passedOutYearMinFilter || passedOutYearMaxFilter ||
     emailVerifiedFilter || phoneFilter || emailFilter || nameFilter || cycleIdFilter || hasPhoneFilter ||
+    hasAssessmentFilter ||
     updatedAfterFilter || updatedBeforeFilter || targetStatusesFilter
       ? {
           branch: branchFilter || undefined,
@@ -111,6 +114,7 @@ export default function Dashboard() {
           cycle_id: cycleIdFilter || undefined,
           status: statusFilter || undefined,
           has_phone: hasPhoneFilter ? hasPhoneFilter === 'true' : undefined,
+          has_assessment: hasAssessmentFilter ? hasAssessmentFilter === 'true' : undefined,
           updated_after: updatedAfterFilter || undefined,
           updated_before: updatedBeforeFilter || undefined,
           target_statuses: targetStatusesFilter || undefined,
@@ -141,6 +145,7 @@ export default function Dashboard() {
       if (search) p.search = search;
       if (statusFilter) p.status = statusFilter;
       if (hasPhoneFilter) p.has_phone = hasPhoneFilter === 'true';
+      if (hasAssessmentFilter) p.has_assessment = hasAssessmentFilter === 'true';
       if (updatedAfterFilter) p.updated_after = updatedAfterFilter;
       if (updatedBeforeFilter) p.updated_before = updatedBeforeFilter;
       if (targetStatusesFilter) p.target_statuses = targetStatusesFilter;
@@ -169,6 +174,7 @@ export default function Dashboard() {
     if (nameFilter) params.name = nameFilter;
     if (cycleIdFilter) params.cycle_id = cycleIdFilter;
     if (hasPhoneFilter) params.has_phone = hasPhoneFilter === 'true';
+    if (hasAssessmentFilter) params.has_assessment = hasAssessmentFilter === 'true';
     if (updatedAfterFilter) params.updated_after = updatedAfterFilter;
     if (updatedBeforeFilter) params.updated_before = updatedBeforeFilter;
     if (targetStatusesFilter) params.target_statuses = targetStatusesFilter;
@@ -423,6 +429,7 @@ export default function Dashboard() {
                       setHasResumeFilter('');
                       setHasGovtIdFilter('');
                       setHasPhoneFilter('');
+                      setHasAssessmentFilter('');
                       setCreatedAfterFilter('');
                       setCreatedBeforeFilter('');
                       setUpdatedAfterFilter('');
@@ -569,6 +576,18 @@ export default function Dashboard() {
                     <select
                       value={hasPhoneFilter}
                       onChange={e => { setHasPhoneFilter(e.target.value); setPage(1); }}
+                      className="w-full px-3 py-1.5 rounded-md bg-[var(--bg-base)] text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/50 border border-[var(--border-ghost)]"
+                    >
+                      <option value="">All</option>
+                      <option value="true">Yes</option>
+                      <option value="false">No</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-tertiary mb-1">Has Assessment</label>
+                    <select
+                      value={hasAssessmentFilter}
+                      onChange={e => { setHasAssessmentFilter(e.target.value); setPage(1); }}
                       className="w-full px-3 py-1.5 rounded-md bg-[var(--bg-base)] text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/50 border border-[var(--border-ghost)]"
                     >
                       <option value="">All</option>

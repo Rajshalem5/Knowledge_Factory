@@ -35,6 +35,7 @@ async def get_hiring_funnel(
     cycle_id: str | None = Query(None, description="Filter by hiring cycle ID"),
     status: str | None = Query(None, description="Filter by candidate status (raw or display_status)"),
     has_phone: bool | None = Query(None, description="Filter by whether candidate has provided a phone number"),
+    has_assessment: bool | None = Query(None, description="Filter by whether candidate has any assessment records"),
     target_statuses: str | None = Query(None, description="Comma-separated list of statuses to filter funnel stages "
                                         "(e.g. 'applied,eligible,assessed'). Only these stage labels are returned."),
     updated_after: date | None = Query(None, description="Filter funnel by candidates updated after this date (ISO format)"),
@@ -55,6 +56,7 @@ async def get_hiring_funnel(
         cycle_id=cycle_id,
         status=status,
         has_phone=has_phone,
+        has_assessment=has_assessment,
         updated_after=updated_after,
         updated_before=updated_before,
     )

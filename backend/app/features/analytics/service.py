@@ -36,6 +36,7 @@ class AnalyticsService:
         cycle_id: str | None = None,
         status: str | None = None,
         has_phone: bool | None = None,
+        has_assessment: bool | None = None,
         updated_after: date | None = None,
         updated_before: date | None = None,
     ) -> FunnelResponse:
@@ -59,6 +60,7 @@ class AnalyticsService:
                 cgpa_min=cgpa_min, cgpa_max=cgpa_max,
                 has_resume=has_resume, has_govt_id=has_govt_id,
                 has_phone=has_phone,
+                has_assessment=has_assessment,
                 created_after=created_after, created_before=created_before,
                 passed_out_year_min=passed_out_year_min,
                 passed_out_year_max=passed_out_year_max,

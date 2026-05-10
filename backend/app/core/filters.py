@@ -34,6 +34,7 @@ def apply_candidate_filters(
     has_resume: bool | None = None,
     has_govt_id: bool | None = None,
     has_phone: bool | None = None,
+    has_assessment: bool | None = None,
     created_after: date | None = None,
     created_before: date | None = None,
     passed_out_year_min: int | None = None,
@@ -106,6 +107,13 @@ def apply_candidate_filters(
             query = query.where(Candidate.phone.isnot(None))
         else:
             query = query.where(Candidate.phone.is_(None))
+    if has_assessment is not None:
+        from app.features.assessments.models import Assessment
+        subq = select(Assessment.candidate_id).distinct()
+        if has_assessment:
+            query = query.where(Candidate.id.in_(subq))
+        else:
+            query = query.where(Candidate.id.notin_(subq))
     if created_after:
         dt = datetime.combine(created_after, datetime.min.time())
         query = query.where(Candidate.created_at >= dt)
