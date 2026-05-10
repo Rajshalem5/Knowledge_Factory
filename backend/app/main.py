@@ -1,10 +1,11 @@
-"""FastAPI app bootstrap — all routers wired."""
+"""FastAPI app bootstrap — all routers wired with security middleware."""
 
 import logging
 from datetime import date, datetime, timezone
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.core.enums import Role, UserStatus, CycleStatus
@@ -12,17 +13,51 @@ from app.core.enums import Role, UserStatus, CycleStatus
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(name)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title=settings.APP_NAME, version=settings.APP_VERSION, docs_url="/docs" if settings.DEBUG else None, redoc_url="/redoc" if settings.DEBUG else None)
+app = FastAPI(
+    title=settings.APP_NAME,
+    version=settings.APP_VERSION,
+    docs_url="/docs" if settings.DEBUG else None,
+    redoc_url="/redoc" if settings.DEBUG else None,
+)
 
-# CORS — origins from config
+# ── CORS — strict, no wildcard fallback ─────────────────────────
 cors_origins = [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()]
+if not cors_origins:
+    logger.warning("CORS_ORIGINS is empty — API will not be accessible from any origin.")
+    cors_origins = []  # empty = all origins denied by CORS spec
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=cors_origins if cors_origins else ["*"],
+    allow_origins=cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Accept"],
 )
+
+
+# ── Security Headers Middleware ─────────────────────────────────
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    if not settings.DEBUG:
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        response.headers["Content-Security-Policy"] = "default-src 'self'"
+    return response
+
+
+# ── Global Exception Handler (prevent info leakage) ──────────────
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error("Unhandled exception: %s", exc, exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error"},
+    )
+
 
 # ── Feature Routers ───────────────────────────────────────────────
 from app.features.auth.routes import router as auth_router
@@ -56,7 +91,7 @@ app.include_router(audit_router, prefix="/api/admin", tags=["Audit"])
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok"}
+    return {"status": "ok", "version": settings.APP_VERSION, "debug": settings.DEBUG}
 
 
 @app.on_event("startup")
