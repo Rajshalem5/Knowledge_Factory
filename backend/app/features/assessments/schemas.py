@@ -4,7 +4,7 @@ Assessment schemas: Questions, Submissions, Scores.
 
 from datetime import datetime
 from typing import Any, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from app.core.enums import AssessmentRound, AssessmentStatus, SubmissionSection
 
@@ -25,8 +25,7 @@ class AssessmentRead(BaseModel):
     ended_at: Optional[datetime] = None
     time_limit: int = 60
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class SubmissionCreate(BaseModel):

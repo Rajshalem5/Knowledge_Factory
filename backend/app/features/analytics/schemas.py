@@ -1,7 +1,7 @@
 """Analytics schemas."""
 
 from typing import Any
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class FunnelResponse(BaseModel):
@@ -29,5 +29,4 @@ class OrganizationRead(BaseModel):
     active_hiring_cycles: int = 0
     status: str = "ACTIVE"
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

@@ -4,7 +4,7 @@ Candidate schemas: Lists, Details, Updates.
 
 from datetime import datetime
 from typing import Any, Optional
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr
 from decimal import Decimal
 
 from app.core.enums import CandidateStatus
@@ -35,8 +35,7 @@ class CandidateRead(CandidateBase):
     proctoring_flags: list = []
     interview_feedback: Optional[dict] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
     @classmethod
     def from_orm_compat(cls, candidate) -> "CandidateRead":
