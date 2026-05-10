@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, Upload, Search, Play, Filter, X } from 'lucide-react';
+import { Users, Upload, Search, Play, Filter, X, Download } from 'lucide-react';
 import { AppShell } from '../../components/layout/AppShell';
 import { Card, CardHeader, CardTitle, Button, Select, Badge, LoadingState, ErrorState } from '../../components/ui';
 import { DataTable, type Column } from '../../components/ui/DataTable';
@@ -9,6 +9,7 @@ import { useCandidates } from '../../hooks/useCandidates';
 import { useFunnelData } from '../../hooks/useAnalytics';
 import { useRunScreening, usePipelineStats } from '../../hooks/useScreening';
 import { STATUS_LABELS } from '../../utils/roles';
+import { exportToCsv } from '../../utils/csv';
 import type { Candidate, CandidateStatus } from '../../types';
 
 const STATUS_OPTIONS = [
@@ -107,6 +108,22 @@ export default function Dashboard() {
     runScreening.mutate(
       Object.keys(params).length > 0 ? params : undefined
     );
+  };
+
+  const handleDownloadCsv = () => {
+    if (!candidatesData?.data?.length) return;
+    const cols = [
+      { key: 'name', header: 'Name' },
+      { key: 'email', header: 'Email' },
+      { key: 'college', header: 'College' },
+      { key: 'branch', header: 'Branch' },
+      { key: 'cgpa', header: 'CGPA' },
+      { key: 'passed_out_year', header: 'Passed Out Year' },
+      { key: 'language_choice', header: 'Language' },
+      { key: 'display_status', header: 'Status' },
+      { key: 'created_at', header: 'Applied On' },
+    ];
+    exportToCsv(candidatesData.data as unknown as Record<string, unknown>[], cols, 'candidates.csv');
   };
 
   const columns: Column<Candidate>[] = [
@@ -384,10 +401,16 @@ export default function Dashboard() {
             <div className="p-4 bg-[var(--bg-layer1)]">
               <div className="flex items-center justify-between mb-3">
                 <CardTitle>Candidates</CardTitle>
-                <Button variant="secondary" size="sm">
-                  <Upload size={14} />
-                  Bulk Upload
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button variant="secondary" size="sm" onClick={handleDownloadCsv} disabled={!candidatesData?.data?.length}>
+                    <Download size={14} />
+                    CSV
+                  </Button>
+                  <Button variant="secondary" size="sm">
+                    <Upload size={14} />
+                    Bulk Upload
+                  </Button>
+                </div>
               </div>
               <div className="flex items-center gap-3">
                 <div className="flex-1 relative">
