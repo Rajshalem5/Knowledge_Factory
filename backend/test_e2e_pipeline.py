@@ -202,7 +202,82 @@ async def test_full_pipeline():
         assert r.status_code == 200
         print(f"    Funnel: {r.json()}")
 
-        print("\n✓ FULL PIPELINE PASSED — All 13 steps OK!")
+        # ── Step 14: Start assessment (ROUND_3) ──────────────────────
+        r = await client.post('/api/assessment/start',
+                              headers={'Authorization': f'Bearer {candidate_token}'},
+                              json={'round': 'ROUND_3'})
+        print(f"14. Start ROUND_3 assessment: {r.status_code}")
+        assert r.status_code == 200, f"FAIL: {r.text[:200]}"
+        r3_assessment = r.json()
+        r3_assessment_id = r3_assessment['id']
+        print(f"    Assessment ID: {r3_assessment_id}, Status: {r3_assessment['status']}")
+        assert r3_assessment['round'] == 'ROUND_3'
+        assert r3_assessment['status'] == 'IN_PROGRESS'
+
+        # ── Step 15: Verify candidate status after ROUND_3 start ────
+        r = await client.get('/api/candidates/me', headers={'Authorization': f'Bearer {candidate_token}'})
+        print(f"15. Status after ROUND_3 start: {r.json()['status']}")
+        assert r.json()['status'] == 'ROUND3_IN_PROGRESS', f"Expected ROUND3_IN_PROGRESS, got {r.json()['status']}"
+
+        # ── Step 16: Submit section for ROUND_3 ──────────────────────
+        r = await client.post('/api/assessment/submit-section',
+                              headers={'Authorization': f'Bearer {candidate_token}'},
+                              json={
+                                  'assessment_id': r3_assessment_id,
+                                  'section': 'CODING',
+                                  'content': {'code': 'print("round3")', 'problemId': 'r2_p1'},
+                                  'time_spent_seconds': 90,
+                              })
+        print(f"16. Submit ROUND_3 section: {r.status_code}")
+        assert r.status_code == 200, f"FAIL: {r.text[:200]}"
+        print(f"    Result: {r.json()}")
+
+        # ── Step 17: Complete ROUND_3 assessment ─────────────────────
+        r = await client.post(f'/api/assessment/{r3_assessment_id}/complete',
+                              headers={'Authorization': f'Bearer {candidate_token}'})
+        print(f"17. Complete ROUND_3: {r.status_code}")
+        assert r.status_code == 200, f"FAIL: {r.text[:200]}"
+        assert r.json()['status'] == 'COMPLETED'
+        print(f"    Assessment status: {r.json()['status']}")
+
+        r = await client.get('/api/candidates/me', headers={'Authorization': f'Bearer {candidate_token}'})
+        print(f"    Candidate status: {r.json()['status']}")
+        assert r.json()['status'] == 'ROUND3_PASSED', f"Expected ROUND3_PASSED, got {r.json()['status']}"
+
+        # ── Step 18: HR schedules interview ──────────────────────────
+        r = await client.patch(f'/api/candidates/{candidate_id}/status',
+                               headers={'Authorization': f'Bearer {hr_token}'},
+                               json={'status': 'INTERVIEW_SCHEDULED'})
+        print(f"18. Schedule interview: {r.status_code}")
+        assert r.status_code == 200, f"FAIL: {r.text[:200]}"
+        assert r.json()['status'] == 'INTERVIEW_SCHEDULED'
+        print(f"    Status: {r.json()['status']}")
+
+        # ── Step 19: HR advances candidate to INTERVIEW_COMPLETED ────
+        # (In production, an interviewer would submit feedback via
+        #  POST /api/candidates/{id}/feedback, which transitions the status.)
+        r = await client.patch(f'/api/candidates/{candidate_id}/status',
+                               headers={'Authorization': f'Bearer {hr_token}'},
+                               json={'status': 'INTERVIEW_COMPLETED'})
+        print(f"19. HR marks interview completed: {r.status_code}")
+        assert r.status_code == 200, f"FAIL: {r.text[:200]}"
+        assert r.json()['status'] == 'INTERVIEW_COMPLETED'
+        print(f"    Status: {r.json()['status']}")
+
+        # ── Step 20: Admin selects candidate ──────────────────────────
+        r = await client.post(f'/api/selection/candidates/{candidate_id}/select',
+                              headers={'Authorization': f'Bearer {hr_token}'})
+        print(f"20. Select candidate: {r.status_code}")
+        assert r.status_code == 200, f"FAIL: {r.text[:200]}"
+        data = r.json()
+        assert data['status'] == 'SELECTED'
+        print(f"    Result: {data}")
+
+        r = await client.get('/api/candidates/me', headers={'Authorization': f'Bearer {candidate_token}'})
+        print(f"    Final status: {r.json()['status']}")
+        assert r.json()['status'] == 'SELECTED', f"Expected SELECTED, got {r.json()['status']}"
+
+        print("\n✓ FULL PIPELINE PASSED — All 20 steps OK! (APPLIED → SELECTED)")
         return True
 
 
