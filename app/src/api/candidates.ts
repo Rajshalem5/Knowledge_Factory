@@ -29,6 +29,8 @@ export const candidatesApi = {
     passed_out_year_min?: number;
     passed_out_year_max?: number;
     email_verified?: boolean;
+    sort_by?: string;
+    sort_order?: string;
   }) =>
     api.get<PaginatedResponse<Candidate>>('/api/candidates', { 
       params: params as Record<string, string | number | boolean | undefined> 

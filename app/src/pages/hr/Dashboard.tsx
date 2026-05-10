@@ -42,6 +42,8 @@ export default function Dashboard() {
   const [passedOutYearMaxFilter, setPassedOutYearMaxFilter] = useState('');
   const [emailVerifiedFilter, setEmailVerifiedFilter] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const [sortBy, setSortBy] = useState('created_at');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   const { data: candidatesData, isLoading, error } = useCandidates({
     page,
@@ -60,6 +62,8 @@ export default function Dashboard() {
     passed_out_year_min: passedOutYearMinFilter ? parseInt(passedOutYearMinFilter, 10) : undefined,
     passed_out_year_max: passedOutYearMaxFilter ? parseInt(passedOutYearMaxFilter, 10) : undefined,
     email_verified: emailVerifiedFilter ? emailVerifiedFilter === 'true' : undefined,
+    sort_by: sortBy,
+    sort_order: sortOrder,
   });
 
   const { data: funnelData, isLoading: funnelLoading } = useFunnelData();
@@ -109,13 +113,15 @@ export default function Dashboard() {
     {
       key: 'name',
       header: 'Name',
+      sortable: true,
       render: (c) => <span className="font-medium text-on-surface">{c.name}</span>,
     },
-    { key: 'college', header: 'College' },
-    { key: 'branch', header: 'Branch' },
+    { key: 'college', header: 'College', sortable: true },
+    { key: 'branch', header: 'Branch', sortable: true },
     {
       key: 'cgpa',
       header: 'CGPA',
+      sortable: true,
       render: (c) => <span className="font-mono text-xs">{c.cgpa.toFixed(1)}</span>,
     },
     {
@@ -128,6 +134,16 @@ export default function Dashboard() {
       ),
     },
   ];
+
+  const handleSort = (column: string) => {
+    if (sortBy === column) {
+      setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(column);
+      setSortOrder('desc');
+    }
+    setPage(1);
+  };
 
   return (
     <AppShell title="Dashboard">
@@ -405,6 +421,9 @@ export default function Dashboard() {
                 total_pages={candidatesData.pagination.total_pages}
                 onPageChange={setPage}
                 onRowClick={c => navigate(`/candidates/${c.id}`)}
+                sortBy={sortBy}
+                sortOrder={sortOrder}
+                onSort={handleSort}
               />
             ) : null}
           </Card>
