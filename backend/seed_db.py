@@ -2,7 +2,8 @@
 import asyncio
 import sys
 sys.path.insert(0, ".")
-from app.database import async_session_factory
+from app.database import async_session_factory, Base
+from sqlalchemy import create_engine as create_sync_engine
 from app.core.security import hash_password, verify_password
 from datetime import date
 from sqlalchemy import select
@@ -19,6 +20,16 @@ from app.features.analytics.models import AIGenerationLog
 
 
 async def seed():
+    # Create tables first (works with both SQLite and PostgreSQL)
+    from app.config import settings
+    db_url = settings.DATABASE_URL
+    if "sqlite" in db_url:
+        sync_url = db_url.replace("+aiosqlite://", "://")
+        sync_engine = create_sync_engine(sync_url)
+        Base.metadata.create_all(bind=sync_engine)
+        sync_engine.dispose()
+        print("[seed] Tables created.")
+
     async with async_session_factory() as session:
         async with session.begin():
             # ── Staff Users ─────────────────────────────────────────
