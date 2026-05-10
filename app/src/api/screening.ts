@@ -46,6 +46,7 @@ export interface ScreeningFilters {
   cycle_id?: string;
   status?: string;
   has_phone?: boolean;
+  has_assessment?: boolean;
   target_statuses?: string;
   updated_after?: string;
   updated_before?: string;
