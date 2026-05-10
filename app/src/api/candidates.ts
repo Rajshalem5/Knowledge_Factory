@@ -34,6 +34,8 @@ export const candidatesApi = {
     email?: string;
     cycle_id?: string;
     has_phone?: boolean;
+    updated_after?: string;
+    updated_before?: string;
     sort_by?: string;
     sort_order?: string;
   }) =>
