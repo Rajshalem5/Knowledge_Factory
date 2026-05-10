@@ -1,8 +1,6 @@
 """Candidate management service."""
 
 from datetime import date
-from uuid import UUID
-
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -87,19 +85,19 @@ class CandidateService:
 
         return [CandidateRead.from_orm_compat(c) for c in candidates], total
 
-    async def get_candidate(self, candidate_id: UUID) -> CandidateRead | None:
-        stmt = select(Candidate).where(Candidate.id == str(candidate_id))
+    async def get_candidate(self, candidate_id: str) -> CandidateRead | None:
+        stmt = select(Candidate).where(Candidate.id == candidate_id)
         result = await self.db.execute(stmt)
         c = result.scalar_one_or_none()
         return CandidateRead.from_orm_compat(c) if c else None
 
-    async def get_my_profile(self, candidate_id: UUID) -> CandidateRead:
-        stmt = select(Candidate).where(Candidate.id == str(candidate_id))
+    async def get_my_profile(self, candidate_id: str) -> CandidateRead:
+        stmt = select(Candidate).where(Candidate.id == candidate_id)
         result = await self.db.execute(stmt)
         c = result.scalar_one()
         return CandidateRead.from_orm_compat(c)
 
-    async def update_status(self, candidate_id: UUID, new_status: CandidateStatus) -> CandidateRead | None:
+    async def update_status(self, candidate_id: str, new_status: CandidateStatus) -> CandidateRead | None:
         """Update candidate status with FSM validation."""
         valid_transitions = {
             CandidateStatus.APPLIED: {CandidateStatus.ROUND1_REVIEW, CandidateStatus.ROUND1_PASSED, CandidateStatus.ROUND1_REJECTED},
@@ -117,7 +115,7 @@ class CandidateService:
             CandidateStatus.SELECTED: set(),
         }
 
-        stmt = select(Candidate).where(Candidate.id == str(candidate_id))
+        stmt = select(Candidate).where(Candidate.id == candidate_id)
         res = await self.db.execute(stmt)
         candidate = res.scalar_one_or_none()
 
