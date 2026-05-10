@@ -106,6 +106,7 @@ export default function Dashboard() {
           cycle_id: cycleIdFilter || undefined,
           status: statusFilter || undefined,
           has_phone: hasPhoneFilter ? hasPhoneFilter === 'true' : undefined,
+          target_statuses: targetStatusesFilter || undefined,
         }
       : undefined
   );
