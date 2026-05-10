@@ -37,6 +37,7 @@ async def run_screening(
     email: str | None = Query(None, description="Filter candidates by exact email address"),
     cycle_id: str | None = Query(None, description="Filter candidates by hiring cycle ID"),
     has_phone: bool | None = Query(None, description="Filter by whether candidate has provided a phone number"),
+    has_assessment: bool | None = Query(None, description="Filter by whether candidate has any assessment records"),
     target_statuses: str | None = Query(None, description="Comma-separated list of candidate statuses to screen (default: APPLIED). "
                                         "Useful for re-screening candidates in e.g. 'ROUND1_REVIEW' after changing eligibility criteria."),
     updated_after: date | None = Query(None, description="Filter candidates updated after this date (ISO format, e.g. 2026-01-01)"),
@@ -102,6 +103,7 @@ async def run_screening(
         email=email,
         cycle_id=cycle_id,
         has_phone=has_phone,
+        has_assessment=has_assessment,
         updated_after=updated_after,
         updated_before=updated_before,
     )
@@ -149,6 +151,7 @@ async def pipeline_stats(
     cycle_id: str | None = Query(None, description="Filter by hiring cycle ID"),
     status: str | None = Query(None, description="Filter by candidate status (raw or display_status)"),
     has_phone: bool | None = Query(None, description="Filter by whether candidate has provided a phone number"),
+    has_assessment: bool | None = Query(None, description="Filter by whether candidate has any assessment records"),
     target_statuses: str | None = Query(None, description="Comma-separated list of statuses to include in the output "
                                         "(e.g. 'APPLIED,ROUND1_PASSED,SELECTED'). By default all statuses are shown."),
     updated_after: date | None = Query(None, description="Filter candidates updated after this date (ISO format)"),
@@ -182,6 +185,7 @@ async def pipeline_stats(
         email=email,
         cycle_id=cycle_id,
         has_phone=has_phone,
+        has_assessment=has_assessment,
         status=status,
         updated_after=updated_after,
         updated_before=updated_before,
@@ -223,6 +227,7 @@ async def pipeline_stats(
         phone=phone, email=email,
         cycle_id=cycle_id,
         has_phone=has_phone,
+        has_assessment=has_assessment,
         status=status,
         updated_after=updated_after,
         updated_before=updated_before,
