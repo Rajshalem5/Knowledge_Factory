@@ -90,6 +90,32 @@ async def seed():
             else:
                 print(f"Active cycle exists: {cycle.id}")
 
+            # ── Seed Test Candidates ──────────────────────────────────
+            stmt = select(Candidate).limit(1)
+            existing = (await session.execute(stmt)).scalar_one_or_none()
+            if not existing:
+                candidates_data = [
+                    {"name": "Alice Sharma", "email": "alice@test.com", "password": "Candidate@123", "college": "IIT Bombay", "branch": "CSE", "cgpa": 8.7, "passed_out_year": 2026, "language_choice": "python"},
+                    {"name": "Bob Patel", "email": "bob@test.com", "password": "Candidate@123", "college": "NIT Trichy", "branch": "ECE", "cgpa": 7.2, "passed_out_year": 2026, "language_choice": "java"},
+                    {"name": "Charlie Singh", "email": "charlie@test.com", "password": "Candidate@123", "college": "DTU Delhi", "branch": "IT", "cgpa": 6.5, "passed_out_year": 2025, "language_choice": "python"},
+                    {"name": "Divya Kumar", "email": "divya@test.com", "password": "Candidate@123", "college": "VIT Vellore", "branch": "CSE", "cgpa": 9.1, "passed_out_year": 2026, "language_choice": "cpp"},
+                    {"name": "Esha Gupta", "email": "esha@test.com", "password": "Candidate@123", "college": "SRM Chennai", "branch": "EEE", "cgpa": 5.8, "passed_out_year": 2026, "language_choice": "python"},
+                    {"name": "Farhan Qureshi", "email": "farhan@test.com", "password": "Candidate@123", "college": "BITS Pilani", "branch": "CSE", "cgpa": 8.3, "passed_out_year": 2024, "language_choice": "java"},
+                    {"name": "Gauri Joshi", "email": "gauri@test.com", "password": "Candidate@123", "college": "COEP Pune", "branch": "CIVIL", "cgpa": 7.8, "passed_out_year": 2026, "language_choice": "python"},
+                ]
+                from app.core.security import hash_password as _hash
+                for cd in candidates_data:
+                    pw = cd.pop("password")
+                    c = Candidate(
+                        cycle_id=cycle.id,
+                        password_hash=_hash(pw),
+                        **cd,
+                    )
+                    session.add(c)
+                print(f"[seed] Created {len(candidates_data)} test candidates")
+            else:
+                print(f"[seed] Test candidates already exist, skipping")
+
     # ── Verify ─────────────────────────────────────────────────────
     async with async_session_factory() as session:
         async with session.begin():
