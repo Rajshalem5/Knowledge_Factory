@@ -131,6 +131,16 @@ class AssessmentService:
                 raise ValueError("Assessment is already completed")
             raise ValueError(f"Assessment cannot be completed in its current state: {assessment_status.value}")
 
+        # Validate at least one submission exists before allowing completion
+        sub_stmt = select(Submission).where(Submission.assessment_id == assessment_id)
+        sub_res = await self.db.execute(sub_stmt)
+        existing_submissions = sub_res.scalars().all()
+        if not existing_submissions:
+            raise ValueError(
+                "Cannot complete assessment without any submissions. "
+                "Submit at least one section before completing."
+            )
+
         candidate_stmt = select(Candidate).where(Candidate.id == str(candidate_id))
         candidate_res = await self.db.execute(candidate_stmt)
         candidate = candidate_res.scalar_one_or_none()
