@@ -40,7 +40,7 @@ export const candidatesApi = {
     sort_by?: string;
     sort_order?: string;
   }) =>
-    api.get<PaginatedResponse<Candidate>>('/api/candidates', { 
+    api.get<PaginatedResponse<Candidate>>('/api/candidates/', { 
       params: params as Record<string, string | number | boolean | undefined> 
     }),
 
