@@ -40,6 +40,7 @@ export default function Dashboard() {
   const [createdBeforeFilter, setCreatedBeforeFilter] = useState('');
   const [passedOutYearMinFilter, setPassedOutYearMinFilter] = useState('');
   const [passedOutYearMaxFilter, setPassedOutYearMaxFilter] = useState('');
+  const [emailVerifiedFilter, setEmailVerifiedFilter] = useState('');
   const [showFilters, setShowFilters] = useState(false);
 
   const { data: candidatesData, isLoading, error } = useCandidates({
@@ -58,6 +59,7 @@ export default function Dashboard() {
     created_before: createdBeforeFilter || undefined,
     passed_out_year_min: passedOutYearMinFilter ? parseInt(passedOutYearMinFilter, 10) : undefined,
     passed_out_year_max: passedOutYearMaxFilter ? parseInt(passedOutYearMaxFilter, 10) : undefined,
+    email_verified: emailVerifiedFilter ? emailVerifiedFilter === 'true' : undefined,
   });
 
   const { data: funnelData, isLoading: funnelLoading } = useFunnelData();
@@ -76,6 +78,7 @@ export default function Dashboard() {
       if (createdBeforeFilter) p.created_before = createdBeforeFilter;
       if (passedOutYearMinFilter) p.passed_out_year_min = parseInt(passedOutYearMinFilter, 10);
       if (passedOutYearMaxFilter) p.passed_out_year_max = parseInt(passedOutYearMaxFilter, 10);
+      if (emailVerifiedFilter) p.email_verified = emailVerifiedFilter === 'true';
       if (search) p.search = search;
       return Object.keys(p).length > 0 ? p : undefined;
     })()
@@ -95,6 +98,7 @@ export default function Dashboard() {
     if (createdBeforeFilter) params.created_before = createdBeforeFilter;
     if (passedOutYearMinFilter) params.passed_out_year_min = parseInt(passedOutYearMinFilter, 10);
     if (passedOutYearMaxFilter) params.passed_out_year_max = parseInt(passedOutYearMaxFilter, 10);
+    if (emailVerifiedFilter) params.email_verified = emailVerifiedFilter === 'true';
     if (search) params.search = search;
     runScreening.mutate(
       Object.keys(params).length > 0 ? params : undefined
@@ -322,6 +326,18 @@ export default function Dashboard() {
                       onChange={e => { setCreatedBeforeFilter(e.target.value); setPage(1); }}
                       className="w-full px-3 py-1.5 rounded-md bg-[var(--bg-base)] text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/50 border border-[var(--border-ghost)]"
                     />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-tertiary mb-1">Email Verified</label>
+                    <select
+                      value={emailVerifiedFilter}
+                      onChange={e => { setEmailVerifiedFilter(e.target.value); setPage(1); }}
+                      className="w-full px-3 py-1.5 rounded-md bg-[var(--bg-base)] text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/50 border border-[var(--border-ghost)]"
+                    >
+                      <option value="">All</option>
+                      <option value="true">Yes</option>
+                      <option value="false">No</option>
+                    </select>
                   </div>
                 </div>
               )}
