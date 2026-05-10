@@ -13,7 +13,7 @@ from app.core.enums import Role
 router = APIRouter()
 
 
-@router.get("/funnel", response_model=FunnelResponse)
+@router.get("/funnel")
 async def get_hiring_funnel(
     branch: str | None = Query(None, description="Optional filter: only candidates from this branch"),
     college: str | None = Query(None, description="Optional filter: only candidates from this college"),
@@ -41,7 +41,7 @@ async def get_hiring_funnel(
     current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN])),
 ):
     service = AnalyticsService(db)
-    return await service.get_hiring_funnel(
+    result = await service.get_hiring_funnel(
         branch=branch, college=college, search=search,
         name=name,
         passed_out_year=passed_out_year, language_choice=language_choice,
@@ -53,8 +53,15 @@ async def get_hiring_funnel(
         cycle_id=cycle_id,
         status=status,
         has_phone=has_phone,
-        target_statuses=target_statuses,
     )
+
+    # When target_statuses filters to a subset of stages, return only those
+    if target_statuses:
+        target_stages = set(s.strip().lower() for s in target_statuses.split(",") if s.strip())
+        all_data = result.model_dump() if hasattr(result, 'model_dump') else result.dict()
+        filtered = {k: v for k, v in all_data.items() if k in target_stages}
+        return filtered
+    return result.model_dump() if hasattr(result, 'model_dump') else result.dict()
 
 
 @router.get("/dashboard", response_model=DashboardResponse)

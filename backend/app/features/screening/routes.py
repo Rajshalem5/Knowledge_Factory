@@ -178,6 +178,8 @@ async def pipeline_stats(
     if target_statuses:
         target_list = [s.strip().upper() for s in target_statuses.split(",") if s.strip()]
         target_set = set(target_list)
+        # Filter out any statuses not in the target set AND fill in zeros for missing ones
+        stats = {k: v for k, v in stats.items() if k in target_set}
         for s in CandidateStatus:
             if s.value in target_set:
                 stats.setdefault(s.value, 0)

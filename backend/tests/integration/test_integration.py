@@ -342,6 +342,72 @@ class TestEnhancedPipelineFilters:
 
         print("✓ Screening with email_verified filter works")
 
+    async def test_04_pipeline_stats_with_target_statuses(self, client: AsyncClient):
+        """Test: Pipeline stats with target_statuses filter (multi-status output selection)."""
+        login_resp = await client.post(
+            "/api/auth/login",
+            json={"email": "admin@knowledgefactory.io", "password": "Admin@12345"},
+        )
+        assert login_resp.status_code == 200
+        token = login_resp.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        # Request only specific statuses in the output
+        response = await client.get(
+            "/api/screening/pipeline-stats?target_statuses=APPLIED,ROUND1_PASSED,SELECTED",
+            headers=headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        print(f"target_statuses=APPLIED,ROUND1_PASSED,SELECTED stats: {data}")
+        assert "stats" in data
+        # Only the requested statuses should appear
+        assert "APPLIED" in data["stats"]
+        assert "ROUND1_PASSED" in data["stats"]
+        assert "SELECTED" in data["stats"]
+        # Statuses not in the target list should not appear
+        assert "ROUND2_IN_PROGRESS" not in data["stats"]
+
+        # Test with a single target status
+        response2 = await client.get(
+            "/api/screening/pipeline-stats?target_statuses=APPLIED",
+            headers=headers,
+        )
+        assert response2.status_code == 200
+        data2 = response2.json()
+        print(f"target_statuses=APPLIED stats: {data2}")
+        assert len(data2["stats"]) == 1
+        assert "APPLIED" in data2["stats"]
+
+        print("✓ Pipeline stats with target_statuses filter works")
+
+    async def test_05_funnel_with_target_statuses(self, client: AsyncClient):
+        """Test: Funnel with target_statuses filter."""
+        login_resp = await client.post(
+            "/api/auth/login",
+            json={"email": "admin@knowledgefactory.io", "password": "Admin@12345"},
+        )
+        assert login_resp.status_code == 200
+        token = login_resp.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        # Request only specific funnel stages
+        response = await client.get(
+            "/api/analytics/funnel?target_statuses=applied,selected",
+            headers=headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        print(f"target_statuses=applied,selected funnel: {data}")
+        # Only requested stages should appear
+        assert "applied" in data
+        assert "selected" in data
+        # Stages not in the target list should not appear
+        assert "eligible" not in data
+        assert "assessed" not in data
+
+        print("✓ Funnel with target_statuses filter works")
+
 
 class TestFullPipelineE2E:
     """Test the complete screening-to-assessment pipeline end-to-end."""

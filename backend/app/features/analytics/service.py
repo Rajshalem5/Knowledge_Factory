@@ -36,7 +36,6 @@ class AnalyticsService:
         cycle_id: str | None = None,
         status: str | None = None,
         has_phone: bool | None = None,
-        target_statuses: str | None = None,
     ) -> FunnelResponse:
         """Get hiring funnel counts with optional filters.
 
@@ -90,11 +89,6 @@ class AnalyticsService:
         for stage_key, q in stage_queries.items():
             r = await self.db.execute(q)
             result[stage_key] = r.scalar() or 0
-
-        # If target_statuses provided, filter to only those stage labels
-        if target_statuses:
-            target_stages = set(s.strip().lower() for s in target_statuses.split(",") if s.strip())
-            result = {k: v for k, v in result.items() if k in target_stages}
 
         return FunnelResponse(**result)
 
