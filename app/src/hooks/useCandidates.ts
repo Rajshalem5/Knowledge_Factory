@@ -30,6 +30,8 @@ export function useUpdateCandidateStatus() {
       candidatesApi.updateStatus(id, status),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['candidates'] });
+      queryClient.invalidateQueries({ queryKey: ['pipeline-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['funnel'] });
     },
   });
 }
