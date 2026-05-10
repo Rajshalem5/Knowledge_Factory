@@ -18,6 +18,7 @@ class AnalyticsService:
         branch: str | None = None,
         college: str | None = None,
         search: str | None = None,
+        name: str | None = None,
         passed_out_year: int | None = None,
         language_choice: str | None = None,
         cgpa_min: float | None = None,
@@ -42,6 +43,8 @@ class AnalyticsService:
           selected   = SELECTED
         """
         def _apply_filters(q):
+            if name:
+                q = q.where(Candidate.name.ilike(f"%{name}%"))
             if branch:
                 q = q.where(Candidate.branch.ilike(f"%{branch}%"))
             if college:

@@ -44,6 +44,7 @@ export default function Dashboard() {
   const [emailVerifiedFilter, setEmailVerifiedFilter] = useState('');
   const [phoneFilter, setPhoneFilter] = useState('');
   const [emailFilter, setEmailFilter] = useState('');
+  const [nameFilter, setNameFilter] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [sortBy, setSortBy] = useState('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -53,6 +54,7 @@ export default function Dashboard() {
     limit: 10,
     search: search || undefined,
     status: statusFilter || undefined,
+    name: nameFilter || undefined,
     branch: branchFilter || undefined,
     college: collegeFilter || undefined,
     cgpa_min: cgpaMinFilter ? parseFloat(cgpaMinFilter) : undefined,
@@ -75,11 +77,12 @@ export default function Dashboard() {
     search || branchFilter || collegeFilter || languageChoiceFilter || cgpaMinFilter ||
     cgpaMaxFilter || hasResumeFilter || hasGovtIdFilter || createdAfterFilter ||
     createdBeforeFilter || passedOutYearMinFilter || passedOutYearMaxFilter ||
-    emailVerifiedFilter || phoneFilter || emailFilter
+    emailVerifiedFilter || phoneFilter || emailFilter || nameFilter
       ? {
           branch: branchFilter || undefined,
           college: collegeFilter || undefined,
           search: search || undefined,
+          name: nameFilter || undefined,
           language_choice: languageChoiceFilter || undefined,
           cgpa_min: cgpaMinFilter ? parseFloat(cgpaMinFilter) : undefined,
           cgpa_max: cgpaMaxFilter ? parseFloat(cgpaMaxFilter) : undefined,
@@ -113,6 +116,7 @@ export default function Dashboard() {
       if (emailVerifiedFilter) p.email_verified = emailVerifiedFilter === 'true';
       if (phoneFilter) p.phone = phoneFilter;
       if (emailFilter) p.email = emailFilter;
+      if (nameFilter) p.name = nameFilter;
       if (search) p.search = search;
       return Object.keys(p).length > 0 ? p : undefined;
     })()
@@ -135,6 +139,7 @@ export default function Dashboard() {
     if (emailVerifiedFilter) params.email_verified = emailVerifiedFilter === 'true';
     if (phoneFilter) params.phone = phoneFilter;
     if (emailFilter) params.email = emailFilter;
+    if (nameFilter) params.name = nameFilter;
     if (search) params.search = search;
     runScreening.mutate(
       Object.keys(params).length > 0 ? params : undefined
@@ -420,6 +425,16 @@ export default function Dashboard() {
                       placeholder="exact email..."
                       value={emailFilter}
                       onChange={e => { setEmailFilter(e.target.value); setPage(1); }}
+                      className="w-full px-3 py-1.5 rounded-md bg-[var(--bg-base)] text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/50 border border-[var(--border-ghost)]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-tertiary mb-1">Name</label>
+                    <input
+                      type="text"
+                      placeholder="Candidate name..."
+                      value={nameFilter}
+                      onChange={e => { setNameFilter(e.target.value); setPage(1); }}
                       className="w-full px-3 py-1.5 rounded-md bg-[var(--bg-base)] text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/50 border border-[var(--border-ghost)]"
                     />
                   </div>

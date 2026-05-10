@@ -5,6 +5,7 @@ export interface FunnelFilters {
   branch?: string;
   college?: string;
   search?: string;
+  name?: string;
   passed_out_year?: number;
   language_choice?: string;
   cgpa_min?: number;

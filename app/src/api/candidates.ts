@@ -15,6 +15,7 @@ export const candidatesApi = {
     page?: number; 
     limit?: number; 
     status?: string; 
+    name?: string;
     branch?: string; 
     college?: string; 
     search?: string;
