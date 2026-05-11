@@ -1,5 +1,5 @@
 import { api } from './client';
-import type { FunnelData, AnalyticsData, Organization } from '../types';
+import type { FunnelData, AnalyticsData } from '../types';
 
 export interface FunnelFilters {
   branch?: string;
@@ -38,10 +38,4 @@ export const analyticsApi = {
 
   getAnalytics: () =>
     api.get<AnalyticsData>('/api/analytics/dashboard'),
-
-  getOrganizations: () =>
-    api.get<Organization[]>('/api/admin/organizations'),
-
-  updateOrganization: (id: string, data: Partial<Organization>) =>
-    api.patch<Organization>(`/api/admin/organizations/${id}`, data),
 };

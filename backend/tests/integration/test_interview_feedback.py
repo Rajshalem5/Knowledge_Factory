@@ -296,3 +296,64 @@ class TestInterviewFeedback:
         assert data["interview_feedback"]["interviewerName"] == "Admin User"
         assert data["interview_feedback"]["technicalScore"] == 8
         assert data["interview_feedback"]["recommendation"] == "select"
+
+    async def test_08_submit_feedback_lowercase_recommendation(self, client: AsyncClient):
+        """Test: Frontend sends lowercase recommendation (e.g. 'select', 'hold', 'reject')
+        and backend normalizes to uppercase for storage (SQLite/PostgreSQL compat).
+        When read back via from_orm_compat, it appears as lowercase in candidate detail.
+        """
+        hr_login = await client.post("/api/auth/login", json={
+            "email": "hr@knowledgefactory.com", "password": "Hr@12345",
+        })
+        assert hr_login.status_code == 200
+        hr_token = hr_login.json()["access_token"]
+        hr_headers = {"Authorization": f"Bearer {hr_token}"}
+
+        admin_login = await client.post("/api/auth/login", json={
+            "email": "admin@knowledgefactory.io", "password": "Admin@12345",
+        })
+        assert admin_login.status_code == 200
+        admin_token = admin_login.json()["access_token"]
+        admin_headers = {"Authorization": f"Bearer {admin_token}"}
+
+        # Register and advance candidate
+        _, cid = await self._reg_candidate(client)
+        screen_resp = await client.post("/api/screening/run", headers=hr_headers)
+        assert screen_resp.status_code == 200
+        await self._move_to_interview_scheduled(client, cid, admin_headers)
+
+        # Submit feedback with lowercase recommendation (mimics frontend behavior)
+        resp = await client.post(
+            f"/api/candidates/{cid}/feedback",
+            headers=admin_headers,
+            json={
+                "technicalScore": 6,
+                "communicationScore": 5,
+                "recommendation": "hold",
+                "notes": "Testing lowercase recommendation",
+            },
+        )
+        assert resp.status_code == 201, f"Expected 201, got {resp.status_code}: {resp.text}"
+
+        # Verify recommendation was stored as "HOLD" (uppercase) by checking via GET feedback endpoint
+        get_resp = await client.get(
+            f"/api/candidates/{cid}/feedback",
+            headers=hr_headers,
+        )
+        assert get_resp.status_code == 200
+        data = get_resp.json()
+        assert len(data) >= 1
+        fb = data[0]
+        # The GET /feedback endpoint returns the raw stored value
+        assert fb["recommendation"] == "HOLD", (
+            f"Expected 'HOLD' (uppercase), got '{fb['recommendation']}' — "
+            "recommendation case normalization failed"
+        )
+
+        # Also verify through candidate detail (which lowercases via from_orm_compat)
+        candidate_resp = await client.get(
+            f"/api/candidates/{cid}",
+            headers=hr_headers,
+        )
+        assert candidate_resp.status_code == 200
+        assert candidate_resp.json()["interview_feedback"]["recommendation"] == "hold"
