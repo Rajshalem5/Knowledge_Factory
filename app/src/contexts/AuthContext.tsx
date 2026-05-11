@@ -14,7 +14,7 @@ interface AuthContextValue {
   token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<User>;
   register: (data: RegisterData | FormData) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
@@ -38,16 +38,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(() => tokenStore.getAccessToken());
   const [isVerifying, setIsVerifying] = useState(false);
 
-  // On mount: verify session exists via /auth/me
+  // On mount: try cookie-based refresh for session persistence across reloads
   useEffect(() => {
     const accessToken = tokenStore.getAccessToken();
 
     if (!accessToken) {
-      queueMicrotask(() => setIsVerifying(false));
+      // No in-memory token — try cookie-based refresh
+      authApi.refreshToken()
+        .then((refreshRes: any) => {
+          if (!refreshRes || !refreshRes.access_token) throw new Error('no refresh');
+          return authApi.normalizeTokenResponse(refreshRes as any);
+        })
+        .then((normalized) => {
+          if (normalized) {
+            tokenStore.setAccessToken(normalized.token);
+            setToken(normalized.token);
+            setUser(normalized.user);
+          }
+        })
+        .catch(() => {
+          // No cookie either — user needs to log in
+        })
+        .finally(() => setIsVerifying(false));
       return;
     }
 
-    // Verify current session
+    // Have an in-memory token — verify current session
     authApi.getMe()
       .then((userData) => {
         setUser({
@@ -92,6 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     tokenStore.setAccessToken(response.token);
     setToken(response.token);
     setUser(response.user);
+    return response.user;
   }, []);
 
   const register = useCallback(async (data: RegisterData | FormData) => {
