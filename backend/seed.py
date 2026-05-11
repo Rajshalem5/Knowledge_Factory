@@ -82,7 +82,7 @@ def seed():
                 status=CycleStatus.ACTIVE,
                 eligibility_config={
                     "min_cgpa": 6.0,
-                    "branches": ["CSE", "ECE", "IT", "EEE"],
+                    "allowed_branches": ["CSE", "ECE", "IT", "EEE"],
                     "passed_out_years": [2025, 2026],
                 },
                 assessment_config={
