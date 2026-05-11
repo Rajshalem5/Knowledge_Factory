@@ -5,8 +5,6 @@ Candidate schemas: Lists, Details, Updates.
 from datetime import datetime
 from typing import Any, Optional
 from pydantic import BaseModel, ConfigDict, EmailStr
-from decimal import Decimal
-
 from app.core.enums import CandidateStatus
 
 
@@ -15,7 +13,7 @@ class CandidateBase(BaseModel):
     email: EmailStr
     college: str
     branch: str
-    cgpa: Decimal
+    cgpa: float
     passed_out_year: int
     language_choice: str
 
