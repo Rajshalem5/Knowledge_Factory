@@ -226,7 +226,116 @@ class TestCandidatesRoutes:
         assert data["valid_records"] >= 1
         assert isinstance(data["preview"], list)
 
-    async def test_16_candidate_response_has_proctoring_flags(self, client: AsyncClient):
+    async def test_16_update_status_with_display_status(self, client: AsyncClient):
+        """Test: Candidate status can be updated using frontend display_status values."""
+        admin_hdrs = await self._admin_headers(client)
+        token, cid = await self._register_candidate(client)
+
+        # Screen first to move to ROUND1_PASSED
+        hr_resp = await client.post("/api/auth/login", json={
+            "email": "hr@knowledgefactory.com", "password": "Hr@12345",
+        })
+        hr_headers = {"Authorization": f"Bearer {hr_resp.json()['access_token']}"}
+        screen = await client.post("/api/screening/run", headers=hr_headers)
+        assert screen.status_code == 200
+
+        # Update via display_status 'round1' → should map to ROUND2_IN_PROGRESS
+        resp = await client.patch(
+            f"/api/candidates/{cid}/status",
+            headers=admin_hdrs,
+            json={"status": "round1"},
+        )
+        assert resp.status_code == 200, f"Expected 200, got {resp.status_code}: {resp.text}"
+        assert resp.json()["status"] == "ROUND2_IN_PROGRESS"
+
+        # Move forward to ROUND2_PASSED
+        resp = await client.patch(
+            f"/api/candidates/{cid}/status",
+            headers=admin_hdrs,
+            json={"status": "ROUND2_PASSED"},
+        )
+        assert resp.status_code == 200
+
+        # Update via display_status 'round2' → should map to ROUND3_IN_PROGRESS
+        resp = await client.patch(
+            f"/api/candidates/{cid}/status",
+            headers=admin_hdrs,
+            json={"status": "round2"},
+        )
+        assert resp.status_code == 200, f"Expected 200, got {resp.status_code}: {resp.text}"
+        assert resp.json()["status"] == "ROUND3_IN_PROGRESS"
+
+    async def test_17_list_candidates_sorted_by_cgpa(self, client: AsyncClient):
+        """Test: Candidates can be sorted by CGPA in ascending order."""
+        hr_resp = await client.post("/api/auth/login", json={
+            "email": "hr@knowledgefactory.com", "password": "Hr@12345",
+        })
+        hr_headers = {"Authorization": f"Bearer {hr_resp.json()['access_token']}"}
+
+        resp = await client.get(
+            "/api/candidates/?sort_by=cgpa&sort_order=asc&limit=100",
+            headers=hr_headers,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        cgpas = [c["cgpa"] for c in data["data"] if c.get("cgpa") is not None]
+        assert cgpas == sorted(cgpas), f"CGPA not sorted ascending: {cgpas}"
+
+    async def test_17_list_candidates_sorted_by_name(self, client: AsyncClient):
+        """Test: Candidates can be sorted by name in descending order."""
+        hr_resp = await client.post("/api/auth/login", json={
+            "email": "hr@knowledgefactory.com", "password": "Hr@12345",
+        })
+        hr_headers = {"Authorization": f"Bearer {hr_resp.json()['access_token']}"}
+
+        resp = await client.get(
+            "/api/candidates/?sort_by=name&sort_order=desc&limit=100",
+            headers=hr_headers,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        names = [c["name"] for c in data["data"]]
+        assert names == sorted(names, reverse=True), f"Names not sorted descending: {names}"
+
+    async def test_18_list_candidates_filter_by_display_status(self, client: AsyncClient):
+        """Test: Candidates can be filtered using frontend-style display_status values."""
+        hr_resp = await client.post("/api/auth/login", json={
+            "email": "hr@knowledgefactory.com", "password": "Hr@12345",
+        })
+        hr_headers = {"Authorization": f"Bearer {hr_resp.json()['access_token']}"}
+
+        # Filter by display_status 'applied'
+        resp = await client.get(
+            "/api/candidates/?status=applied&limit=100",
+            headers=hr_headers,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        for c in data["data"]:
+            assert c["display_status"] == "applied", \
+                f"Expected display_status 'applied', got '{c['display_status']}' for {c['name']}"
+
+    async def test_19_list_candidates_filter_by_combined_statuses(self, client: AsyncClient):
+        """Test: Candidates can be filtered using comma-separated status values."""
+        hr_resp = await client.post("/api/auth/login", json={
+            "email": "hr@knowledgefactory.com", "password": "Hr@12345",
+        })
+        hr_headers = {"Authorization": f"Bearer {hr_resp.json()['access_token']}"}
+
+        # Filter by display_status 'applied,rejected' — should match APPLIED and ROUND1_REJECTED etc.
+        resp = await client.get(
+            "/api/candidates/?status=applied,eligible&limit=100",
+            headers=hr_headers,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        # Should include candidates with display_status 'applied' or 'eligible'
+        valid_statuses = {"applied", "eligible"}
+        for c in data["data"]:
+            assert c["display_status"] in valid_statuses, \
+                f"Expected display_status in {valid_statuses}, got '{c['display_status']}' for {c['name']}"
+
+    async def test_20_candidate_response_has_proctoring_flags(self, client: AsyncClient):
         """Test: CandidateRead response includes proctoring_flags field."""
         token, cid = await self._register_candidate(client)
         headers = {"Authorization": f"Bearer {token}"}

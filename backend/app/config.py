@@ -57,7 +57,7 @@ class Settings(BaseSettings):
     S3_SECRET_ACCESS_KEY: str = ""
 
     # ── Redis ──────────────────────────────────────────────────────
-    REDIS_URL: str = "redis://localhost:***@knowledgefactory.io"
+    REDIS_URL: str = "redis://localhost:6379/0"
 
     # ── JWT / Security ─────────────────────────────────────────────
     JWT_PRIVATE_KEY: str = ""
