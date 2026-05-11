@@ -63,7 +63,7 @@ async def run_screening(
     """
     # Get the active cycle
     from app.features.hiring_cycles.models import HiringCycle
-    stmt = select(HiringCycle).where(HiringCycle.status == "ACTIVE")
+    stmt = select(HiringCycle).where(HiringCycle.status == "ACTIVE").limit(1)
     res = await db.execute(stmt)
     cycle = res.scalar_one_or_none()
 
