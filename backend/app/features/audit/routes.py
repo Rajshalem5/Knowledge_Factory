@@ -31,7 +31,10 @@ async def list_audit_logs(
     res = await db.execute(q)
     logs = res.scalars().all()
 
-    count_q = select(func.count()).select_from(q.subquery())
+    # Count query must NOT include offset/limit
+    count_q = select(func.count()).select_from(AuditLog)
+    if entity_type:
+        count_q = count_q.where(AuditLog.entity_type == entity_type)
     total_res = await db.execute(count_q)
     total = total_res.scalar() or 0
 

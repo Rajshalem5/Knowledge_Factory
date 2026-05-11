@@ -1,8 +1,12 @@
 """Shared pytest fixtures for the Knowledge Factory test suite.
 
 Uses SQLite by default (set TEST_DATABASE_URL env var to override for CI).
+Each test gets its own transaction that is rolled back at the end,
+ensuring complete test isolation while keeping HTTP requests within a
+test visible to each other via flush().
 """
 
+import asyncio
 import os
 from datetime import date
 from typing import AsyncGenerator
@@ -29,19 +33,6 @@ test_engine = create_async_engine(TEST_DATABASE_URL, echo=False)
 TestSessionFactory = async_sessionmaker(
     bind=test_engine, class_=AsyncSession, expire_on_commit=False
 )
-
-
-async def _override_get_db() -> AsyncGenerator[AsyncSession, None]:
-    """Override FastAPI's get_db dependency to use the test database."""
-    async with TestSessionFactory() as session:
-        try:
-            yield session
-            await session.commit()
-        except Exception:
-            await session.rollback()
-            raise
-        finally:
-            await session.close()
 
 
 @pytest.fixture(scope="session")
@@ -118,19 +109,29 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
     ensuring test isolation without needing to recreate tables.
     """
     async with TestSessionFactory() as session:
-        async with session.begin():
+        try:
             yield session
+        finally:
             await session.rollback()
 
 
 @pytest_asyncio.fixture
-async def client() -> AsyncGenerator[AsyncClient, None]:
+async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     """
     Provide an async HTTP client for integration tests.
 
     Uses httpx's ASGITransport to call the FastAPI app directly,
-    with get_db dependency overridden to use the test database.
+    with get_db dependency overridden to share the test's db_session.
+    Changes made by HTTP requests within a test are visible to subsequent
+    requests (via flush) but rolled back at the end of the test.
     """
+    async def _override_get_db() -> AsyncGenerator[AsyncSession, None]:
+        yield db_session
+        # Expire all ORM objects after each request so subsequent requests
+        # within the same test transaction get fresh data (including newly
+        # added relationships like interview_feedback, assessments, etc.)
+        db_session.expire_all()
+
     app.dependency_overrides[get_db] = _override_get_db
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
