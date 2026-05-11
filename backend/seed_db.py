@@ -35,22 +35,22 @@ async def seed():
             # ── Staff Users ─────────────────────────────────────────
             staff_users = [
                 {
-                    "email": "hr@knowledgefactory.com",
-                    "password": "Hr@12345",
-                    "name": "HR Manager",
-                    "role": "HR",
-                },
-                {
-                    "email": "admin@knowledgefactory.io",
-                    "password": "Admin@12345",
+                    "email": "admin@test.com",
+                    "password": "Test@123",
                     "name": "Admin User",
                     "role": "ADMIN",
                 },
                 {
-                    "email": "ops@test.com",
-                    "password": "Ops@12345",
-                    "name": "Ops User",
-                    "role": "SUPERADMIN",
+                    "email": "hr@test.com",
+                    "password": "Test@123",
+                    "name": "HR Manager",
+                    "role": "HR",
+                },
+                {
+                    "email": "interviewer@test.com",
+                    "password": "Test@123",
+                    "name": "Interviewer",
+                    "role": "INTERVIEWER",
                 },
             ]
             for su in staff_users:
