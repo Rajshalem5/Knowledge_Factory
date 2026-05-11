@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Registration</title>
+</head>
+<body>
+    <h1>Test User Registration</h1>
+    <button onclick="registerTestUser()">Register Test User</button>
+    <div id="output"></div>
+
+    <script type="module">
+        import { createClient } from 'https://cdn.skypack.dev/@supabase/supabase-js';
+        
+        const SUPABASE_URL = 'https://nwlfflecgukgfgdcyihk.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im53bGZmbGVjZ3VrZ2ZnZGN5aWhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0NDgzOTAsImV4cCI6MjA5MzAyNDM5MH0.9uzSUVWhpHDSVcm9ugxAv4KjyAJkHftGDTgn7XSGpwc';
+        
+        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        window.registerTestUser = async () => {
+            const output = document.getElementById('output');
+            output.innerHTML = 'Registering test user...';
+            
+            try {
+                const { data, error } = await supabase.auth.signUp({
+                    email: 'test@example.com',
+                    password: 'password123',
+                    options: {
+                        data: {
+                            full_name: 'Test User',
+                            role: 'HR'
+                        }
+                    }
+                });
+                
+                if (error) {
+                    output.innerHTML = `<pre style="color: red;">Registration Error: ${JSON.stringify(error, null, 2)}</pre>`;
+                } else {
+                    output.innerHTML = `<pre style="color: green;">Registration Success: ${JSON.stringify(data, null, 2)}</pre>`;
+                }
+            } catch (e) {
+                output.innerHTML = `<pre style="color: red;">Exception: ${e.message}</pre>`;
+            }
+        };
+    </script>
+</body>
+</html>
