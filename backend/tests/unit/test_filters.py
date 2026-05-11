@@ -194,3 +194,95 @@ class TestApplyCandidateFilters:
         assert "6.0" in compiled or "6" in compiled
         assert "john" in compiled
         assert "APPLIED" in compiled
+
+    def test_filter_updated_after(self):
+        """Test: updated_after filter uses datetime >= comparison."""
+        from datetime import date
+        q = self._query()
+        result = apply_candidate_filters(q, updated_after=date(2026, 5, 1))
+        compiled = str(result.compile(compile_kwargs={"literal_binds": True}))
+        assert ">=" in compiled
+        assert "updated_at" in compiled.lower()
+
+    def test_filter_updated_before(self):
+        """Test: updated_before filter uses datetime <= comparison."""
+        from datetime import date
+        q = self._query()
+        result = apply_candidate_filters(q, updated_before=date(2026, 6, 1))
+        compiled = str(result.compile(compile_kwargs={"literal_binds": True}))
+        assert "<=" in compiled
+        assert "updated_at" in compiled.lower()
+
+    def test_filter_updated_range(self):
+        """Test: both updated_after and updated_before combined."""
+        from datetime import date
+        q = self._query()
+        result = apply_candidate_filters(
+            q, updated_after=date(2026, 5, 1), updated_before=date(2026, 6, 1)
+        )
+        compiled = str(result.compile(compile_kwargs={"literal_binds": True}))
+        assert ">=" in compiled
+        assert "<=" in compiled
+        assert "updated_at" in compiled.lower()
+
+    def test_filter_has_assessment(self):
+        """Test: has_assessment=True adds a subquery with assessments table."""
+        q = self._query()
+        result = apply_candidate_filters(q, has_assessment=True)
+        compiled = str(result.compile(compile_kwargs={"literal_binds": True}))
+        assert "assessments" in compiled.lower() or "assessment" in compiled.lower()
+        assert "IN" in compiled.upper() or "in" in compiled.lower()
+
+    def test_filter_has_assessment_false(self):
+        """Test: has_assessment=False adds a NOT IN subquery."""
+        q = self._query()
+        result = apply_candidate_filters(q, has_assessment=False)
+        compiled = str(result.compile(compile_kwargs={"literal_binds": True}))
+        assert "NOT IN" in compiled.upper() or "not in" in compiled.lower()
+
+    def test_filter_has_interview_feedback(self):
+        """Test: has_interview_feedback=True adds a subquery with interview_feedback table."""
+        q = self._query()
+        result = apply_candidate_filters(q, has_interview_feedback=True)
+        compiled = str(result.compile(compile_kwargs={"literal_binds": True}))
+        assert "interview_feedback" in compiled.lower()
+        assert "IN" in compiled.upper() or "in" in compiled.lower()
+
+    def test_filter_has_interview_feedback_false(self):
+        """Test: has_interview_feedback=False adds a NOT IN subquery."""
+        q = self._query()
+        result = apply_candidate_filters(q, has_interview_feedback=False)
+        compiled = str(result.compile(compile_kwargs={"literal_binds": True}))
+        assert "NOT IN" in compiled.upper() or "not in" in compiled.lower()
+
+    def test_filter_assessment_status(self):
+        """Test: assessment_status adds a subquery filtering by assessment status."""
+        q = self._query()
+        result = apply_candidate_filters(q, assessment_status="IN_PROGRESS")
+        compiled = str(result.compile(compile_kwargs={"literal_binds": True}))
+        assert "assessments" in compiled.lower()
+        assert "IN_PROGRESS" in compiled.upper() or "in_progress" in compiled.lower()
+
+    def test_filter_min_score(self):
+        """Test: min_score filter uses >= on Score.weighted_total."""
+        q = self._query()
+        result = apply_candidate_filters(q, min_score=40.0)
+        compiled = str(result.compile(compile_kwargs={"literal_binds": True}))
+        assert ">=" in compiled
+        assert "scores" in compiled.lower() or "score" in compiled.lower()
+
+    def test_filter_max_score(self):
+        """Test: max_score filter uses <= on Score.weighted_total."""
+        q = self._query()
+        result = apply_candidate_filters(q, max_score=80.0)
+        compiled = str(result.compile(compile_kwargs={"literal_binds": True}))
+        assert "<=" in compiled
+        assert "scores" in compiled.lower() or "score" in compiled.lower()
+
+    def test_filter_min_max_score_range(self):
+        """Test: both min_score and max_score combined."""
+        q = self._query()
+        result = apply_candidate_filters(q, min_score=30.0, max_score=90.0)
+        compiled = str(result.compile(compile_kwargs={"literal_binds": True}))
+        assert ">=" in compiled
+        assert "<=" in compiled
