@@ -14,10 +14,3 @@ export function useAnalytics() {
     queryFn: analyticsApi.getAnalytics,
   });
 }
-
-export function useOrganizations() {
-  return useQuery({
-    queryKey: ['organizations'],
-    queryFn: analyticsApi.getOrganizations,
-  });
-}

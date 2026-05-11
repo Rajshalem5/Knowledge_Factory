@@ -120,14 +120,6 @@ export interface AnalyticsData {
   proctoring_violations: { type: string; count: number }[];
 }
 
-export interface Organization {
-  id: string;
-  name: string;
-  candidate_count: number;
-  active_hiring_cycles: number;
-  plan: string;
-}
-
 export interface HiringCycle {
   id: string;
   name: string;

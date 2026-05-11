@@ -25,9 +25,6 @@ export const assessmentApi = {
   getActiveAssessments: () =>
     api.get<Assessment[]>('/api/assessment/active'),
 
-  submitFeedback: (candidateId: string, data: { technicalScore: number; communicationScore: number; recommendation: string; notes: string }) =>
-    api.post(`/api/candidates/${candidateId}/feedback`, data),
-
   complete: (assessmentId: string) =>
     api.post<Assessment>(`/api/assessment/${assessmentId}/complete`),
 };

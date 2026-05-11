@@ -110,7 +110,8 @@ class AssessmentService:
         self.db.add(submission)
 
         # Mock evaluation — in prod this goes to Judge0 + AI pipeline
-        passed = len(data.content.get("testCases", []))
+        # Frontend sends content as { code, problemId }, not testCases
+        passed = 0
         failed = 0
 
         await self.db.flush()
