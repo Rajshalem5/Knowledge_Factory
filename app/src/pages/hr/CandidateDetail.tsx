@@ -137,8 +137,12 @@ export default function CandidateDetail() {
                     <p className="text-xs text-tertiary uppercase tracking-architectural mb-1">Notes</p>
                     <p className="text-sm text-on-surface-variant">{candidate.interview_feedback.notes}</p>
                   </div>
-                  <Badge variant={candidate.interview_feedback.recommendation === 'select' ? 'success' : 'danger'}>
-                    Recommended: {candidate.interview_feedback.recommendation === 'select' ? 'Select' : 'Reject'}
+                  <Badge variant={
+                    candidate.interview_feedback.recommendation === 'select' ? 'success' :
+                    candidate.interview_feedback.recommendation === 'hold' ? 'warning' : 'danger'
+                  }>
+                    Recommended: {candidate.interview_feedback.recommendation === 'select' ? 'Select' :
+                      candidate.interview_feedback.recommendation === 'hold' ? 'Hold' : 'Reject'}
                   </Badge>
                 </div>
               ) : (

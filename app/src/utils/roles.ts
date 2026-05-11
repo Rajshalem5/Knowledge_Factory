@@ -16,6 +16,10 @@ export const ROLE_HOME_ROUTES: Record<Role, string> = {
   superadmin: '/superadmin',
 };
 
+/**
+ * Prefer using getStatusLabel(candidate) over STATUS_LABELS directly,
+ * since display_status may be undefined or mismatch the type.
+ */
 export const STATUS_LABELS: Record<CandidateStatus, string> = {
   applied: 'Applied',
   eligible: 'Eligible',
@@ -37,6 +41,18 @@ export const STATUS_COLORS: Record<CandidateStatus, string> = {
   selected: 'bg-secondary/10 text-secondary',
   rejected: 'bg-danger/15 text-danger',
 };
+
+/** Safely get the display label for a candidate's status. Falls back to raw status string. */
+export function getStatusLabel(candidate: { display_status?: string; status?: string }): string {
+  const display = candidate.display_status;
+  if (display && display in STATUS_LABELS) {
+    return STATUS_LABELS[display as CandidateStatus];
+  }
+  if (candidate.status) {
+    return candidate.status;
+  }
+  return 'Unknown';
+}
 
 export function canAccessRoute(role: Role, route: string): boolean {
   const routes: Record<Role, string[]> = {

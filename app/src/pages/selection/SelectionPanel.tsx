@@ -10,7 +10,7 @@ export default function SelectionPanel() {
   const [selections, setSelections] = useState<Record<string, boolean>>({});
 
   const candidates = (candidatesData?.data ?? []).filter(
-    c => c.status === 'interviewed' || c.status === 'selected' || c.status === 'rejected'
+    c => c.display_status === 'interviewed' || c.display_status === 'selected' || c.display_status === 'rejected'
   );
 
   const handleToggle = (id: string, selected: boolean) => {
@@ -41,7 +41,7 @@ export default function SelectionPanel() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {candidates.map(candidate => {
-            const isSelected = selections[candidate.id] ?? candidate.status === 'selected';
+            const isSelected = selections[candidate.id] ?? candidate.display_status === 'selected';
             return (
               <Card key={candidate.id}>
                 <div className="flex items-start justify-between mb-3">

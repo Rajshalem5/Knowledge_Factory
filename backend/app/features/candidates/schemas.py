@@ -68,6 +68,19 @@ class CandidateRead(CandidateBase):
                     "interviewerName": fb.interviewer.name if hasattr(fb, 'interviewer') and fb.interviewer else "",
                     "completedAt": fb.submitted_at.isoformat() if fb.submitted_at else None,
                 }
+
+        # Build proctoring flags from violations_json
+        proctoring_flags = []
+        if hasattr(candidate, 'proctoring_records') and candidate.proctoring_records:
+            for record in candidate.proctoring_records:
+                violations = record.violations_json or []
+                for i, v in enumerate(violations):
+                    proctoring_flags.append({
+                        "id": f"{record.id}_{i}",
+                        "type": v.get("type", "unknown"),
+                        "timestamp": v.get("timestamp", ""),
+                        "details": str(v.get("evidence", {})),
+                    })
         
         return cls(
             id=candidate.id,
@@ -89,6 +102,7 @@ class CandidateRead(CandidateBase):
             cycle_id=candidate.cycle_id,
             scores=scores,
             interview_feedback=interview_feedback,
+            proctoring_flags=proctoring_flags,
         )
 
 
