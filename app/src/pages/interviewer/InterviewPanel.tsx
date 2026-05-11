@@ -147,6 +147,16 @@ export default function InterviewPanel() {
                         Select
                       </button>
                       <button
+                        onClick={() => setRecommendation('hold')}
+                        className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${
+                          recommendation === 'hold'
+                            ? 'bg-warning/10 text-warning'
+                            : 'bg-[var(--bg-layer1)] text-tertiary'
+                        }`}
+                      >
+                        Hold
+                      </button>
+                      <button
                         onClick={() => setRecommendation('reject')}
                         className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${
                           recommendation === 'reject'

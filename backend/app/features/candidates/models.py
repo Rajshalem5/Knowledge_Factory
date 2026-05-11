@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from app.features.assessments.models import Assessment, Score
     from app.features.hiring_cycles.models import HiringCycle
     from app.features.interviews.models import InterviewFeedback
+    from app.features.proctoring.models import ProctoringRecord
 
 
 class Candidate(Base):
@@ -44,3 +45,4 @@ class Candidate(Base):
     assessments: Mapped[list["Assessment"]] = relationship(back_populates="candidate", lazy="selectin")
     scores: Mapped[list["Score"]] = relationship(back_populates="candidate", lazy="selectin")
     interview_feedback: Mapped[list["InterviewFeedback"]] = relationship(back_populates="candidate", lazy="selectin")
+    proctoring_records: Mapped[list["ProctoringRecord"]] = relationship(back_populates="candidate", lazy="selectin")

@@ -184,3 +184,54 @@ class TestCandidatesRoutes:
 
         resp = await client.post("/api/candidates/bulk-upload", headers=hr_headers)
         assert resp.status_code == 400, f"Expected 400, got {resp.status_code}: {resp.text}"
+
+    async def test_14_bulk_upload_with_csv(self, client: AsyncClient):
+        """Test: Bulk upload with valid CSV creates candidates (regression: missing `select` import)."""
+        hr_resp = await client.post("/api/auth/login", json={
+            "email": "hr@knowledgefactory.com", "password": "Hr@12345",
+        })
+        hr_headers = {"Authorization": f"Bearer {hr_resp.json()['access_token']}"}
+
+        csv_content = "name,email,college,branch,cgpa,passed_out_year,language_choice\n" \
+                      "Alice,alice@test.com,Uni A,CSE,8.2,2026,python\n" \
+                      "Bob,bob@test.com,Uni B,ECE,7.5,2025,java\n"
+        resp = await client.post(
+            "/api/candidates/bulk-upload",
+            headers=hr_headers,
+            files={"file": ("test.csv", csv_content, "text/csv")},
+        )
+        assert resp.status_code == 201, f"Expected 201, got {resp.status_code}: {resp.text}"
+        data = resp.json()
+        assert data["saved"] == 2
+        assert data["total_records"] == 2
+        assert len(data["errors"]) == 0
+
+    async def test_15_bulk_upload_preview(self, client: AsyncClient):
+        """Test: Bulk upload preview returns expected shape."""
+        hr_resp = await client.post("/api/auth/login", json={
+            "email": "hr@knowledgefactory.com", "password": "Hr@12345",
+        })
+        hr_headers = {"Authorization": f"Bearer {hr_resp.json()['access_token']}"}
+
+        csv_content = "name,email,college,branch,cgpa,passed_out_year,language_choice\n" \
+                      "Preview,preview@test.com,Uni X,CSE,9.0,2026,python\n"
+        resp = await client.post(
+            "/api/candidates/bulk-upload/preview",
+            headers=hr_headers,
+            files={"file": ("preview.csv", csv_content, "text/csv")},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["total_records"] == 1
+        assert data["valid_records"] >= 1
+        assert isinstance(data["preview"], list)
+
+    async def test_16_candidate_response_has_proctoring_flags(self, client: AsyncClient):
+        """Test: CandidateRead response includes proctoring_flags field."""
+        token, cid = await self._register_candidate(client)
+        headers = {"Authorization": f"Bearer {token}"}
+        resp = await client.get("/api/candidates/me", headers=headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "proctoring_flags" in data
+        assert isinstance(data["proctoring_flags"], list)
