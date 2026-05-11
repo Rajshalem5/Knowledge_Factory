@@ -200,3 +200,46 @@ class TestScreeningRun:
         """Unauthenticated request returns 401."""
         resp = await client.post("/api/screening/run")
         assert resp.status_code == 401, resp.text
+
+    async def test_11_pipeline_stats_with_target_statuses(self, client: AsyncClient):
+        """Pipeline stats can be filtered to specific statuses."""
+        hr_headers = await self._login_hr(client)
+
+        # Register candidates and run screening
+        await self._register_candidate(client, branch="CSE", cgpa=8.5)
+        await self._register_candidate(client, branch="CSE", cgpa=5.0)
+        await client.post("/api/screening/run", headers=hr_headers)
+
+        # Get pipeline stats filtered to only PASSED and REJECTED statuses
+        resp = await client.get(
+            "/api/screening/pipeline-stats?target_statuses=ROUND1_PASSED,ROUND1_REJECTED",
+            headers=hr_headers,
+        )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert "stats" in data
+        assert "aggregates" in data
+        # Only requested statuses should appear
+        assert "ROUND1_PASSED" in data["stats"]
+        assert "ROUND1_REJECTED" in data["stats"]
+        # Unrequested statuses (like APPLIED) should not appear
+        assert "APPLIED" not in data["stats"]
+
+    async def test_12_pipeline_stats_has_summary_metrics(self, client: AsyncClient):
+        """Pipeline stats includes aggregate summary metrics."""
+        hr_headers = await self._login_hr(client)
+
+        await self._register_candidate(client, branch="CSE", cgpa=8.5)
+        await client.post("/api/screening/run", headers=hr_headers)
+
+        resp = await client.get("/api/screening/pipeline-stats", headers=hr_headers)
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        agg = data.get("aggregates", {})
+        assert "total_filtered" in agg
+        assert "avg_cgpa" in agg
+        assert "assessment_completion_rate" in agg
+        assert "in_progress_count" in agg
+        assert "completed_count" in agg
+        assert isinstance(agg["total_filtered"], int)
+        assert isinstance(agg["avg_cgpa"], (int, float))

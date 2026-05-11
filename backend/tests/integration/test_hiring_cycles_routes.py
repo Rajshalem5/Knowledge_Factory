@@ -125,3 +125,65 @@ class TestHiringCycles:
             json={"name": "Ghost"},
         )
         assert resp.status_code == 404
+
+    async def test_08_create_cycle_with_assessment_config(self, client: AsyncClient):
+        """Test: Admin can create a hiring cycle with assessment_config."""
+        headers = await self._admin_headers(client)
+        resp = await client.post("/api/hiring-cycles/", headers=headers, json={
+            "name": "Assessment Config Cycle",
+            "start_date": "2026-07-01",
+            "end_date": "2026-12-31",
+            "eligibility_config": {"min_cgpa": 6.5, "allowed_branches": ["CSE", "IT"]},
+            "assessment_config": {"coding_rounds": 2, "mcq_count": 20, "duration_minutes": 120},
+        })
+        assert resp.status_code == 201, f"Expected 201, got {resp.status_code}: {resp.text}"
+        data = resp.json()
+        assert "id" in data
+
+        # Verify it appears with config values
+        list_resp = await client.get("/api/hiring-cycles/", headers=headers)
+        cycles = [c for c in list_resp.json() if c["name"] == "Assessment Config Cycle"]
+        assert len(cycles) == 1
+        assert cycles[0]["assessment_config"]["coding_rounds"] == 2
+
+    async def test_09_create_cycle_with_proctoring_config(self, client: AsyncClient):
+        """Test: Admin can create a hiring cycle with proctoring_config."""
+        headers = await self._admin_headers(client)
+        resp = await client.post("/api/hiring-cycles/", headers=headers, json={
+            "name": "Proctoring Config Cycle",
+            "start_date": "2026-08-01",
+            "end_date": "2026-12-31",
+            "proctoring_config": {"monitoring_enabled": True, "max_warnings": 5},
+        })
+        assert resp.status_code == 201, f"Expected 201, got {resp.status_code}: {resp.text}"
+        list_resp = await client.get("/api/hiring-cycles/", headers=headers)
+        cycles = [c for c in list_resp.json() if c["name"] == "Proctoring Config Cycle"]
+        assert len(cycles) == 1
+        assert cycles[0]["proctoring_config"]["max_warnings"] == 5
+
+    async def test_10_update_cycle_eligibility_config(self, client: AsyncClient):
+        """Test: Admin can update a cycle's eligibility_config."""
+        headers = await self._admin_headers(client)
+
+        # Create a cycle
+        create = await client.post("/api/hiring-cycles/", headers=headers, json={
+            "name": "Config Update Cycle",
+            "start_date": "2026-06-01",
+            "end_date": "2026-12-31",
+        })
+        assert create.status_code == 201
+        cycle_id = create.json()["id"]
+
+        # Update eligibility config
+        resp = await client.patch(
+            f"/api/hiring-cycles/{cycle_id}",
+            headers=headers,
+            json={"eligibility_config": {"min_cgpa": 7.0, "allowed_branches": ["CSE"]}},
+        )
+        assert resp.status_code == 200
+
+        # Verify
+        list_resp = await client.get("/api/hiring-cycles/", headers=headers)
+        updated = [c for c in list_resp.json() if c["id"] == cycle_id]
+        assert len(updated) == 1
+        assert updated[0]["eligibility_config"]["min_cgpa"] == 7.0
