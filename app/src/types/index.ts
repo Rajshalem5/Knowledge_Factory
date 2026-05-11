@@ -48,7 +48,7 @@ export interface Candidate {
 }
 
 export interface AssessmentScore {
-  round: number;
+  round: string;
   score: number;
   maxScore: number;
   completedAt: string;
@@ -64,7 +64,7 @@ export interface ProctoringFlag {
 export interface InterviewFeedback {
   technicalScore: number;
   communicationScore: number;
-  recommendation: 'select' | 'reject';
+  recommendation: 'select' | 'reject' | 'hold';
   notes: string;
   interviewerId: string;
   interviewerName: string;
@@ -109,29 +109,26 @@ export interface FunnelData {
 }
 
 export interface AnalyticsData {
-  passRatePerRound: { round: string; passRate: number }[];
-  collegeBreakdown: { college: string; count: number; avgScore: number }[];
-  branchPerformance: { branch: string; count: number; avgScore: number }[];
-  proctoringViolations: { type: string; count: number }[];
-}
-
-export interface Organization {
-  id: string;
-  name: string;
-  candidateCount: number;
-  activeHiringCycles: number;
-  plan: string;
+  total_candidates: number;
+  selected_count: number;
+  select_rate: number;
+  avg_cgpa: number;
+  status_breakdown: Record<string, unknown>;
+  pass_rate_per_round: { round: string; pass_rate: number }[];
+  college_breakdown: { college: string; count: number; avg_score: number }[];
+  branch_performance: { branch: string; count: number; avg_score: number }[];
+  proctoring_violations: { type: string; count: number }[];
 }
 
 export interface HiringCycle {
   id: string;
   name: string;
-  startDate: string;
-  endDate: string;
+  start_date: string;
+  end_date: string;
   status: 'active' | 'upcoming' | 'completed' | 'cancelled';
-  eligibilityConfig: {
-    minCGPA: number;
-    allowedBranches: string[];
+  eligibility_config: {
+    min_cgpa: number;
+    allowed_branches: string[];
   };
 }
 

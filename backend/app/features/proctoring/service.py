@@ -39,6 +39,11 @@ class ProctoringService:
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "evidence": data.evidence or {},
         }
+        # Initialize violations_json if None (first event or loaded from non-ORM context)
+        if record.violations_json is None:
+            record.violations_json = []
+        if record.warning_count is None:
+            record.warning_count = 0
         record.violations_json.append(event_entry)
         record.warning_count += 1
 

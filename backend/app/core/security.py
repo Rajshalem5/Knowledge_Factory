@@ -61,6 +61,7 @@ def create_access_token(
     subject: str | Any,
     email: str | None = None,
     role: str | None = None,
+    token_type: str | None = None,
 ) -> str:
     """Create JWT access token."""
     expires_delta = timedelta(minutes=settings.JWT_ACCESS_TTL_MINUTES)
@@ -72,6 +73,9 @@ def create_access_token(
         "email": email if email else None,
         "role": role,
     }
+
+    if token_type:
+        to_encode["type"] = token_type
 
     return jwt.encode(to_encode, _get_secret(), algorithm=_ALGORITHM)
 

@@ -18,7 +18,7 @@ async def submit_feedback(
     candidate_id: str,
     feedback_data: dict,
     db: AsyncSession = Depends(get_db),
-    current_user = Depends(require_role([Role.INTERVIEWER, Role.ADMIN])),
+    current_user = Depends(require_role([Role.INTERVIEWER, Role.ADMIN, Role.SUPERADMIN])),
 ):
     """Submit interviewer feedback for a candidate.
     
@@ -38,6 +38,10 @@ async def submit_feedback(
             detail=f"Candidate must be in INTERVIEW_SCHEDULED status to receive feedback, currently in {current.value}",
         )
     
+    # Normalize recommendation to uppercase (frontend sends lowercase)
+    raw_rec = feedback_data.get("recommendation", "HOLD")
+    recommendation = str(raw_rec).upper()
+
     fb = InterviewFeedback(
         candidate_id=str(candidate_id),
         interviewer_id=current_user.id,
@@ -45,7 +49,7 @@ async def submit_feedback(
         problem_solving=feedback_data.get("problemSolving", 5),
         communication=feedback_data.get("communicationScore", feedback_data.get("communication", 5)),
         cultural_fit=feedback_data.get("culturalFit", 5),
-        recommendation=feedback_data.get("recommendation", "HOLD"),
+        recommendation=recommendation,
         comments=feedback_data.get("notes", feedback_data.get("comments")),
     )
     db.add(fb)

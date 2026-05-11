@@ -6,7 +6,7 @@ import { useSubmitFeedback } from '../../hooks/useAssessment';
 import { MessageSquare, Star } from 'lucide-react';
 
 export default function InterviewPanel() {
-  const { data: candidatesData, isLoading, error } = useCandidates({ status: 'interviewed', limit: 50 });
+  const { data: candidatesData, isLoading, error } = useCandidates({ status: 'round3', limit: 50 });
   const submitFeedback = useSubmitFeedback();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [technicalScore, setTechnicalScore] = useState('5');
@@ -145,6 +145,16 @@ export default function InterviewPanel() {
                         }`}
                       >
                         Select
+                      </button>
+                      <button
+                        onClick={() => setRecommendation('hold')}
+                        className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${
+                          recommendation === 'hold'
+                            ? 'bg-warning/10 text-warning'
+                            : 'bg-[var(--bg-layer1)] text-tertiary'
+                        }`}
+                      >
+                        Hold
                       </button>
                       <button
                         onClick={() => setRecommendation('reject')}

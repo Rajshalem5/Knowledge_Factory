@@ -1,7 +1,7 @@
 """Authentication schemas - simplified without multi-tenancy."""
 
 from uuid import UUID
-from pydantic import BaseModel, EmailStr, Field, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
 
 class TokenResponse(BaseModel):
@@ -59,10 +59,10 @@ class CandidateRegisterRequest(BaseModel):
     name: str = Field(..., min_length=2, max_length=255)
     email: EmailStr
     password: str = Field(..., min_length=8)
-    college: str
-    branch: str
-    cgpa: float = Field(..., ge=0, le=10)
-    passed_out_year: int
+    college: str = ""
+    branch: str = ""
+    cgpa: float = Field(default=0.0, ge=0, le=10)
+    passed_out_year: int = 0
     language_choice: str = "english"
 
 
@@ -72,5 +72,4 @@ class UserResponse(BaseModel):
     name: str
     role: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

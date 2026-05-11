@@ -334,13 +334,18 @@ All docs live under `docs/`:
 
 ### Known Frontend ↔ Backend Mismatches
 
-1. ~~**`assessment.ts`** — `start()` and `submitSection()` pass `assessmentId` in path~~ ✅ Fixed (commit `95060bd`)
-2. ~~**`assessment.ts`** — `getAssessment()` calls `/api/assessment/{id}`~~ ✅ Fixed — backend route added (commit `8255a7d`)
-3. ~~**`analytics.ts`** — paths missing `/api` prefix~~ ✅ Fixed (commit `33ca4c1`)
-4. **`analytics.ts`** — `getOrganizations()` and `updateOrganization()` call `/api/admin/organizations` which return 501 — intentional (multi-tenancy was removed, endpoints left as stubs)
-5. ~~**`candidates.ts`** — `previewBulkUpload()` calls `/bulk-upload/preview`~~ ✅ Fixed — backend route added (commit `e181541`)
-6. ~~**`assessment.ts`** — `getAssessment()` had double `/api` prefix~~ ✅ Fixed (commit `eb7a0df`)
-7. ~~**Backend CandidateStatus (ROUND1_PASSED etc) vs Frontend CandidateStatus (eligible, round1 etc)** — mismatched status enums broke display and status updates~~ ✅ Fixed — added `display_status` property and `from_display_status()` classmethod to `CandidateStatus` enum, added `display_status` field to `CandidateRead` schema, patched frontend components to use `display_status` (commit `d5ba312`)
+All previously tracked API mismatches have been fixed. See commit history for details.
+
+### Known Integration Issues (fixed in latest commits)
+
+1. ~~**`candidates/routes.py`** — missing `select` import in `bulk_upload_candidates`~~ ✅ Fixed — crashes at runtime with `NameError: name 'select' is not defined` when active cycle check runs
+2. ~~**`SelectionPanel.tsx`** — filter checks `c.status` instead of `c.display_status`~~ ✅ Fixed — `status` contains raw backend enum (`INTERVIEW_COMPLETED`) which never matches simplified display strings (`interviewed`)
+3. ~~**`CandidateDetail.tsx`** — `InterviewRecommendation.HOLD` shows as "Reject"~~ ✅ Fixed — now shows "Hold" with warning badge
+4. ~~**`from_orm_compat()`** — `proctoring_flags` never populated~~ ✅ Fixed — added `back_populates` relationship between Candidate and ProctoringRecord, builds flags from `violations_json`
+5. ~~**`InterviewPanel.tsx`** — only Select/Reject buttons, missing Hold option~~ ✅ Fixed — added Hold button with warning styling
+6. ~~**`candidates.ts`** — `previewBulkUpload()` calls `/bulk-upload/preview`~~ ✅ Fixed — backend route added (commit `e181541`)
+7. ~~**`assessment.ts`** — `getAssessment()` had double `/api` prefix~~ ✅ Fixed (commit `eb7a0df`)
+8. ~~**Backend CandidateStatus (ROUND1_PASSED etc) vs Frontend CandidateStatus (eligible, round1 etc)** — mismatched status enums broke display and status updates~~ ✅ Fixed — added `display_status` property and `from_display_status()` classmethod to `CandidateStatus` enum, added `display_status` field to `CandidateRead` schema, patched frontend components to use `display_status` (commit `d5ba312`)
 
 ### Pipeline Status
 
@@ -354,9 +359,9 @@ All docs live under `docs/`:
 | HR Dashboard "Run Screening" button | ✅ Added | Triggers screening, shows pipeline stats |
 | Candidate Portal "Start Assessment" button | ✅ Added | Starts assessment via API, transitions status, navigates to /assessment |
 
-### Known TODO
-
-- `backend/app/features/auth/routes.py:254` — password reset token generated but email never sent (placeholder only)
+| ### Known TODO
+|
+| - (none — all Phase 1 known issues resolved)
 
 ## Security Notes
 

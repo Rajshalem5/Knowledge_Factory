@@ -100,15 +100,18 @@ class AssessmentService:
 
         # Create submission — Pydantic has already coerced section to SubmissionSection enum
         section = data.section
+        json_payload = {"code" if data.section == "CODING" else "answers": data.content}
         submission = Submission(
             assessment_id=data.assessment_id,
             section=section,
-            payload_json={"code" if data.section == "CODING" else "answers": data.content},
+            payload_json=json_payload,
+            time_spent_seconds=data.time_spent_seconds,
         )
         self.db.add(submission)
 
         # Mock evaluation — in prod this goes to Judge0 + AI pipeline
-        passed = len(data.content.get("testCases", []))
+        # Frontend sends content as { code, problemId }, not testCases
+        passed = 0
         failed = 0
 
         await self.db.flush()

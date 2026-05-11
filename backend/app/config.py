@@ -56,8 +56,25 @@ class Settings(BaseSettings):
     S3_ACCESS_KEY_ID: str = ""
     S3_SECRET_ACCESS_KEY: str = ""
 
-    # ── Email ──────────────────────────────────────────────────────
-    EMAIL_FROM_ADDRESS: str = "noreply@knowledgefactory.io"
+    # ── Redis ──────────────────────────────────────────────────────
+    REDIS_URL: str = "redis://localhost:6379/0"
+
+    # ── JWT / Security ─────────────────────────────────────────────
+    JWT_PRIVATE_KEY: str = ""
+    JWT_PUBLIC_KEY: str = ""
+    JWT_SECRET_KEY: str = "dev-stable-secret-change-in-production"
+    JWT_ACCESS_TTL_MINUTES: int = 60
+    JWT_REFRESH_TTL_DAYS: int = 7
+
+    # ── AI Question Generation ─────────────────────────────────────
+    AI_API_URL: str = "http://localhost:8000/v1/chat/completions"
+    AI_API_KEY: str = ""
+    AI_MODEL: str = "qwen3-coder-30b"
+
+    # ── Code Execution Sandbox ─────────────────────────────────────
+    SANDBOX_URL: str = "http://localhost:8000"
+
+    # ── Notifications ──────────────────────────────────────────────
     SENDGRID_API_KEY: str = ""
 
     # ── Proctoring ─────────────────────────────────────────────────
@@ -67,6 +84,10 @@ class Settings(BaseSettings):
     # ── Rate Limiting ──────────────────────────────────────────────
     LOGIN_RATE_LIMIT: str = "5/15min"
     CODE_EXEC_RATE_LIMIT: str = "20/minute"
+
+    # ── Seed Credentials (read from env, never hardcoded) ──────────
+    SEED_ADMIN_PASSWORD: str = ""
+    SEED_HR_PASSWORD: str = ""
 
 
 @lru_cache

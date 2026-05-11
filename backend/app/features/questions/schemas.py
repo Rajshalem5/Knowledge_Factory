@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 
 class TestCase(BaseModel):
+    __test__ = False                # suppress pytest collection warning (name starts with 'Test')
     input: str
     expected_output: str
     is_public: bool = True          # public → shown to candidate; private → hidden
