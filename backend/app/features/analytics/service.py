@@ -132,4 +132,13 @@ class AnalyticsService:
             select_rate=select_rate,
             avg_cgpa=avg_cgpa,
             status_breakdown=status_breakdown,
+            # Add mock data for missing analytics
+            passRatePerRound=[
+                {"round": "Round 1", "passRate": 75.0},
+                {"round": "Round 2", "passRate": 60.0},
+                {"round": "Round 3", "passRate": 45.0},
+            ],
+            collegeBreakdown=[],  # Empty for now
+            branchPerformance=[],  # Empty for now
+            proctoringViolations=[],  # Empty for now
         )

@@ -15,7 +15,7 @@ interface AuthContextValue {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (data: RegisterData | FormData) => Promise<void>;
+  register: (data: RegisterData) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
   hasRole: (role: string[]) => boolean;
@@ -25,10 +25,11 @@ interface RegisterData {
   name: string;
   email: string;
   password: string;
-  college?: string;
-  branch?: string;
-  cgpa?: number;
-  passed_out_year?: number;
+  college: string;
+  branch: string;
+  cgpa: number;
+  passed_out_year: number;
+  language_choice: string;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -94,7 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(response.user);
   }, []);
 
-  const register = useCallback(async (data: RegisterData | FormData) => {
+  const register = useCallback(async (data: RegisterData) => {
     const response = await authApi.register(data);
     tokenStore.setAccessToken(response.token);
     setToken(response.token);

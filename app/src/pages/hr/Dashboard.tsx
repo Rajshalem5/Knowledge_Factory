@@ -299,7 +299,7 @@ export default function Dashboard() {
       key: 'cgpa',
       header: 'CGPA',
       sortable: true,
-      render: (c) => <span className="font-mono text-xs">{c.cgpa.toFixed(1)}</span>,
+      render: (c) => <span className="font-mono text-xs">{c.cgpa ? Number(c.cgpa).toFixed(1) : 'N/A'}</span>,
     },
     {
       key: 'status',

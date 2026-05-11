@@ -38,7 +38,7 @@ export default function AnalyticsDashboard() {
                   <CardTitle>Pass Rate Per Round</CardTitle>
                 </CardHeader>
                 <BarChart
-                  data={analytics.passRatePerRound.map(r => ({ label: r.round, value: r.passRate }))}
+                  data={analytics?.passRatePerRound?.map(r => ({ label: r.round, value: r.passRate })) || []}
                   maxValue={100}
                 />
               </Card>
@@ -63,7 +63,7 @@ export default function AnalyticsDashboard() {
                   <CardTitle>College-wise Breakdown</CardTitle>
                 </CardHeader>
                 <BarChart
-                  data={analytics.collegeBreakdown.map(c => ({ label: c.college, value: c.count }))}
+                  data={analytics?.collegeBreakdown?.map(c => ({ label: c.college, value: c.count })) || []}
                 />
               </Card>
 
@@ -73,7 +73,7 @@ export default function AnalyticsDashboard() {
                   <CardTitle>Branch-wise Performance</CardTitle>
                 </CardHeader>
                 <BarChart
-                  data={analytics.branchPerformance.map(b => ({ label: b.branch, value: b.avgScore }))}
+                  data={analytics?.branchPerformance?.map(b => ({ label: b.branch, value: b.avgScore })) || []}
                   maxValue={100}
                 />
               </Card>
@@ -84,7 +84,7 @@ export default function AnalyticsDashboard() {
                   <CardTitle>Proctoring Violations</CardTitle>
                 </CardHeader>
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                  {analytics.proctoringViolations.map(v => (
+                  {analytics?.proctoringViolations?.map(v => (
                     <div key={v.type} className="p-4 rounded-md bg-[var(--bg-layer1)] text-center">
                       <p className="text-2xl font-bold text-danger">{v.count}</p>
                       <p className="text-xs text-tertiary uppercase tracking-architectural mt-1">{v.type}</p>

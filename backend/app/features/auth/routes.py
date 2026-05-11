@@ -51,13 +51,12 @@ def clear_refresh_cookie(response: Response):
 async def login(login_data: LoginRequest, db: AsyncSession = Depends(get_db), response: Response = None):
     """Authenticate user or candidate and return tokens."""
     auth_service = AuthService(db)
-    result = await auth_service.authenticate(login_data)
+    user = await auth_service.authenticate(login_data)
 
-    if not result:
+    if not user:
         raise HTTPException(status_code=401, detail="Incorrect email or password")
 
-    user_or_candidate, _is_candidate = result
-    token_data = auth_service.generate_token_response(user_or_candidate)
+    token_data = auth_service.generate_token_response(user)
     
     # Set refresh token as httpOnly cookie
     set_refresh_cookie(response, token_data["refresh_token"])
@@ -93,8 +92,18 @@ async def register_candidate(
 
     try:
         candidate = await auth_service.register_candidate(register_data, cycle.id)
+        await db.commit()
 
-        token_data = auth_service.generate_token_response(candidate)
+        # Convert candidate to user-like object for token generation
+        user_like = User(
+            id=candidate.id,
+            email=candidate.email,
+            name=candidate.name,
+            role="CANDIDATE",
+            password_hash=candidate.password_hash
+        )
+
+        token_data = auth_service.generate_token_response(user_like)
         
         # Set refresh token as httpOnly cookie
         set_refresh_cookie(response, token_data["refresh_token"])
@@ -107,19 +116,18 @@ async def register_candidate(
         }
 
     except Exception as exc:
+        await db.rollback()
         raise HTTPException(status_code=400, detail=str(exc))
 
 
 @router.get("/me", response_model=UserResponse)
 async def get_me(current_user=Depends(get_current_user)):
     """Get current user profile."""
-    is_candidate = isinstance(current_user, Candidate)
-    
     return UserResponse(
         id=current_user.id,
         email=current_user.email,
         name=current_user.name,
-        role="CANDIDATE" if is_candidate else current_user.role,
+        role=current_user.role,
     )
 
 
@@ -148,8 +156,16 @@ async def refresh_token(
     candidate = res.scalar_one_or_none()
 
     if candidate:
+        # Convert candidate to user-like object for token generation
+        user_like = User(
+            id=candidate.id,
+            email=candidate.email,
+            name=candidate.name,
+            role="CANDIDATE",
+            password_hash=candidate.password_hash
+        )
         auth_svc = AuthService(db)
-        token_data = auth_svc.generate_token_response(candidate)
+        token_data = auth_svc.generate_token_response(user_like)
         set_refresh_cookie(response, token_data["refresh_token"])
         return {
             "access_token": token_data["access_token"],

@@ -19,8 +19,8 @@ security = HTTPBearer()
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: AsyncSession = Depends(get_db),
-) -> User | Candidate:
-    """Get current authenticated user or candidate from JWT token."""
+) -> User:
+    """Get current authenticated user from JWT token."""
     payload = decode_token(credentials.credentials)
     if payload is None:
         raise HTTPException(
@@ -33,29 +33,37 @@ async def get_current_user(
     if sub is None:
         raise HTTPException(status_code=401, detail="Invalid token payload")
 
-    # Check candidates first
+    # Look up user in users table first
+    stmt = select(User).where(User.id == sub)
+    result = await db.execute(stmt)
+    user = result.scalar_one_or_none()
+
+    if user:
+        return user
+
+    # Look up in candidates table
     stmt = select(Candidate).where(Candidate.id == sub)
     result = await db.execute(stmt)
     candidate = result.scalar_one_or_none()
 
     if candidate:
-        return candidate
+        # Convert candidate to user-like object
+        user_like = User(
+            id=candidate.id,
+            email=candidate.email,
+            name=candidate.name,
+            role="CANDIDATE",
+            password_hash=candidate.password_hash
+        )
+        return user_like
 
-    # Check users
-    stmt = select(User).where(User.id == sub)
-    result = await db.execute(stmt)
-    user = result.scalar_one_or_none()
-
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    return user
+    raise HTTPException(status_code=404, detail="User not found")
 
 
 def require_role(allowed_roles: list[str]):
     """Decorator to require specific roles for endpoint access."""
-    async def role_checker(current_user: User | Candidate = Depends(get_current_user)):
-        role = "CANDIDATE" if isinstance(current_user, Candidate) else current_user.role
+    async def role_checker(current_user: User = Depends(get_current_user)):
+        role = current_user.role
         
         if role not in allowed_roles:
             raise HTTPException(

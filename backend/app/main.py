@@ -35,7 +35,6 @@ from app.features.analytics.routes import router as analytics_router
 from app.features.admin.routes import router as admin_router
 from app.features.hiring_cycles.routes import router as hiring_cycles_router
 from app.features.screening.routes import router as screening_router
-from app.features.audit.routes import router as audit_router
 from app.features.code_execution.routes import router as code_execution_router
 from app.features.questions.routes import router as questions_router
 
@@ -51,7 +50,6 @@ app.include_router(analytics_router, prefix="/api/analytics", tags=["Analytics"]
 app.include_router(admin_router, prefix="/api/admin", tags=["Admin"])
 app.include_router(hiring_cycles_router, prefix="/api/hiring-cycles", tags=["Hiring Cycles"])
 app.include_router(screening_router, prefix="/api/screening", tags=["Screening"])
-app.include_router(audit_router, prefix="/api/admin", tags=["Audit"])
 
 
 @app.get("/health")
@@ -65,15 +63,10 @@ async def startup():
     from app.database import async_session_factory, Base
     from sqlalchemy import create_engine as create_sync_engine
 
-    # Import ALL models so SQLAlchemy discovers them
+    # Import only the models we actually use
     from app.features.auth.models import User
     from app.features.candidates.models import Candidate
     from app.features.hiring_cycles.models import HiringCycle
-    from app.features.assessments.models import Assessment, Submission, Score
-    from app.features.proctoring.models import ProctoringRecord
-    from app.features.interviews.models import InterviewFeedback
-    from app.features.audit.models import AuditLog
-    from app.features.analytics.models import AIGenerationLog
 
     if "sqlite" in settings.DATABASE_URL:
         sync_engine = create_sync_engine(settings.DATABASE_URL.replace("+aiosqlite://", "://"))

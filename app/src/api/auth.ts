@@ -16,10 +16,11 @@ interface RegisterData {
   name: string;
   email: string;
   password: string;
-  college?: string;
-  branch?: string;
-  cgpa?: number;
-  passed_out_year?: number;
+  college: string;
+  branch: string;
+  cgpa: number;
+  passed_out_year: number;
+  language_choice: string;
 }
 
 export interface AuthResponse {
@@ -62,7 +63,7 @@ export const authApi = {
   login: (data: LoginData) =>
     api.post<AuthResponse>('/api/auth/login', data).then(normalizeResponse),
 
-  register: (data: RegisterData | FormData) =>
+  register: (data: RegisterData) =>
     api.post<AuthResponse>('/api/auth/register', data).then(normalizeResponse),
 
   refreshToken: () =>

@@ -40,7 +40,8 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
   let response = await fetch(url, { ...fetchOptions, headers, credentials: 'include' });
 
   // 401 — attempt silent refresh via cookie, then retry once
-  if (response.status === 401) {
+  // BUT NOT for login requests (they should fail immediately)
+  if (response.status === 401 && !endpoint.includes('/auth/login')) {
     try {
       const refreshRes = await authApi.refreshToken();
       const normalized = await authApi.normalizeTokenResponse(refreshRes);

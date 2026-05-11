@@ -18,6 +18,11 @@ class DashboardResponse(BaseModel):
     select_rate: float
     avg_cgpa: float
     status_breakdown: dict[str, Any]
+    # Add missing fields for frontend compatibility
+    passRatePerRound: list[dict[str, Any]] = []
+    collegeBreakdown: list[dict[str, Any]] = []
+    branchPerformance: list[dict[str, Any]] = []
+    proctoringViolations: list[dict[str, Any]] = []
 
 
 class OrganizationRead(BaseModel):

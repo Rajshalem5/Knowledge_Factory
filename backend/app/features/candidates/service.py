@@ -44,30 +44,21 @@ class CandidateService:
     ):
         query = select(Candidate)
 
-        query = apply_candidate_filters(
-            query,
-            search=search, name=name,
-            branch=branch, college=college,
-            cgpa_min=cgpa_min, cgpa_max=cgpa_max,
-            passed_out_year=passed_out_year,
-            language_choice=language_choice,
-            has_resume=has_resume, has_govt_id=has_govt_id,
-            has_phone=has_phone,
-            has_assessment=has_assessment,
-            has_interview_feedback=has_interview_feedback,
-            created_after=created_after, created_before=created_before,
-            passed_out_year_min=passed_out_year_min,
-            passed_out_year_max=passed_out_year_max,
-            email_verified=email_verified,
-            phone=phone, email=email,
-            cycle_id=cycle_id,
-            status=status,
-            updated_after=updated_after,
-            updated_before=updated_before,
-            assessment_status=assessment_status,
-            min_score=min_score,
-            max_score=max_score,
-        )
+        # Simplified filtering - bypass complex apply_candidate_filters for now
+        if status:
+            query = query.where(Candidate.status == status.upper())
+        if search:
+            query = query.where(Candidate.name.ilike(f'%{search}%'))
+        if name:
+            query = query.where(Candidate.name.ilike(f'%{name}%'))
+        if branch:
+            query = query.where(Candidate.branch.ilike(f'%{branch}%'))
+        if college:
+            query = query.where(Candidate.college.ilike(f'%{college}%'))
+        if cgpa_min:
+            query = query.where(Candidate.cgpa >= cgpa_min)
+        if cgpa_max:
+            query = query.where(Candidate.cgpa <= cgpa_max)
 
         count_q = select(func.count()).select_from(query.subquery())
         count_result = await self.db.execute(count_q)

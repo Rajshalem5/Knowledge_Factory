@@ -53,6 +53,7 @@ def portable_uuid_col(**kwargs):
 engine = create_async_engine(
     settings.DATABASE_URL,
     echo=settings.DB_ECHO,
+    connect_args={"statement_cache_size": 0}  # Disable prepared statements for pgbouncer
 )
 
 # ── Session Factory ────────────────────────────────────────────────
