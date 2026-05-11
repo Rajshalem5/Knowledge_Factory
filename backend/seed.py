@@ -21,7 +21,7 @@ from app.features.analytics.models import AIGenerationLog
 
 
 def seed():
-    """Create initial admin user and active hiring cycle."""
+    """Create initial admin user, all staff roles, active hiring cycle, and test candidates."""
     # Get sync engine for seeding
     db_url = settings.DATABASE_URL
     if "aiosqlite" in db_url:
@@ -35,21 +35,42 @@ def seed():
     Base.metadata.create_all(bind=engine)
     
     with Session(engine) as session:
-        # Check if admin already exists
-        admin = session.query(User).filter(User.email == "admin@knowledgefactory.io").first()
-        if not admin:
-            admin = User(
-                email="admin@knowledgefactory.io",
-                password_hash=hash_password("admin123"),
-                name="Admin User",
-                role=Role.ADMIN,
-                status=UserStatus.ACTIVE,
-            )
-            session.add(admin)
-            session.flush()
-            print("Created admin user: admin@knowledgefactory.io / admin123")
-        else:
-            print("Admin user already exists")
+        # ── Staff Users ─────────────────────────────────────────────
+        staff_users = [
+            {"email": "superadmin@knowledgefactory.io", "password": "Super@12345", "name": "Super Admin", "role": Role.SUPERADMIN},
+            {"email": "admin@knowledgefactory.io", "password": "admin123", "name": "Admin User", "role": Role.ADMIN},
+            {"email": "hr@knowledgefactory.io", "password": "Hr@12345", "name": "HR Manager", "role": Role.HR},
+            {"email": "interviewer@knowledgefactory.io", "password": "Interview@12345", "name": "Interviewer", "role": Role.INTERVIEWER},
+        ]
+        
+        created_by = None
+        for su in staff_users:
+            existing = session.query(User).filter(User.email == su["email"]).first()
+            if existing:
+                existing.password_hash = hash_password(su["password"])
+                existing.name = su["name"]
+                existing.role = su["role"]
+                existing.status = UserStatus.ACTIVE
+                print(f"Updated staff: {su['email']} / {su['password']}")
+                if su["role"] == Role.ADMIN:
+                    created_by = existing
+            else:
+                user = User(
+                    email=su["email"],
+                    password_hash=hash_password(su["password"]),
+                    name=su["name"],
+                    role=su["role"],
+                    status=UserStatus.ACTIVE,
+                )
+                session.add(user)
+                session.flush()
+                print(f"Created staff: {su['email']} / {su['password']}")
+                if su["role"] == Role.ADMIN:
+                    created_by = user
+        
+        if not created_by:
+            # Fallback: pick any admin
+            created_by = session.query(User).filter(User.role == Role.ADMIN).first()
         
         # Check if active hiring cycle exists
         cycle = session.query(HiringCycle).filter(HiringCycle.status == CycleStatus.ACTIVE).first()
@@ -74,7 +95,7 @@ def seed():
                     "tab_switch_limit": 5,
                     "webcam_required": True,
                 },
-                created_by=admin.id,
+                created_by=created_by.id if created_by else None,
             )
             session.add(cycle)
             session.flush()
@@ -82,8 +103,46 @@ def seed():
         else:
             print("Active hiring cycle already exists")
         
+        # Seed test candidates if none exist
+        existing_candidate = session.query(Candidate).first()
+        if not existing_candidate:
+            candidates_data = [
+                {"name": "Alice Sharma", "email": "alice@test.com", "password": "Candidate@123", "college": "IIT Bombay", "branch": "CSE", "cgpa": 8.7, "passed_out_year": 2026, "language_choice": "python"},
+                {"name": "Bob Patel", "email": "bob@test.com", "password": "Candidate@123", "college": "NIT Trichy", "branch": "ECE", "cgpa": 7.2, "passed_out_year": 2026, "language_choice": "java"},
+                {"name": "Charlie Singh", "email": "charlie@test.com", "password": "Candidate@123", "college": "DTU Delhi", "branch": "IT", "cgpa": 6.5, "passed_out_year": 2025, "language_choice": "python"},
+                {"name": "Divya Kumar", "email": "divya@test.com", "password": "Candidate@123", "college": "VIT Vellore", "branch": "CSE", "cgpa": 9.1, "passed_out_year": 2026, "language_choice": "cpp"},
+                {"name": "Esha Gupta", "email": "esha@test.com", "password": "Candidate@123", "college": "SRM Chennai", "branch": "EEE", "cgpa": 5.8, "passed_out_year": 2026, "language_choice": "python"},
+            ]
+            for cd in candidates_data:
+                pw = cd.pop("password")
+                c = Candidate(
+                    cycle_id=cycle.id,
+                    password_hash=hash_password(pw),
+                    **cd,
+                )
+                session.add(c)
+            print(f"Created {len(candidates_data)} test candidates (password: Candidate@123)")
+        else:
+            print("Test candidates already exist")
+        
         session.commit()
+        
+        # ── Verify ──────────────────────────────────────────────────
+        for su in staff_users:
+            user = session.query(User).filter(User.email == su["email"]).first()
+            if user:
+                ok = verify_password_test(su["password"], user.password_hash)
+                print(f"  Verify {su['email']}: {'PASS' if ok else 'FAIL'}")
+            else:
+                print(f"  Verify {su['email']}: NOT FOUND")
+        
         print("Seed complete!")
+
+
+def verify_password_test(plain_password: str, hashed_password: str) -> bool:
+    """Wrapper around core.security verify_password for seed verification."""
+    from app.core.security import verify_password
+    return verify_password(plain_password, hashed_password)
 
 
 if __name__ == "__main__":
