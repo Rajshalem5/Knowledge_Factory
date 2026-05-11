@@ -267,7 +267,7 @@ async def reset_password(data: ResetPasswordRequest, db: AsyncSession = Depends(
         
         # Update password
         user.password_hash = hash_password(data.new_password)
-        await db.commit()
+        await db.flush()
         
         return {"message": "Password has been reset successfully."}
         
