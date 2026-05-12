@@ -77,6 +77,25 @@ async def run_screening(db: AsyncSession = Depends(get_db)):
     allowed_branches = [b.upper() for b in config.get("allowed_branches", ["CSE", "ECE", "IT", "EEE"])]
     allowed_years = config.get("passed_out_years", None)
 
+    # Branch name normalization: map common full names to short codes
+    BRANCH_ALIASES = {
+        "COMPUTER SCIENCE": "CSE", "COMPUTERSCIENCE": "CSE", "CS": "CSE", "C.S": "CSE", "C.S.": "CSE",
+        "INFORMATION TECHNOLOGY": "IT", "INFORMATIONTECHNOLOGY": "IT", "INFO TECH": "IT", "I.T": "IT", "I.T.": "IT",
+        "ELECTRONICS AND COMMUNICATION": "ECE", "ELECTRONICS & COMMUNICATION": "ECE", "ECE": "ECE",
+        "ELECTRONICS": "ECE", "E.C.E": "ECE", "E.C.E.": "ECE",
+        "ELECTRICAL AND ELECTRONICS": "EEE", "ELECTRICAL & ELECTRONICS": "EEE", "EEE": "EEE",
+        "ELECTRICAL": "EEE", "E.E.E": "EEE", "E.E.E.": "EEE",
+    }
+
+    def normalize_branch(b: str) -> str:
+        """Normalize branch name to standard code using aliases."""
+        cleaned = b.strip().upper()
+        # Remove extra spaces, punctuation
+        import re
+        cleaned = re.sub(r'[^A-Z0-9 ]', '', cleaned)
+        cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+        return BRANCH_ALIASES.get(cleaned, cleaned)
+
     # Get all APPLIED candidates
     stmt = select(Candidate).where(Candidate.status == CandidateStatus.APPLIED.value)
     result = await db.execute(stmt)
@@ -95,9 +114,10 @@ async def run_screening(db: AsyncSession = Depends(get_db)):
         if cgpa < min_cgpa:
             reasons.append(f"CGPA {cgpa} < {min_cgpa}")
 
-        # Check branch
-        branch = (candidate.branch or "").upper()
-        if branch and branch not in allowed_branches:
+        # Check branch (with name normalization)
+        branch_raw = (candidate.branch or "").strip()
+        branch_normalized = normalize_branch(branch_raw) if branch_raw else ""
+        if branch_normalized and branch_normalized not in allowed_branches:
             reasons.append(f"Branch '{candidate.branch}' not in allowed list")
 
         # Check passed-out year

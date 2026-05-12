@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Badge } from '../../components/ui';
 import { Timer } from '../../components/assessment/Timer';
@@ -31,13 +31,36 @@ export default function Assessment() {
   const [runOutput, setRunOutput]       = useState<{ status: string; output: string } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { question, isGenerating, generate } = useQuestion();
+  const { question, isGenerating, generate, setQuestion } = useQuestion();
   const { runCode, isExecuting } = useCodeExecution();
   const { data: activeAssessments } = useActiveAssessments();
   const completeAssessment = useCompleteAssessment();
   const submitSection = useSubmitSection();
   const activeAssessment = activeAssessments?.[0];
   const hasSubmitted = evalResult !== null;
+
+  // Auto-load first problem from assessment questions_json
+  useEffect(() => {
+    if (!activeAssessment || question) return;
+    const qj = activeAssessment.questions_json;
+    if (!qj) return;
+    const raw = typeof qj === 'string' ? (() => { try { return JSON.parse(qj); } catch { return qj; } })() : qj;
+    const problems = (raw as any)?.problems;
+    if (!problems || !problems.length) return;
+    const p = problems[0];
+    setQuestion({
+      id: p.id || 'assessment-problem',
+      title: p.title || 'Untitled',
+      description: p.description || '',
+      difficulty: (p.difficulty || 'medium').toLowerCase() as 'easy' | 'medium' | 'hard',
+      boilerplate: { python: p.starter_code || `# Write your code here\n\n` },
+      public_test_cases: (p.test_cases || []).map((tc: any) => ({
+        input: tc.input || '',
+        expected_output: tc.expectedOutput || tc.expected_output || '',
+      })),
+    });
+    if (p.starter_code) setCode(p.starter_code);
+  }, [activeAssessment, question, setQuestion, setCode]);
 
   const handleComplete = () => {
     if (!activeAssessment) return;
