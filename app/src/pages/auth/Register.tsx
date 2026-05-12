@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Factory } from 'lucide-react';
+import { ArrowLeft, Factory, Upload } from 'lucide-react';
 import { Button, Input, Card } from '../../components/ui';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -15,7 +15,19 @@ export default function Register() {
   const [cgpa, setCgpa] = useState('');
   const [passedOutYear, setPassedOutYear] = useState('');
   const [languageChoice, setLanguageChoice] = useState('Python');
+  const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [error, setError] = useState('');
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        setError('Resume must be under 5MB');
+        return;
+      }
+      setResumeFile(file);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,7 +69,10 @@ export default function Register() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[var(--bg-base)] px-4">
       <div className="w-full max-w-sm">
-        <div className="flex items-center justify-center gap-2 mb-8">
+        <div className="flex items-center justify-center gap-2 mb-8 relative">
+          <Link to="/" className="absolute left-0 top-1/2 -translate-y-1/2 text-tertiary hover:text-on-surface transition-colors" title="Back to Home">
+            <ArrowLeft size={20} />
+          </Link>
           <Factory size={24} className="text-secondary" />
           <span className="font-bold">Knowledge Factory</span>
         </div>
@@ -128,6 +143,38 @@ export default function Register() {
               placeholder="e.g., 2024"
               required
             />
+            {/* Resume Upload */}
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-on-surface-variant">Resume <span className="text-tertiary font-normal">(optional)</span></label>
+              <label className={`flex items-center gap-3 px-4 py-3 rounded-md border border-dashed cursor-pointer transition-colors ${resumeFile ? 'border-secondary bg-secondary/5' : 'border-[var(--border-ghost)] hover:border-secondary/50'}`}>
+                <Upload size={18} className={resumeFile ? 'text-secondary' : 'text-tertiary'} />
+                <div className="flex-1 min-w-0">
+                  <span className={`text-sm ${resumeFile ? 'text-on-surface' : 'text-tertiary'}`}>
+                    {resumeFile ? resumeFile.name : 'Upload resume (PDF, DOC)'}
+                  </span>
+                  {resumeFile && (
+                    <span className="text-xs text-tertiary ml-2">
+                      ({(resumeFile.size / 1024).toFixed(0)} KB)
+                    </span>
+                  )}
+                </div>
+                <input
+                  type="file"
+                  accept=".pdf,.doc,.docx"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+                {resumeFile && (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.preventDefault(); setResumeFile(null); }}
+                    className="text-xs text-danger hover:text-danger/80"
+                  >
+                    Remove
+                  </button>
+                )}
+              </label>
+            </div>
             <div className="space-y-1.5">
               <label className="block text-sm font-medium text-on-surface-variant">Preferred Language</label>
               <select

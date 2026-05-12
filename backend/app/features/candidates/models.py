@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Numeric, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, JSON, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.enums import CandidateStatus
@@ -30,7 +30,10 @@ class Candidate(Base):
     cgpa: Mapped[Decimal | None] = mapped_column(Numeric(4, 2), nullable=True)
     passed_out_year: Mapped[int | None] = mapped_column(nullable=True)
     resume_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    govt_id_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
     language_choice: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    custom_fields: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     status: Mapped[CandidateStatus] = mapped_column(String(30), nullable=False, default=CandidateStatus.APPLIED, index=True)
     email_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
