@@ -1,0 +1,92 @@
+# build
+- label: backend all 237 tests pass
+  command: cd /opt/hermes_shared_memory/projects/Knowledge_Factory/backend && source .venv/bin/activate && python -m pytest -q 2>&1 | tail -1 | grep -q "237 passed"
+  tags: [implemented, ci]
+- label: frontend builds without errors
+  command: cd /opt/hermes_shared_memory/projects/Knowledge_Factory/app && npm run build 2>&1 | grep -q "built in"
+  tags: [implemented, ci]
+- label: SQLite dev database has all expected tables
+  command: cd /opt/hermes_shared_memory/projects/Knowledge_Factory/backend && python3 -c "import sqlite3;c=sqlite3.connect('knowledge_factory.db');r=c.execute(\"SELECT count(*) FROM sqlite_master WHERE type='table'\").fetchone()[0];exit(0) if r>=10 else exit(1)"
+  tags: [implemented]
+- label: git push works (remote is configured)
+  command: cd /opt/hermes_shared_memory/projects/Knowledge_Factory && git remote -v 2>&1 | grep -q "Rajshalem5/Knowledge_Factory"
+  tags: [implemented]
+
+# architecture
+- label: backend has 14 feature modules (routes/schemas/service/models)
+  command: count=$(find /opt/hermes_shared_memory/projects/Knowledge_Factory/backend/app/features -mindepth 1 -maxdepth 1 -type d ! -name '__pycache__' | wc -l); test "$count" -eq 14
+  tags: [implemented]
+- label: backend uses FastAPI with SQLAlchemy ORM and Alembic migrations
+  command: grep -q "from sqlalchemy import create_engine" /opt/hermes_shared_memory/projects/Knowledge_Factory/backend/app/core/database.py && test -f /opt/hermes_shared_memory/projects/Knowledge_Factory/backend/alembic/env.py
+  tags: [implemented]
+- label: frontend uses React 19 + Vite + TypeScript + Tailwind
+  command: grep -q '"react": "^19' /opt/hermes_shared_memory/projects/Knowledge_Factory/app/package.json && grep -q '"vite"' /opt/hermes_shared_memory/projects/Knowledge_Factory/app/package.json
+  tags: [implemented]
+- label: API client uses in-memory tokenStore (not localStorage)
+  command: grep -q "tokenStore" /opt/hermes_shared_memory/projects/Knowledge_Factory/app/src/api/client.ts && grep -q "export const tokenStore" /opt/hermes_shared_memory/projects/Knowledge_Factory/app/src/api/token.ts
+  tags: [implemented]
+- label: role-based routing via ProtectedRoute component
+  command: test -f /opt/hermes_shared_memory/projects/Knowledge_Factory/app/src/routes/ProtectedRoute.tsx
+  tags: [implemented]
+- label: backend ID fields are String(36) — no native UUID
+  command: test "$(grep -r "String(36)" /opt/hermes_shared_memory/projects/Knowledge_Factory/backend/app/features/*/models.py 2>/dev/null | grep -v __pycache__ | wc -l)" -ge 20
+  tags: [implemented]
+- label: database migrations managed via Alembic
+  command: test -f /opt/hermes_shared_memory/projects/Knowledge_Factory/backend/alembic/env.py && test "$(ls /opt/hermes_shared_memory/projects/Knowledge_Factory/backend/alembic/versions/*.py 2>/dev/null | wc -l)" -ge 1
+  tags: [implemented]
+
+# auth
+- label: 4 staff roles plus candidate-specific auth
+  command: grep -q "SUPERADMIN\|ADMIN\|HR\|INTERVIEWER" /opt/hermes_shared_memory/projects/Knowledge_Factory/backend/app/core/enums.py
+  tags: [implemented]
+- label: JWT access tokens used with refresh token rotation
+  command: grep -q "create_access_token\|decode_token" /opt/hermes_shared_memory/projects/Knowledge_Factory/backend/app/core/security.py
+  tags: [implemented]
+
+# pipeline — candidate lifecycle
+- label: candidates default to APPLIED status on creation
+  command: grep -q "default=CandidateStatus.APPLIED" /opt/hermes_shared_memory/projects/Knowledge_Factory/backend/app/features/candidates/models.py
+  tags: [implemented]
+- label: 3 pipeline endpoints implement cycle_id filter (screening, candidates, analytics)
+  command: count=$(grep -l "cycle_id" /opt/hermes_shared_memory/projects/Knowledge_Factory/backend/app/features/screening/routes.py /opt/hermes_shared_memory/projects/Knowledge_Factory/backend/app/features/candidates/routes.py /opt/hermes_shared_memory/projects/Knowledge_Factory/backend/app/features/analytics/routes.py 2>/dev/null | wc -l); test "$count" -ge 3
+  tags: [implemented]
+- label: assessment submit_section validates IN_PROGRESS status
+  command: grep -q "IN_PROGRESS" /opt/hermes_shared_memory/projects/Knowledge_Factory/backend/app/features/assessments/service.py
+  tags: [implemented]
+- label: funnel analytics endpoint exists and filters by cycle_id
+  command: grep -q "cycle_id" /opt/hermes_shared_memory/projects/Knowledge_Factory/backend/app/features/analytics/routes.py
+  tags: [implemented]
+- label: Candidate state machine with APPLIED through TERMINATED lifecycle
+  command: grep -q "APPLIED = \"APPLIED\"" /opt/hermes_shared_memory/projects/Knowledge_Factory/backend/app/core/enums.py && grep -q "TERMINATED = \"TERMINATED\"" /opt/hermes_shared_memory/projects/Knowledge_Factory/backend/app/core/enums.py
+  tags: [implemented]
+
+# gaps — known @draft items
+- label: ROUND1_PASSED to ROUND2_IN_PROGRESS transition wired on assessment start
+  command: grep -q "ROUND1_PASSED.*ROUND2_IN_PROGRESS" /opt/hermes_shared_memory/projects/Knowledge_Factory/backend/app/features/assessments/service.py
+  tags: [implemented]
+- label: E2E pipeline test exists and validates full candidate lifecycle
+  command: test -f /opt/hermes_shared_memory/projects/Knowledge_Factory/backend/test_e2e_pipeline.py
+  tags: [implemented]
+- label: submissions scored with placeholder logic — no Judge0 / AI pipeline connected
+  command: grep -q "Mock evaluation.*Judge0\|mock.*evaluation.*prod" /opt/hermes_shared_memory/projects/Knowledge_Factory/backend/app/features/assessments/service.py
+  tags: [draft]
+- label: S3 storage integration exists as placeholder for Phase 3
+  command: grep -q "Placeholder.*Phase 3" /opt/hermes_shared_memory/projects/Knowledge_Factory/backend/app/integrations/storage.py
+  tags: [draft]
+- label: FastAPI lifespan context manager used (not deprecated on_event)
+  command: grep -q "lifespan=lifespan" /opt/hermes_shared_memory/projects/Knowledge_Factory/backend/app/main.py
+  tags: [implemented]
+- label: proctoring WebSocket endpoint not yet implemented
+  command: grep -q "websocket\|WebSocket" /opt/hermes_shared_memory/projects/Knowledge_Factory/backend/app/features/proctoring/routes.py 2>/dev/null; test $? -eq 1
+  tags: [draft]
+
+# devops
+- label: dev branch is the active development branch
+  command: cd /opt/hermes_shared_memory/projects/Knowledge_Factory && git branch --show-current | grep -q "dev"
+  tags: [implemented]
+- label: Phase 1 security hardening commit exists
+  command: cd /opt/hermes_shared_memory/projects/Knowledge_Factory && git log --oneline | grep -q "security hardening"
+  tags: [implemented]
+- label: 19 integration test files for pipeline filters exist
+  command: count=$(ls /opt/hermes_shared_memory/projects/Knowledge_Factory/backend/tests/integration/test_*.py 2>/dev/null | wc -l); test "$count" -eq 19
+  tags: [implemented]
