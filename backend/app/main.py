@@ -1,10 +1,13 @@
-"""FastAPI app bootstrap — all routers wired."""
+"""FastAPI app bootstrap — all routers wired + SPA fallback."""
 
 import logging
+from pathlib import Path
 from datetime import date, datetime, timezone
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse
 
 from app.config import settings
 from app.core.enums import Role, UserStatus, CycleStatus
@@ -55,6 +58,36 @@ app.include_router(screening_router, prefix="/api/screening", tags=["Screening"]
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
+
+
+# ── SPA Fallback — serve frontend for non-API routes ──────────────
+frontend_dist = Path(__file__).resolve().parent.parent.parent / "app" / "dist"
+if frontend_dist.exists() and (frontend_dist / "index.html").exists():
+    # Serve /assets, /favicon.svg, /icons.svg as static files
+    app.mount("/assets", StaticFiles(directory=str(frontend_dist / "assets")), name="assets")
+
+    assets_dir = frontend_dist / "assets"
+
+    @app.get("/{full_path:path}")
+    async def spa_fallback(full_path: str):
+        # Skip API routes, health, docs
+        if (full_path.startswith("api/") or full_path == "api"
+            or full_path.startswith("docs") or full_path.startswith("redoc")
+            or full_path == "health" or full_path.startswith("openapi")):
+            from fastapi.responses import JSONResponse
+            return JSONResponse({"detail": "Not Found"}, status_code=404)
+        # Serve actual files like /favicon.svg, /icons.svg
+        if full_path in ("favicon.svg", "icons.svg"):
+            f = frontend_dist / full_path
+            if f.exists():
+                return HTMLResponse(content=f.read_bytes(), media_type="image/svg+xml")
+        return HTMLResponse(content=(frontend_dist / "index.html").read_text())
+
+    @app.get("/")
+    async def root():
+        return HTMLResponse(content=(frontend_dist / "index.html").read_text())
+
+    logger.info("Frontend SPA mounted from %s", frontend_dist)
 
 
 @app.on_event("startup")

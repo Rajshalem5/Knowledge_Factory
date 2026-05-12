@@ -6,18 +6,22 @@ from decimal import Decimal
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Numeric, String, Text
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.enums import CandidateStatus
-from app.database import Base
+from app.database import Base, PortableUUID
+
+if TYPE_CHECKING:
+    from app.features.assessments.models import Assessment, Score
+    from app.features.proctoring.models import ProctoringRecord
+    from app.features.interviews.models import InterviewFeedback
 
 
 class Candidate(Base):
     __tablename__ = "candidates"
 
-    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid.uuid4()))
-    cycle_id: Mapped[str] = mapped_column(UUID(as_uuid=False), ForeignKey("hiring_cycles.id", ondelete="CASCADE"), nullable=False, index=True)
+    id: Mapped[str] = mapped_column(PortableUUID, primary_key=True, default=lambda: str(uuid.uuid4()))
+    cycle_id: Mapped[str] = mapped_column(PortableUUID, ForeignKey("hiring_cycles.id", ondelete="CASCADE"), nullable=False, index=True)
     email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
     password_hash: Mapped[str] = mapped_column(Text, nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -32,4 +36,8 @@ class Candidate(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
-    # No relationships for now to avoid complexity
+    # Relationships via back_populates
+    assessments: Mapped[list["Assessment"]] = relationship(back_populates="candidate", lazy="selectin")
+    scores: Mapped[list["Score"]] = relationship(back_populates="candidate", lazy="selectin")
+    proctoring_records: Mapped[list["ProctoringRecord"]] = relationship(back_populates="candidate", lazy="selectin")
+    interview_feedback: Mapped[list["InterviewFeedback"]] = relationship(back_populates="candidate", lazy="selectin")
