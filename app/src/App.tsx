@@ -52,6 +52,11 @@ export default function App() {
           <Dashboard />
         </ProtectedRoute>
       } />
+      <Route path="/candidates" element={
+        <ProtectedRoute allowedRoles={['hr', 'admin', 'interviewer', 'superadmin']}>
+          <Dashboard />
+        </ProtectedRoute>
+      } />
       <Route path="/candidates/:id" element={
         <ProtectedRoute allowedRoles={['hr', 'admin', 'interviewer', 'superadmin']}>
           <CandidateDetail />

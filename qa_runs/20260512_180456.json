@@ -1,0 +1,151 @@
+{
+  "run_id": "20260512_180456",
+  "timestamp": "2026-05-12T18:04:56.779017+00:00",
+  "passed": [
+    {
+      "desc": "Health check: GET /health returns 200 OK"
+    },
+    {
+      "desc": "Login: superadmin (superadmin@knowledgefactory.io) \u2014 role=?"
+    },
+    {
+      "desc": "Login: admin (admin@knowledgefactory.io) \u2014 role=?"
+    },
+    {
+      "desc": "Login: hr (hr@knowledgefactory.io) \u2014 role=?"
+    },
+    {
+      "desc": "Login: interviewer (interviewer@knowledgefactory.io) \u2014 role=?"
+    },
+    {
+      "desc": "/me OK: superadmin (role=SUPERADMIN)"
+    },
+    {
+      "desc": "/me OK: admin (role=ADMIN)"
+    },
+    {
+      "desc": "/me OK: hr (role=HR)"
+    },
+    {
+      "desc": "/me OK: interviewer (role=INTERVIEWER)"
+    },
+    {
+      "desc": "Registration: qa_e2e_1778609097@test.com \u2014 created"
+    },
+    {
+      "desc": "Login as new candidate (qa_e2e_1778609097@test.com): OK"
+    },
+    {
+      "desc": "Candidates list (admin): 41 candidates"
+    },
+    {
+      "desc": "Candidates list (hr): 41 candidates"
+    },
+    {
+      "desc": "Candidate /me: OK (status=APPLIED)"
+    },
+    {
+      "desc": "Pipeline stats: 7 statuses, 41 total candidates"
+    },
+    {
+      "desc": "Screening run: screened=1, passed=1, rejected=0"
+    },
+    {
+      "desc": "Analytics funnel (admin): OK"
+    },
+    {
+      "desc": "Analytics funnel (hr): OK"
+    },
+    {
+      "desc": "Analytics dashboard (admin): OK"
+    },
+    {
+      "desc": "Analytics dashboard (hr): OK"
+    },
+    {
+      "desc": "Hiring cycles (admin): 1 cycles"
+    },
+    {
+      "desc": "Hiring cycles (hr): 1 cycles"
+    },
+    {
+      "desc": "Admin users: OK"
+    },
+    {
+      "desc": "Assessment API: endpoint reachable"
+    },
+    {
+      "desc": "Feedback API ({interviewer}): endpoint reachable"
+    },
+    {
+      "desc": "Browser (superadmin): loaded with saved auth state"
+    },
+    {
+      "desc": "Browser (superadmin): page title='\"app\"'"
+    },
+    {
+      "desc": "Browser (admin): loaded with saved auth state"
+    },
+    {
+      "desc": "Browser (admin): page title='\"app\"'"
+    },
+    {
+      "desc": "Browser (hr): loaded with saved auth state"
+    },
+    {
+      "desc": "Browser (hr): page title='\"app\"'"
+    },
+    {
+      "desc": "Browser (interviewer): loaded with saved auth state"
+    },
+    {
+      "desc": "Browser (interviewer): page title='\"app\"'"
+    },
+    {
+      "desc": "Browser (candidate): loaded with saved auth state"
+    },
+    {
+      "desc": "Browser (candidate): page title='\"ERR_NGROK_6024 - You are about to visit ila-sturdiest-oversentimentally.ngrok-free.dev, served by 20.204.147.53. This website is served for free through ngrok.com. You should only visit this website if you trust whoever sent the link to you.\"'"
+    },
+    {
+      "desc": "DB records: 7 users, 41 candidates"
+    }
+  ],
+  "failed": [],
+  "warnings": [
+    {
+      "desc": "Admin logs: status=404"
+    },
+    {
+      "desc": "Questions API: status=404"
+    },
+    {
+      "desc": "Code execution API: status=404"
+    },
+    {
+      "desc": "Proctoring API: status=404"
+    },
+    {
+      "desc": "DB tables: 8/10 present, missing: ['assessment_sections', 'test_cases']"
+    }
+  ],
+  "critical": [],
+  "role_coverage": {
+    "superadmin": "\u2705",
+    "admin": "\u2705",
+    "hr": "\u2705",
+    "interviewer": "\u2705",
+    "candidate": "\u2705"
+  },
+  "kf_systems": {
+    "questions": "\u26a0\ufe0f",
+    "code_execution": "\u26a0\ufe0f"
+  },
+  "summary": {
+    "total": 41,
+    "passed": 36,
+    "failed": 0,
+    "warnings": 5,
+    "critical": 0
+  }
+}

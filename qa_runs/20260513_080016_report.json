@@ -1,0 +1,700 @@
+{
+  "run_id": "20260513_080016",
+  "timestamp": "2026-05-13T08:00:32.089470+00:00",
+  "version": "qa_full_v1",
+  "checks": [
+    {
+      "name": "backend_health",
+      "ok": true,
+      "detail": "HTTP 200: ok",
+      "category": "API",
+      "phase": "api"
+    },
+    {
+      "name": "login_superadmin",
+      "ok": true,
+      "detail": "superadmin@knowledgefactory.io",
+      "category": "API",
+      "phase": "api"
+    },
+    {
+      "name": "login_admin",
+      "ok": true,
+      "detail": "admin@knowledgefactory.io",
+      "category": "API",
+      "phase": "api"
+    },
+    {
+      "name": "login_hr",
+      "ok": true,
+      "detail": "hr@knowledgefactory.io",
+      "category": "API",
+      "phase": "api"
+    },
+    {
+      "name": "login_interviewer",
+      "ok": true,
+      "detail": "interviewer@test.com",
+      "category": "API",
+      "phase": "api"
+    },
+    {
+      "name": "login_candidate",
+      "ok": true,
+      "detail": "candidate@test.com",
+      "category": "API",
+      "phase": "api"
+    },
+    {
+      "name": "auth_me_superadmin",
+      "ok": true,
+      "detail": "HTTP 200 role=SUPERADMIN",
+      "category": "API",
+      "phase": "api"
+    },
+    {
+      "name": "auth_me_admin",
+      "ok": true,
+      "detail": "HTTP 200 role=ADMIN",
+      "category": "API",
+      "phase": "api"
+    },
+    {
+      "name": "auth_me_hr",
+      "ok": true,
+      "detail": "HTTP 200 role=HR",
+      "category": "API",
+      "phase": "api"
+    },
+    {
+      "name": "auth_me_interviewer",
+      "ok": true,
+      "detail": "HTTP 200 role=INTERVIEWER",
+      "category": "API",
+      "phase": "api"
+    },
+    {
+      "name": "auth_me_candidate",
+      "ok": true,
+      "detail": "HTTP 200 role=CANDIDATE",
+      "category": "API",
+      "phase": "api"
+    },
+    {
+      "name": "pipeline_stats",
+      "ok": true,
+      "detail": "APPLIED:1 FINAL_REJECTED:1 ROUND1_PASSED:23 ROUND1_REJECTED:26 ROUND2_IN_PROGRESS:5 ROUND2_PASSED:1 ROUND3_PASSED:1",
+      "category": "API",
+      "phase": "api"
+    },
+    {
+      "name": "screening_run",
+      "ok": true,
+      "detail": "HTTP 200 screened=1 passed=0 rejected=1",
+      "category": "API",
+      "phase": "api"
+    },
+    {
+      "name": "candidates_superadmin",
+      "ok": true,
+      "detail": "HTTP 200: 50 candidates",
+      "category": "API",
+      "phase": "api"
+    },
+    {
+      "name": "candidates_admin",
+      "ok": true,
+      "detail": "HTTP 200: 50 candidates",
+      "category": "API",
+      "phase": "api"
+    },
+    {
+      "name": "candidates_hr",
+      "ok": true,
+      "detail": "HTTP 200: 50 candidates",
+      "category": "API",
+      "phase": "api"
+    },
+    {
+      "name": "candidate_me",
+      "ok": true,
+      "detail": "HTTP 200: candidate@test.com",
+      "category": "API",
+      "phase": "api"
+    },
+    {
+      "name": "hiring_cycles_admin",
+      "ok": true,
+      "detail": "HTTP 200",
+      "category": "API",
+      "phase": "api"
+    },
+    {
+      "name": "hiring_cycles_superadmin",
+      "ok": true,
+      "detail": "HTTP 200",
+      "category": "API",
+      "phase": "api"
+    },
+    {
+      "name": "hiring_cycles_hr",
+      "ok": true,
+      "detail": "HTTP 200",
+      "category": "API",
+      "phase": "api"
+    },
+    {
+      "name": "analytics_funnel_admin",
+      "ok": true,
+      "detail": "HTTP 200",
+      "category": "API",
+      "phase": "api"
+    },
+    {
+      "name": "analytics_dashboard_admin",
+      "ok": true,
+      "detail": "HTTP 200",
+      "category": "API",
+      "phase": "api"
+    },
+    {
+      "name": "analytics_funnel_superadmin",
+      "ok": true,
+      "detail": "HTTP 200",
+      "category": "API",
+      "phase": "api"
+    },
+    {
+      "name": "analytics_dashboard_superadmin",
+      "ok": true,
+      "detail": "HTTP 200",
+      "category": "API",
+      "phase": "api"
+    },
+    {
+      "name": "analytics_funnel_hr",
+      "ok": true,
+      "detail": "HTTP 200",
+      "category": "API",
+      "phase": "api"
+    },
+    {
+      "name": "analytics_dashboard_hr",
+      "ok": true,
+      "detail": "HTTP 200",
+      "category": "API",
+      "phase": "api"
+    },
+    {
+      "name": "admin_users_admin",
+      "ok": true,
+      "detail": "HTTP 200",
+      "category": "API",
+      "phase": "api"
+    },
+    {
+      "name": "admin_logs_admin",
+      "ok": true,
+      "detail": "HTTP 404",
+      "category": "API",
+      "phase": "api"
+    },
+    {
+      "name": "admin_users_superadmin",
+      "ok": true,
+      "detail": "HTTP 200",
+      "category": "API",
+      "phase": "api"
+    },
+    {
+      "name": "admin_logs_superadmin",
+      "ok": true,
+      "detail": "HTTP 404",
+      "category": "API",
+      "phase": "api"
+    },
+    {
+      "name": "assessment_active",
+      "ok": true,
+      "detail": "HTTP 200",
+      "category": "API",
+      "phase": "api"
+    },
+    {
+      "name": "code_exec_noauth",
+      "ok": true,
+      "detail": "HTTP 401: Not authenticated",
+      "category": "API",
+      "phase": "api"
+    },
+    {
+      "name": "code_exec_admin",
+      "ok": true,
+      "detail": "HTTP 200",
+      "category": "API",
+      "phase": "api"
+    },
+    {
+      "name": "code_exec_hr",
+      "ok": true,
+      "detail": "HTTP 200",
+      "category": "API",
+      "phase": "api"
+    },
+    {
+      "name": "proctoring_event",
+      "ok": true,
+      "detail": "HTTP 201",
+      "category": "API",
+      "phase": "api"
+    },
+    {
+      "name": "register_candidate",
+      "ok": true,
+      "detail": "HTTP 201: qa_test_1778659218@test.com",
+      "category": "API",
+      "phase": "api"
+    },
+    {
+      "name": "questions_generate",
+      "ok": true,
+      "detail": "HTTP 404",
+      "category": "API",
+      "phase": "api"
+    },
+    {
+      "name": "pytest_suite",
+      "ok": false,
+      "detail": "passed=0 failed=0 errors=1",
+      "category": "TEST",
+      "phase": "pytest"
+    },
+    {
+      "name": "  failed_test",
+      "ok": false,
+      "detail": "tests/integration/test_admin_routes.py::TestAdminUsers::test_01_list_users_as_admin",
+      "category": "TEST",
+      "phase": "pytest"
+    },
+    {
+      "name": "perf_POST__api_auth_login",
+      "ok": true,
+      "detail": "p50=267ms p95=268ms p99=268ms",
+      "category": "PERF",
+      "phase": "perf"
+    },
+    {
+      "name": "perf_GET__api_screening_pipeline-stats",
+      "ok": true,
+      "detail": "p50=9ms p95=12ms p99=12ms",
+      "category": "PERF",
+      "phase": "perf"
+    },
+    {
+      "name": "perf_GET__api_candidates_",
+      "ok": true,
+      "detail": "p50=21ms p95=21ms p99=21ms",
+      "category": "PERF",
+      "phase": "perf"
+    },
+    {
+      "name": "perf_GET__api_analytics_dashboard",
+      "ok": true,
+      "detail": "p50=11ms p95=11ms p99=11ms",
+      "category": "PERF",
+      "phase": "perf"
+    },
+    {
+      "name": "perf_GET__api_analytics_funnel",
+      "ok": true,
+      "detail": "p50=12ms p95=12ms p99=12ms",
+      "category": "PERF",
+      "phase": "perf"
+    },
+    {
+      "name": "npm_audit",
+      "ok": true,
+      "detail": "vulns=0 critical=0 high=0",
+      "category": "DEP",
+      "phase": "dep"
+    },
+    {
+      "name": "pip_audit",
+      "ok": false,
+      "detail": "vulns=9 critical=0 high=0",
+      "category": "DEP",
+      "phase": "dep"
+    },
+    {
+      "name": "db_integrity",
+      "ok": true,
+      "detail": "integrity_check: ok",
+      "category": "DB",
+      "phase": "db"
+    },
+    {
+      "name": "db_foreign_keys",
+      "ok": false,
+      "detail": "FK violations: 2",
+      "category": "DB",
+      "phase": "db"
+    },
+    {
+      "name": "db_tables",
+      "ok": true,
+      "detail": "12 tables: 98 total rows",
+      "category": "DB",
+      "phase": "db"
+    },
+    {
+      "name": "db_missing_indexes",
+      "ok": false,
+      "detail": "Missing indexes: hiring_cycles(created_by), interview_feedback(interviewer_id)",
+      "category": "DB",
+      "phase": "db"
+    },
+    {
+      "name": "endpoint_scan",
+      "ok": true,
+      "detail": "18 protected, 36 with no auth check",
+      "category": "SEC",
+      "phase": "sec"
+    },
+    {
+      "name": "known_unprotected_screening_pipeline-stats",
+      "ok": true,
+      "detail": "Not found (possible) ",
+      "category": "SEC",
+      "phase": "sec"
+    },
+    {
+      "name": "known_unprotected_screening_run",
+      "ok": false,
+      "detail": "STILL unprotected!",
+      "category": "SEC",
+      "phase": "sec"
+    },
+    {
+      "name": "total_unprotected",
+      "ok": false,
+      "detail": "36 endpoints without auth: admin/list_organizations (get); admin/create_organization (post); admin/update_organization (patch); analytics/get_hiring_funnel (get); audit/list_audit_logs (get); auth/login (post); auth/register_candidate (post); auth/refresh_token (post)",
+      "category": "SEC",
+      "phase": "sec"
+    },
+    {
+      "name": "ngrok_reachable",
+      "ok": true,
+      "detail": "HTTP 200",
+      "category": "SYS",
+      "phase": "browser"
+    },
+    {
+      "name": "frontend_build",
+      "ok": true,
+      "detail": "dist: True",
+      "category": "SYS",
+      "phase": "browser"
+    },
+    {
+      "name": "db_file_exists",
+      "ok": true,
+      "detail": "db: True (224KB)",
+      "category": "SYS",
+      "phase": "sys"
+    },
+    {
+      "name": "frontend_dist",
+      "ok": true,
+      "detail": "dist: True",
+      "category": "SYS",
+      "phase": "sys"
+    },
+    {
+      "name": "piston_api",
+      "ok": true,
+      "detail": "Not configured (skipped)",
+      "category": "SYS",
+      "phase": "sys"
+    },
+    {
+      "name": "git_uncommitted",
+      "ok": false,
+      "detail": "34 uncommitted changes",
+      "category": "SYS",
+      "phase": "sys"
+    },
+    {
+      "name": "docker_available",
+      "ok": true,
+      "detail": "Docker: OK",
+      "category": "SYS",
+      "phase": "sys"
+    },
+    {
+      "name": "dockerfile_exists",
+      "ok": false,
+      "detail": "No Dockerfile",
+      "category": "SYS",
+      "phase": "sys"
+    }
+  ],
+  "severity_counts": {
+    "critical": 0,
+    "high": 3,
+    "medium": 2,
+    "low": 2
+  },
+  "issues": {
+    "critical": [],
+    "high": [
+      "pytest_suite: 0 failed",
+      "pip_audit: 9 vulnerabilities",
+      "unprotected_endpoint_screening/run"
+    ],
+    "medium": [
+      "db_foreign_keys: 2 violations",
+      "36 unprotected endpoints"
+    ],
+    "low": [
+      "db_missing_indexes: 2",
+      "git_uncommitted: 34 files"
+    ]
+  },
+  "phase_results": {
+    "api": {
+      "passed": 37,
+      "total": 37
+    },
+    "pytest": {
+      "passed": 0,
+      "total": 1,
+      "passed_count": 0,
+      "failed_count": 0,
+      "error_count": 1,
+      "failed_tests": [
+        "tests/integration/test_admin_routes.py::TestAdminUsers::test_01_list_users_as_admin"
+      ]
+    },
+    "perf": {
+      "passed": 5,
+      "total": 5
+    },
+    "dep": {
+      "passed": 1,
+      "total": 2
+    },
+    "db": {
+      "passed": 2,
+      "total": 4
+    },
+    "fe_console": {
+      "passed": 0,
+      "total": 0,
+      "note": "handled_by_agent"
+    },
+    "sec": {
+      "passed": 2,
+      "total": 4,
+      "unprotected": [
+        "admin/list_organizations (get)",
+        "admin/create_organization (post)",
+        "admin/update_organization (patch)",
+        "analytics/get_hiring_funnel (get)",
+        "audit/list_audit_logs (get)",
+        "auth/login (post)",
+        "auth/register_candidate (post)",
+        "auth/refresh_token (post)",
+        "auth/logout (post)",
+        "auth/verify_otp (post)",
+        "auth/forgot_password (post)",
+        "auth/reset_password (post)",
+        "candidates/list_candidates (get)",
+        "candidates/preview_bulk_upload (post)",
+        "candidates/bulk_upload_candidates (post)",
+        "code_execution/execute_code (post)",
+        "code_execution/evaluate_code (post)",
+        "code_execution/evaluate_against_question (post)",
+        "interviews/submit_feedback (post)",
+        "jobs/create_job (post)",
+        "jobs/list_jobs (get)",
+        "jobs/get_job (get)",
+        "jobs/update_job (patch)",
+        "jobs/delete_job (delete)",
+        "phase2/start_phase2 (post)",
+        "phase2/get_my_assessment (get)",
+        "phase2/submit_code (post)",
+        "phase2/get_results (get)",
+        "proctoring/record_proctoring_event (post)",
+        "questions/generate (post)",
+        "questions/get_question_public (get)",
+        "screening/get_pipeline_stats (get)",
+        "screening/run_screening (post)",
+        "superadmin/list_organizations (get)",
+        "superadmin/list_all_users (get)",
+        "superadmin/update_user_role (patch)"
+      ]
+    },
+    "browser": {
+      "passed": 0,
+      "total": 0,
+      "note": "handled_by_agent"
+    },
+    "sys": {
+      "passed": 4,
+      "total": 6
+    }
+  },
+  "comparison": {
+    "previous_run": "20260513_072816_report.json",
+    "new_issues": [],
+    "fixed_issues": [],
+    "recurring_issues": [
+      "db_missing_indexes",
+      "total_unprotected",
+      "db_foreign_keys",
+      "pip_audit",
+      "dockerfile_exists",
+      "known_unprotected_screening_run",
+      "pytest_suite",
+      "  failed_test",
+      "git_uncommitted"
+    ]
+  },
+  "summary": {
+    "total_passed": 53,
+    "total_failed": 9,
+    "total_tests": 62
+  },
+  "perf_baseline": {
+    "POST /api/auth/login": {
+      "p50_ms": 267.0,
+      "p95_ms": 267.8,
+      "p99_ms": 267.8,
+      "codes": [
+        200
+      ]
+    },
+    "GET /api/screening/pipeline-stats": {
+      "p50_ms": 9.2,
+      "p95_ms": 11.7,
+      "p99_ms": 11.7,
+      "codes": [
+        200
+      ]
+    },
+    "GET /api/candidates/": {
+      "p50_ms": 21.0,
+      "p95_ms": 21.3,
+      "p99_ms": 21.3,
+      "codes": [
+        200
+      ]
+    },
+    "GET /api/analytics/dashboard": {
+      "p50_ms": 10.6,
+      "p95_ms": 11.0,
+      "p99_ms": 11.0,
+      "codes": [
+        200
+      ]
+    },
+    "GET /api/analytics/funnel": {
+      "p50_ms": 11.8,
+      "p95_ms": 12.2,
+      "p99_ms": 12.2,
+      "codes": [
+        200
+      ]
+    }
+  },
+  "db_findings": {
+    "integrity": true,
+    "foreign_keys": false,
+    "tables": {
+      "ai_generation_logs": 0,
+      "alembic_version": 1,
+      "assessments": 8,
+      "audit_logs": 0,
+      "candidates": 59,
+      "email_logs": 0,
+      "hiring_cycles": 1,
+      "interview_feedback": 0,
+      "proctoring_records": 9,
+      "scores": 0,
+      "submissions": 13,
+      "users": 7
+    },
+    "missing_indexes": [
+      "hiring_cycles(created_by)",
+      "interview_feedback(interviewer_id)"
+    ],
+    "size_bytes": 229376
+  },
+  "dep_findings": {
+    "npm": {
+      "vulns": 0,
+      "critical": 0,
+      "high": 0
+    },
+    "pip": {
+      "vulns": 9,
+      "critical": 0,
+      "high": 0
+    }
+  },
+  "unprotected_endpoints": [
+    "admin/list_organizations (get)",
+    "admin/create_organization (post)",
+    "admin/update_organization (patch)",
+    "analytics/get_hiring_funnel (get)",
+    "audit/list_audit_logs (get)",
+    "auth/login (post)",
+    "auth/register_candidate (post)",
+    "auth/refresh_token (post)",
+    "auth/logout (post)",
+    "auth/verify_otp (post)",
+    "auth/forgot_password (post)",
+    "auth/reset_password (post)",
+    "candidates/list_candidates (get)",
+    "candidates/preview_bulk_upload (post)",
+    "candidates/bulk_upload_candidates (post)",
+    "code_execution/execute_code (post)",
+    "code_execution/evaluate_code (post)",
+    "code_execution/evaluate_against_question (post)",
+    "interviews/submit_feedback (post)",
+    "jobs/create_job (post)",
+    "jobs/list_jobs (get)",
+    "jobs/get_job (get)",
+    "jobs/update_job (patch)",
+    "jobs/delete_job (delete)",
+    "phase2/start_phase2 (post)",
+    "phase2/get_my_assessment (get)",
+    "phase2/submit_code (post)",
+    "phase2/get_results (get)",
+    "proctoring/record_proctoring_event (post)",
+    "questions/generate (post)",
+    "questions/get_question_public (get)",
+    "screening/get_pipeline_stats (get)",
+    "screening/run_screening (post)",
+    "superadmin/list_organizations (get)",
+    "superadmin/list_all_users (get)",
+    "superadmin/update_user_role (patch)"
+  ],
+  "role_coverage": {
+    "superadmin": true,
+    "admin": true,
+    "hr": true,
+    "interviewer": true,
+    "candidate": true
+  },
+  "systems": {
+    "backend_api": "\u2705 OK",
+    "pipeline_screening": "\u2705 OK",
+    "pytest": "\u26a0\ufe0f 0 failed",
+    "perf": "\u2705 All under threshold",
+    "deps": "\u26a0\ufe0f Vulns found",
+    "db_integrity": "\u2705 OK",
+    "endpoint_security": "\u26a0\ufe0f 36 unprotected"
+  },
+  "pipeline": "APPLIED:1 FINAL_REJECTED:1 ROUND1_PASSED:23 ROUND1_REJECTED:26 ROUND2_IN_PROGRESS:5 ROUND2_PASSED:1 ROUND3_PASSED:1"
+}

@@ -39,16 +39,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(() => tokenStore.getAccessToken());
   const [isVerifying, setIsVerifying] = useState(false);
 
-  // On mount: verify session exists via /auth/me
+  // On mount: verify session exists via /auth/me or cookie refresh
   useEffect(() => {
     const accessToken = tokenStore.getAccessToken();
 
     if (!accessToken) {
-      queueMicrotask(() => setIsVerifying(false));
+      // No in-memory token — try cookie-based refresh
+      authApi.refreshToken()
+        .then(res => {
+          // Refresh returns just access_token — set it first
+          tokenStore.setAccessToken(res.access_token);
+          setToken(res.access_token);
+          // Then fetch user profile
+          return authApi.getMe();
+        })
+        .then(userData => {
+          setUser({
+            id: userData.id,
+            email: userData.email,
+            name: userData.name,
+            role: userData.role.toLowerCase() as User['role'],
+          });
+        })
+        .catch(() => {
+          tokenStore.clear();
+          setToken(null);
+          setUser(null);
+        })
+        .finally(() => setIsVerifying(false));
       return;
     }
 
-    // Verify current session
+    // Have token — verify session
     authApi.getMe()
       .then((userData) => {
         setUser({

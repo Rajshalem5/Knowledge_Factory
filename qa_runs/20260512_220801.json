@@ -1,0 +1,88 @@
+{
+  "run_id": "20260512_220801",
+  "timestamp": "2026-05-12T22:08:01.782654",
+  "roles": {
+    "superadmin": {
+      "logged_in": true,
+      "name": "Super Admin",
+      "role_from_api": "SUPERADMIN"
+    },
+    "admin": {
+      "logged_in": true,
+      "name": "Admin User",
+      "role_from_api": "ADMIN"
+    },
+    "hr": {
+      "logged_in": true,
+      "name": "HR Manager",
+      "role_from_api": "HR"
+    },
+    "interviewer": {
+      "logged_in": true,
+      "name": "Interviewer",
+      "role_from_api": "INTERVIEWER"
+    },
+    "candidate": {
+      "logged_in": true,
+      "name": "Test Candidate",
+      "role_from_api": "CANDIDATE"
+    }
+  },
+  "api_checks": {},
+  "frontend_checks": {},
+  "systems": {
+    "piston": {
+      "ok": null,
+      "detail": "Not configured"
+    },
+    "mailhog": {
+      "ok": null,
+      "detail": "Not configured"
+    }
+  },
+  "errors": [
+    {
+      "category": "Endpoint",
+      "name": "proctoring",
+      "status": "FAIL",
+      "detail": "HTTP 422"
+    },
+    {
+      "category": "Frontend",
+      "name": "page_load_superadmin",
+      "status": "FAIL",
+      "detail": "Page content unexpected: - generic \"You are about to visit:ila-sturdiest-oversentimentally.ngrok-free.devWebsite IP: 20.204.147.53This w\" [ref=e1] clickable [onclick]\n  - heading \"You are about to visit: ila-sturdiest-oversen"
+    },
+    {
+      "category": "Frontend",
+      "name": "page_load_admin",
+      "status": "FAIL",
+      "detail": "Page content unexpected: - generic \"You are about to visit:ila-sturdiest-oversentimentally.ngrok-free.devWebsite IP: 20.204.147.53This w\" [ref=e1] clickable [onclick]\n  - heading \"You are about to visit: ila-sturdiest-oversen"
+    },
+    {
+      "category": "Frontend",
+      "name": "page_load_hr",
+      "status": "FAIL",
+      "detail": "Page content unexpected: - generic \"You are about to visit:ila-sturdiest-oversentimentally.ngrok-free.devWebsite IP: 20.204.147.53This w\" [ref=e1] clickable [onclick]\n  - heading \"You are about to visit: ila-sturdiest-oversen"
+    },
+    {
+      "category": "Frontend",
+      "name": "page_load_interviewer",
+      "status": "FAIL",
+      "detail": "Page content unexpected: - generic \"You are about to visit:ila-sturdiest-oversentimentally.ngrok-free.devWebsite IP: 20.204.147.53This w\" [ref=e1] clickable [onclick]\n  - heading \"You are about to visit: ila-sturdiest-oversen"
+    },
+    {
+      "category": "Frontend",
+      "name": "page_load_candidate",
+      "status": "FAIL",
+      "detail": "Page content unexpected: - generic \"You are about to visit:ila-sturdiest-oversentimentally.ngrok-free.devWebsite IP: 20.204.147.53This w\" [ref=e1] clickable [onclick]\n  - heading \"You are about to visit: ila-sturdiest-oversen"
+    }
+  ],
+  "summary": {
+    "passed": 15,
+    "failed": 6,
+    "warnings": 7,
+    "critical": 0,
+    "total": 28
+  }
+}

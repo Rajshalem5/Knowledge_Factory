@@ -1,0 +1,86 @@
+{
+  "run_id": "20260512_221334",
+  "timestamp": "2026-05-12T22:13:34.913715",
+  "roles": {
+    "superadmin": {
+      "logged_in": true,
+      "name": "Super Admin",
+      "role": "SUPERADMIN",
+      "frontend_login": false
+    },
+    "admin": {
+      "logged_in": true,
+      "name": "Admin User",
+      "role": "ADMIN",
+      "frontend_login": false
+    },
+    "hr": {
+      "logged_in": true,
+      "name": "HR Manager",
+      "role": "HR",
+      "frontend_login": false
+    },
+    "interviewer": {
+      "logged_in": true,
+      "name": "Interviewer",
+      "role": "INTERVIEWER",
+      "frontend_login": false
+    },
+    "candidate": {
+      "logged_in": true,
+      "name": "Test Candidate",
+      "role": "CANDIDATE",
+      "frontend_login": false
+    }
+  },
+  "api_checks": {},
+  "frontend_checks": {},
+  "systems": {
+    "piston": {
+      "ok": null
+    },
+    "mailhog": {
+      "ok": null
+    }
+  },
+  "errors": [
+    {
+      "category": "Frontend",
+      "name": "login_superadmin",
+      "status": "FAIL",
+      "detail": "Login form not found. Snap: (no interactive elements)\n\u26a0 --args ignored: daemon already running. Use 'agent-browser close' first to restart with new options.\n"
+    },
+    {
+      "category": "Frontend",
+      "name": "login_admin",
+      "status": "FAIL",
+      "detail": "Login form not found. Snap: (no interactive elements)\n\u26a0 --args ignored: daemon already running. Use 'agent-browser close' first to restart with new options.\n"
+    },
+    {
+      "category": "Frontend",
+      "name": "login_hr",
+      "status": "FAIL",
+      "detail": "Login form not found. Snap: (no interactive elements)\n\u26a0 --args ignored: daemon already running. Use 'agent-browser close' first to restart with new options.\n"
+    },
+    {
+      "category": "Frontend",
+      "name": "login_interviewer",
+      "status": "FAIL",
+      "detail": "Login form not found. Snap: (no interactive elements)\n\u26a0 --args ignored: daemon already running. Use 'agent-browser close' first to restart with new options.\n"
+    },
+    {
+      "category": "Frontend",
+      "name": "login_candidate",
+      "status": "FAIL",
+      "detail": "Login form not found. Snap: (no interactive elements)\n\u26a0 --args ignored: daemon already running. Use 'agent-browser close' first to restart with new options.\n"
+    }
+  ],
+  "summary": {
+    "passed": 15,
+    "failed": 5,
+    "warnings": 5,
+    "critical": 0,
+    "total": 25
+  },
+  "navigation_tests": {}
+}

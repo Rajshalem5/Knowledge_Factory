@@ -1,0 +1,7 @@
+- generic "Knowledge FactoryInterview PanelCandidatesIInterviewerInterviewerInterview PanelFailed to load candi" [ref=e1] clickable [onclick]
+  - link "Interview Panel" [ref=e6]
+  - link "Candidates" [ref=e7]
+  - button "Logout" [ref=e2]
+  - button [ref=e3]
+  - heading "Interview Panel" [level=1, ref=e4]
+  - button "Toggle theme" [ref=e5]

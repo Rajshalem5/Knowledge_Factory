@@ -40,6 +40,7 @@ from app.features.hiring_cycles.routes import router as hiring_cycles_router
 from app.features.screening.routes import router as screening_router
 from app.features.code_execution.routes import router as code_execution_router
 from app.features.questions.routes import router as questions_router
+from app.features.audit.routes import router as audit_router
 
 app.include_router(auth_router, prefix="/api/auth", tags=["Auth"])
 app.include_router(candidates_router, prefix="/api/candidates", tags=["Candidates"])
@@ -53,6 +54,7 @@ app.include_router(analytics_router, prefix="/api/analytics", tags=["Analytics"]
 app.include_router(admin_router, prefix="/api/admin", tags=["Admin"])
 app.include_router(hiring_cycles_router, prefix="/api/hiring-cycles", tags=["Hiring Cycles"])
 app.include_router(screening_router, prefix="/api/screening", tags=["Screening"])
+app.include_router(audit_router, prefix="/api/audit", tags=["Audit"])
 
 
 @app.get("/health")

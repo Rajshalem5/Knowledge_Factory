@@ -1,0 +1,139 @@
+{
+  "run_id": "20260512_141602",
+  "timestamp": "2026-05-12T14:16:02.846577+00:00",
+  "passed": [
+    {
+      "desc": "Health check: OK"
+    },
+    {
+      "desc": "Login superadmin (superadmin@knowledgefactory.io): role=SUPERADMIN"
+    },
+    {
+      "desc": "Login admin (admin@knowledgefactory.io): role=ADMIN"
+    },
+    {
+      "desc": "Login hr (hr@knowledgefactory.io): role=HR"
+    },
+    {
+      "desc": "Login interviewer (interviewer@knowledgefactory.io): role=INTERVIEWER"
+    },
+    {
+      "desc": "Login alice (alice@test.com): OK"
+    },
+    {
+      "desc": "Login bob (bob@test.com): OK"
+    },
+    {
+      "desc": "Login charlie (charlie@test.com): OK"
+    },
+    {
+      "desc": "Login divya (divya@test.com): OK"
+    },
+    {
+      "desc": "Login esha (esha@test.com): OK"
+    },
+    {
+      "desc": "/me superadmin: role=SUPERADMIN"
+    },
+    {
+      "desc": "/me admin: role=ADMIN"
+    },
+    {
+      "desc": "/me hr: role=HR"
+    },
+    {
+      "desc": "/me interviewer: role=INTERVIEWER"
+    },
+    {
+      "desc": "/me candidate alice: 200"
+    },
+    {
+      "desc": "/me candidate bob: 200"
+    },
+    {
+      "desc": "/me candidate charlie: 200"
+    },
+    {
+      "desc": "/me candidate divya: 200"
+    },
+    {
+      "desc": "/me candidate esha: 200"
+    },
+    {
+      "desc": "Candidates list (admin): 37"
+    },
+    {
+      "desc": "Candidates list (hr): 37"
+    },
+    {
+      "desc": "Candidate /me (alice): 200"
+    },
+    {
+      "desc": "Candidate /me (bob): 200"
+    },
+    {
+      "desc": "Candidate /me (charlie): 200"
+    },
+    {
+      "desc": "Candidate /me (divya): 200"
+    },
+    {
+      "desc": "Candidate /me (esha): 200"
+    },
+    {
+      "desc": "Pipeline stats: 7 statuses"
+    },
+    {
+      "desc": "Screening run: 200 {\"screened\": 1, \"passed\": 1, \"rejected\": 0, \"min_cgpa\": 6.0, \"allowed_branches\": [\"CSE\", \"ECE\", \"IT\", \"EEE\"], \"cycle_nam"
+    },
+    {
+      "desc": "Analytics /api/analytics/funnel: 200"
+    },
+    {
+      "desc": "Analytics /api/analytics/dashboard: 200"
+    },
+    {
+      "desc": "Hiring cycles: 1 \u2014 ['Summer Internship 2026']"
+    },
+    {
+      "desc": "Registration: 201"
+    },
+    {
+      "desc": "/api/admin/users: 200"
+    },
+    {
+      "desc": "/api/audit/logs: 200"
+    },
+    {
+      "desc": "Questions: 404"
+    },
+    {
+      "desc": "Code exec: 404"
+    },
+    {
+      "desc": "Assessment: 404"
+    },
+    {
+      "desc": "Proctoring: 422 (expect 422)"
+    },
+    {
+      "desc": "Bulk-select: 422"
+    },
+    {
+      "desc": "Assessment start (alice/ROUND_2): 400"
+    },
+    {
+      "desc": "Interview feedback: 200"
+    },
+    {
+      "desc": "Browser E2E tests completed"
+    }
+  ],
+  "failed": [],
+  "warnings": [
+    {
+      "desc": "Assessment start (divya/ROUND_2): 400"
+    }
+  ],
+  "critical": []
+}

@@ -1,0 +1,51 @@
+{
+  "cookies": [
+    {
+      "name": "kf_refresh_token",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NzkyOTMzMTcsInN1YiI6IjdkZDZiNTgwLWI2NDMtNDVjOS05MDgwLWQ4ODFkZDhmMWU4OCIsInR5cGUiOiJyZWZyZXNoIn0.16bqq1TtlJryUG-RRYT75DgjSpekyJt5Wvy2wFDauns",
+      "domain": "ila-sturdiest-oversentimentally.ngrok-free.dev",
+      "path": "/api/auth",
+      "expires": 1779293317.376255,
+      "size": 204,
+      "httpOnly": true,
+      "secure": false,
+      "session": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "NID",
+      "value": "531=Lx4dCcd2wA-HL3Gf34HYGFpgqnHg8cm5gDjh2YqWDYJMPHHDuCJ35X_WbwgS0Kmk1WCdEChLwY9x22Qn7wrfZkwH_T80Gdq2rZIYJ78NGhkF7TNFiJc26DfF2kPY-Y2Tx1hjzuLUjHpucFWiv5tTdoZVSxtAOUWaWKbGo79sxUs3tz-n0ffnu7cZ20cArPkGwMWvO1Q",
+      "domain": ".google.com",
+      "path": "/",
+      "expires": 1794499577.038998,
+      "size": 206,
+      "httpOnly": true,
+      "secure": false,
+      "session": false
+    },
+    {
+      "name": "abuse_interstitial",
+      "value": "ila-sturdiest-oversentimentally.ngrok-free.dev",
+      "domain": "ila-sturdiest-oversentimentally.ngrok-free.dev",
+      "path": "/",
+      "expires": 1779293184.0,
+      "size": 64,
+      "httpOnly": false,
+      "secure": true,
+      "session": false,
+      "sameSite": "None"
+    }
+  ],
+  "origins": [
+    {
+      "origin": "https://ila-sturdiest-oversentimentally.ngrok-free.dev",
+      "localStorage": [
+        {
+          "name": "kf_theme",
+          "value": "light"
+        }
+      ],
+      "sessionStorage": []
+    }
+  ]
+}

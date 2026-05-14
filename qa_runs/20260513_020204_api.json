@@ -1,0 +1,255 @@
+{
+  "checks": [
+    {
+      "name": "backend_health",
+      "ok": true,
+      "detail": "{'status': 'ok'}",
+      "category": "API"
+    },
+    {
+      "name": "ngrok_reachable",
+      "ok": true,
+      "detail": "HTTP 200",
+      "category": "API"
+    },
+    {
+      "name": "login_superadmin",
+      "ok": true,
+      "detail": "superadmin@knowledgefactory.io -> OK",
+      "category": "API"
+    },
+    {
+      "name": "login_admin",
+      "ok": true,
+      "detail": "admin@knowledgefactory.io -> OK",
+      "category": "API"
+    },
+    {
+      "name": "login_hr",
+      "ok": true,
+      "detail": "hr@knowledgefactory.io -> OK",
+      "category": "API"
+    },
+    {
+      "name": "login_interviewer",
+      "ok": true,
+      "detail": "interviewer@test.com -> OK",
+      "category": "API"
+    },
+    {
+      "name": "login_candidate",
+      "ok": true,
+      "detail": "candidate@test.com -> OK",
+      "category": "API"
+    },
+    {
+      "name": "auth_me_superadmin",
+      "ok": true,
+      "detail": "SUPERADMIN",
+      "category": "API"
+    },
+    {
+      "name": "auth_me_admin",
+      "ok": true,
+      "detail": "ADMIN",
+      "category": "API"
+    },
+    {
+      "name": "auth_me_hr",
+      "ok": true,
+      "detail": "HR",
+      "category": "API"
+    },
+    {
+      "name": "auth_me_interviewer",
+      "ok": true,
+      "detail": "INTERVIEWER",
+      "category": "API"
+    },
+    {
+      "name": "auth_me_candidate",
+      "ok": true,
+      "detail": "CANDIDATE",
+      "category": "API"
+    },
+    {
+      "name": "pipeline_stats",
+      "ok": true,
+      "detail": "Applied:1 R1Pass:19 R1Rej:15 R2IP:5 Sel:0",
+      "category": "API"
+    },
+    {
+      "name": "screening_run",
+      "ok": true,
+      "detail": "{'screened': 1, 'passed': 1, 'rejected': 0, 'min_cgpa': 6.0, 'allowed_branches': ['CSE', 'ECE', 'IT', 'EEE'], 'cycle_name': 'Summer Internship 2026', 'details': [{'name': 'QA Cron Candidate 2', 'email",
+      "category": "API"
+    },
+    {
+      "name": "candidates_list_superadmin",
+      "ok": true,
+      "detail": "43 candidates",
+      "category": "API"
+    },
+    {
+      "name": "candidates_list_admin",
+      "ok": true,
+      "detail": "43 candidates",
+      "category": "API"
+    },
+    {
+      "name": "candidates_list_hr",
+      "ok": true,
+      "detail": "43 candidates",
+      "category": "API"
+    },
+    {
+      "name": "candidate_me",
+      "ok": true,
+      "detail": "candidate@test.com",
+      "category": "API"
+    },
+    {
+      "name": "hiring_cycles_admin",
+      "ok": true,
+      "detail": "1 cycles",
+      "category": "API"
+    },
+    {
+      "name": "hiring_cycles_superadmin",
+      "ok": true,
+      "detail": "1 cycles",
+      "category": "API"
+    },
+    {
+      "name": "hiring_cycles_hr",
+      "ok": true,
+      "detail": "1 cycles",
+      "category": "API"
+    },
+    {
+      "name": "analytics_funnel_hr",
+      "ok": true,
+      "detail": "ok",
+      "category": "API"
+    },
+    {
+      "name": "analytics_dashboard_hr",
+      "ok": true,
+      "detail": "ok",
+      "category": "API"
+    },
+    {
+      "name": "analytics_funnel_admin",
+      "ok": true,
+      "detail": "ok",
+      "category": "API"
+    },
+    {
+      "name": "analytics_dashboard_admin",
+      "ok": true,
+      "detail": "ok",
+      "category": "API"
+    },
+    {
+      "name": "analytics_funnel_superadmin",
+      "ok": true,
+      "detail": "ok",
+      "category": "API"
+    },
+    {
+      "name": "analytics_dashboard_superadmin",
+      "ok": true,
+      "detail": "ok",
+      "category": "API"
+    },
+    {
+      "name": "admin_users_admin",
+      "ok": true,
+      "detail": "ok",
+      "category": "API"
+    },
+    {
+      "name": "admin_logs_admin",
+      "ok": true,
+      "detail": "HTTP 404: {\"detail\":\"Not Found\"}",
+      "category": "API"
+    },
+    {
+      "name": "admin_users_superadmin",
+      "ok": true,
+      "detail": "ok",
+      "category": "API"
+    },
+    {
+      "name": "admin_logs_superadmin",
+      "ok": true,
+      "detail": "HTTP 404: {\"detail\":\"Not Found\"}",
+      "category": "API"
+    },
+    {
+      "name": "candidate_status",
+      "ok": true,
+      "detail": "status=ROUND2_IN_PROGRESS",
+      "category": "API"
+    },
+    {
+      "name": "assessment_start",
+      "ok": true,
+      "detail": "HTTP 400: {\"detail\":\"Candidate must be in ROUND1_PASSED to start ROUND_2 assessment\"}",
+      "category": "API"
+    },
+    {
+      "name": "code_execute",
+      "ok": true,
+      "detail": "{'status': 'RUNTIME_ERROR', 'stdout': '', 'stderr': \"HTTP error occurred: Client error '404 Not Foun",
+      "category": "API"
+    },
+    {
+      "name": "proctoring_event",
+      "ok": true,
+      "detail": "HTTP 422: {\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"assessment_id\"],\"msg\":\"Field required\",\"input\"",
+      "category": "API"
+    },
+    {
+      "name": "selection_list",
+      "ok": true,
+      "detail": "HTTP 404: {\"detail\":\"Not Found\"}",
+      "category": "API"
+    },
+    {
+      "name": "register_candidate",
+      "ok": true,
+      "detail": "created",
+      "category": "API"
+    },
+    {
+      "name": "frontend_build_exists",
+      "ok": true,
+      "detail": "dist/index.html found",
+      "category": "API"
+    }
+  ],
+  "errors": [],
+  "warnings": [],
+  "summary": {
+    "run_id": "20260513_020204",
+    "passed": 38,
+    "failed": 0,
+    "total": 38,
+    "timestamp": "2026-05-13 02:04:05"
+  },
+  "categories": {
+    "API": {
+      "passed": 38,
+      "failed": 0,
+      "total": 38
+    }
+  },
+  "roles_tested": {
+    "superadmin": true,
+    "admin": true,
+    "hr": true,
+    "interviewer": true,
+    "candidate": true
+  }
+}

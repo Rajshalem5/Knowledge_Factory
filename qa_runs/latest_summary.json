@@ -1,0 +1,38 @@
+{
+  "run_id": "20260514_020048",
+  "passed": 53,
+  "failed": 9,
+  "critical": 0,
+  "high": 3,
+  "total": 62,
+  "pytest": {
+    "passed": 0,
+    "failed": 0
+  },
+  "deps": {
+    "npm": 0,
+    "pip": 9
+  },
+  "perf": {
+    "passed": 5,
+    "total": 5
+  },
+  "db_ok": false,
+  "unprotected_endpoints": 36,
+  "roles": {
+    "superadmin": true,
+    "admin": true,
+    "hr": true,
+    "interviewer": true,
+    "candidate": true
+  },
+  "systems": {
+    "backend_api": "\u2705 OK",
+    "pipeline_screening": "\u2705 OK",
+    "pytest": "\u26a0\ufe0f 0 failed",
+    "perf": "\u2705 All under threshold",
+    "deps": "\u26a0\ufe0f Vulns found",
+    "db_integrity": "\u2705 OK",
+    "endpoint_security": "\u26a0\ufe0f 36 unprotected"
+  }
+}
