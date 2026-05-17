@@ -12,4 +12,4 @@ python-multipart>=0.0.28
 httpx==0.28.1
 alembic==1.17.0
 sentry-sdk>=2.0.0
-bleach>=6.0.0
+nh3>=0.3.5

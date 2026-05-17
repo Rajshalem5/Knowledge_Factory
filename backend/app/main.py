@@ -2,7 +2,11 @@
 
 import logging
 from pathlib import Path
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
+
+from contextlib import asynccontextmanager
+from collections import defaultdict
+from datetime import timedelta
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,6 +15,36 @@ from fastapi.responses import HTMLResponse
 
 from app.config import settings
 from app.core.enums import Role, UserStatus, CycleStatus
+from app.database import Base
+
+logger = logging.getLogger(__name__)
+
+
+# ── Application Lifespan ───────────────────────────────────────────
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Startup and shutdown lifecycle using the modern lifespan pattern.
+    
+    Replaces the deprecated @app.on_event('startup') pattern.
+    """
+    logger.info("Starting Knowledge Factory API...")
+
+    # Register all models eagerly so SQLAlchemy can resolve
+    # cross-model relationship() string references at runtime.
+    import app.models  # noqa: F401
+
+    # Auto-create tables for SQLite dev mode (no-op for PostgreSQL — use Alembic)
+    if "sqlite" in settings.DATABASE_URL:
+        from sqlalchemy import create_engine as create_sync_engine
+        sync_url = settings.DATABASE_URL.replace("+aiosqlite://", "://")
+        sync_engine = create_sync_engine(sync_url)
+        Base.metadata.create_all(bind=sync_engine)
+        sync_engine.dispose()
+        logger.info("SQLite tables auto-created.")
+
+    logger.info("Database initialized.")
+    yield
+    logger.info("Knowledge Factory shutting down.")
 
 # ── Rotating File Logging ─────────────────────────────────────────
 import logging.handlers
@@ -25,9 +59,7 @@ file_handler = logging.handlers.TimedRotatingFileHandler(
 file_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s"))
 logging.getLogger().addHandler(file_handler)
 
-logger = logging.getLogger(__name__)
-
-app = FastAPI(title=settings.APP_NAME, version=settings.APP_VERSION, docs_url="/docs" if settings.DEBUG else None, redoc_url="/redoc" if settings.DEBUG else None)
+app = FastAPI(title=settings.APP_NAME, version=settings.APP_VERSION, docs_url="/docs" if settings.DEBUG else None, redoc_url="/redoc" if settings.DEBUG else None, lifespan=lifespan)
 
 # CORS — origins from config
 cors_origins = [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()]
@@ -175,27 +207,3 @@ if frontend_dist.exists() and (frontend_dist / "index.html").exists():
         return HTMLResponse(content=(frontend_dist / "index.html").read_text())
 
     logger.info("Frontend SPA mounted from %s", frontend_dist)
-
-
-@app.on_event("startup")
-async def startup():
-    logger.info("Starting Knowledge Factory API...")
-    from app.database import async_session_factory, Base
-    from sqlalchemy import create_engine as create_sync_engine
-
-    # Import all models to ensure tables/columns exist and relationships resolve
-    from app.features.auth.models import User
-    from app.features.candidates.models import Candidate
-    from app.features.hiring_cycles.models import HiringCycle
-    from app.features.assessments.models import Assessment, Submission, Score  # noqa: F401
-    from app.features.proctoring.models import ProctoringRecord  # noqa: F401
-    from app.features.interviews.models import InterviewFeedback  # noqa: F401
-    from app.features.audit.models import AuditLog  # noqa: F401
-    from app.features.analytics.models import AIGenerationLog  # noqa: F401
-
-    if "sqlite" in settings.DATABASE_URL:
-        sync_engine = create_sync_engine(settings.DATABASE_URL.replace("+aiosqlite://", "://"))
-        Base.metadata.create_all(bind=sync_engine)
-        sync_engine.dispose()
-
-    logger.info("Database initialized.")

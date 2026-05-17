@@ -1,38 +1,31 @@
 {
-  "run_id": "20260517_080140",
-  "passed": 50,
-  "failed": 12,
-  "critical": 0,
-  "high": 6,
-  "total": 62,
+  "run_id": "20260517_101502",
+  "summary": {
+    "pass": 49,
+    "fail": 7,
+    "warnings": 5
+  },
+  "role_status": {
+    "superadmin": "✅",
+    "admin": "✅",
+    "hr": "✅",
+    "interviewer": "✅",
+    "candidate": "✅"
+  },
+  "perf_results": {
+    "/health": 9.5,
+    "/api/candidates/": 15.2,
+    "/api/analytics/dashboard": 14.9,
+    "/api/screening/pipeline-stats": 11.6,
+    "/api/auth/me": 7.5,
+    "/api/hiring-cycles/": 8.8,
+    "/api/admin/users": 10.4,
+    "/api/analytics/funnel": 11.0
+  },
   "pytest": {
-    "passed": 25,
-    "failed": 1
+    "passed": 194,
+    "failed": 54,
+    "warnings": 2
   },
-  "deps": {
-    "npm": 0,
-    "pip": 9
-  },
-  "perf": {
-    "passed": 5,
-    "total": 5
-  },
-  "db_ok": false,
-  "unprotected_endpoints": 48,
-  "roles": {
-    "superadmin": true,
-    "admin": true,
-    "hr": true,
-    "interviewer": true,
-    "candidate": true
-  },
-  "systems": {
-    "backend_api": "\u2705 OK",
-    "pipeline_screening": "\u26a0\ufe0f Issues",
-    "pytest": "\u26a0\ufe0f 1 failed",
-    "perf": "\u2705 All under threshold",
-    "deps": "\u26a0\ufe0f Vulns found",
-    "db_integrity": "\u2705 OK",
-    "endpoint_security": "\u26a0\ufe0f 48 unprotected"
-  }
+  "timestamp": "2026-05-17T10:18:00+00:00"
 }

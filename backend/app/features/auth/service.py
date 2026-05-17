@@ -19,7 +19,7 @@ from app.features.auth.schemas import (
 from app.core.enums import Role
 
 # ── XSS prevention: sanitize user-supplied text fields ──────────
-import bleach
+import nh3
 
 
 def _sanitize_text(value: str | None, max_length: int = 200) -> str:
@@ -30,7 +30,7 @@ def _sanitize_text(value: str | None, max_length: int = 200) -> str:
     """
     if not value:
         return ""
-    cleaned = bleach.clean(value, tags=[], strip=True)
+    cleaned = nh3.clean(value)
     return cleaned.strip()[:max_length]
 
 
