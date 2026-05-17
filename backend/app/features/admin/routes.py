@@ -32,26 +32,6 @@ async def list_users(page: int = 1, limit: int = 50, db: AsyncSession = Depends(
     ]
 
 
-@router.get("/organizations", include_in_schema=False)
-async def list_organizations():
-    """Deprecated: tenant management removed. Return empty list for backward compat."""
-    return []
-
-
-@router.post("/organizations", status_code=status.HTTP_201_CREATED, include_in_schema=False)
-async def create_organization():
-    """Deprecated: tenant management removed."""
-    from app.core.exceptions import NotFoundError
-    raise NotFoundError("Organization management has been removed")
-
-
-@router.patch("/organizations/{org_id}", include_in_schema=False)
-async def update_organization(org_id: str):
-    """Deprecated: tenant management removed. No-op for backward compat."""
-    return {"id": org_id, "message": "Organization management has been removed"}
-
-
-# ── Audit & Export ────────────────────────────────────────────
 @router.get("/audit-logs")
 async def get_audit_logs(
     page: int = 1,

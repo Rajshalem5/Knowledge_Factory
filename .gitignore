@@ -3,11 +3,18 @@
 auth/*.json
 auth/tokens/
 
+# Environment files (contain secrets)
+.env*
+!.env.example
+
 # QA run artifacts
 qa_runs/*.json
 failures/
 dep_audit.json
 perf_baseline.json
+
+# Infrastructure URLs
+ngrok_url.txt
 
 # Backend deprecated core files
 backend/app/core/auth.py

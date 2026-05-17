@@ -38,13 +38,20 @@ def _make_sample_question(question_id: str = None) -> Question:
 class TestQuestionRoutes:
     """Test question generation and retrieval endpoints."""
 
+    async def _candidate_headers(self, client: AsyncClient) -> dict:
+        """Register a fresh candidate and return auth headers."""
+        email = f"qtest-{uuid.uuid4().hex[:8]}@test.com"
+        reg = await client.post("/api/auth/register", json={
+            "name": "Q Test", "email": email, "password": "Candidate@123",
+            "college": "Test Uni", "branch": "CSE", "cgpa": 8.0,
+            "passed_out_year": 2026, "language_choice": "python",
+        })
+        assert reg.status_code == 201, reg.text
+        return {"Authorization": f"Bearer {reg.json()['access_token']}"}
+
     async def test_01_generate_question(self, client: AsyncClient):
         """POST /api/questions/generate returns a QuestionPublicView."""
-        admin_login = await client.post("/api/auth/login", json={
-            "email": "admin@knowledgefactory.io", "password": "Admin@12345",
-        })
-        assert admin_login.status_code == 200
-        headers = {"Authorization": f"Bearer {admin_login.json()['access_token']}"}
+        headers = await self._candidate_headers(client)
 
         with patch("app.features.questions.routes.generate_question") as mock_gen:
             mock_gen.return_value = _make_sample_question()
@@ -72,11 +79,7 @@ class TestQuestionRoutes:
 
     async def test_02_get_public_question(self, client: AsyncClient):
         """GET /api/questions/{id}/public returns the public view."""
-        admin_login = await client.post("/api/auth/login", json={
-            "email": "admin@knowledgefactory.io", "password": "Admin@12345",
-        })
-        assert admin_login.status_code == 200
-        headers = {"Authorization": f"Bearer {admin_login.json()['access_token']}"}
+        headers = await self._candidate_headers(client)
 
         # First generate a question
         with patch("app.features.questions.routes.generate_question") as mock_gen:
@@ -104,11 +107,7 @@ class TestQuestionRoutes:
 
     async def test_03_get_nonexistent_question(self, client: AsyncClient):
         """Getting a question that was never generated returns 404."""
-        admin_login = await client.post("/api/auth/login", json={
-            "email": "admin@knowledgefactory.io", "password": "Admin@12345",
-        })
-        assert admin_login.status_code == 200
-        headers = {"Authorization": f"Bearer {admin_login.json()['access_token']}"}
+        headers = await self._candidate_headers(client)
 
         resp = await client.get(
             f"/api/questions/nonexistent-id/public",

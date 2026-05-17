@@ -144,10 +144,15 @@ class TestProctoringRoutes:
 
     async def test_04_event_missing_fields_returns_422(self, client: AsyncClient):
         """Missing required fields results in a 422 validation error."""
-        admin_login = await client.post("/api/auth/login", json={
-            "email": "admin@knowledgefactory.io", "password": "Admin@12345",
+        # Register a candidate to get a valid candidate token
+        email = f"proctor-missing-{uuid.uuid4().hex[:8]}@test.com"
+        reg = await client.post("/api/auth/register", json={
+            "name": "Proctor Missing", "email": email, "password": "Candidate@123",
+            "college": "Test Uni", "branch": "CSE", "cgpa": 8.5,
+            "passed_out_year": 2026, "language_choice": "python",
         })
-        headers = {"Authorization": f"Bearer {admin_login.json()['access_token']}"}
+        assert reg.status_code == 201, reg.text
+        headers = {"Authorization": f"Bearer {reg.json()['access_token']}"}
 
         resp = await client.post(
             "/api/proctoring/event",

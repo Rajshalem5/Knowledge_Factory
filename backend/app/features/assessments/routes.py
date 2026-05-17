@@ -41,13 +41,13 @@ async def complete_assessment(assessment_id: str, db: AsyncSession = Depends(get
 
 @router.get("/{assessment_id}", response_model=AssessmentRead)
 async def get_assessment_by_id(assessment_id: str, db: AsyncSession = Depends(get_db), current_user = Depends(CANDIDATE_ONLY)):
-    """Get a single assessment by its ID."""
+    """Get a single assessment by its ID — must belong to current user."""
     from sqlalchemy import select
     from app.features.assessments.models import Assessment
     stmt = select(Assessment).where(Assessment.id == assessment_id)
     res = await db.execute(stmt)
     assessment = res.scalar_one_or_none()
-    if not assessment:
+    if not assessment or str(assessment.candidate_id) != str(current_user.id):
         raise HTTPException(status_code=404, detail="Assessment not found")
     return assessment
 

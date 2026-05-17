@@ -1,6 +1,7 @@
 """Screening routes - updates candidate statuses live based on eligibility."""
 
 import json
+import logging
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -110,6 +111,7 @@ async def get_pipeline_stats(
             },
         }
     except Exception:
+        logging.getLogger(__name__).warning("pipeline-stats query failed", exc_info=True)
         return {
             "stats": {},
             "aggregates": {
@@ -143,6 +145,7 @@ async def run_screening(
         raw = cycle.eligibility_config
         config = json.loads(raw) if isinstance(raw, str) else (raw or {})
     except Exception:
+        logging.getLogger(__name__).warning("Failed to parse cycle eligibility_config, using defaults", exc_info=True)
         config = {}
 
     min_cgpa = config.get("min_cgpa", 6.0)
