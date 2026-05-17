@@ -14,7 +14,7 @@ except ImportError:
     _USE_ARGON2 = False
     import bcrypt
 
-from jose import jwt
+import jwt
 
 from app.config import settings
 
