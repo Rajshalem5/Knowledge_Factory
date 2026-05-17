@@ -71,17 +71,17 @@ async def test_get_hiring_funnel_with_candidates(db: AsyncSession):
 
     candidates_data = [
         {"name": "Applied1", "email": "a1@test.com", "college": "Uni A", "branch": "CSE",
-         "cgpa": 7.0, "passed_out_year": 2026, "language_choice": "python", "status": CandidateStatus.APPLIED},
+         "cgpa": 7.0, "passed_out_year": 2026, "language_choice": "python", "password_hash": "hash", "status": CandidateStatus.APPLIED},
         {"name": "Applied2", "email": "a2@test.com", "college": "Uni A", "branch": "CSE",
-         "cgpa": 7.5, "passed_out_year": 2026, "language_choice": "java", "status": CandidateStatus.ROUND1_REVIEW},
+         "cgpa": 7.5, "passed_out_year": 2026, "language_choice": "java", "password_hash": "hash", "status": CandidateStatus.ROUND1_REVIEW},
         {"name": "Eligible1", "email": "e1@test.com", "college": "Uni B", "branch": "ECE",
-         "cgpa": 8.0, "passed_out_year": 2026, "language_choice": "python", "status": CandidateStatus.ROUND1_PASSED},
+         "cgpa": 8.0, "passed_out_year": 2026, "language_choice": "python", "password_hash": "hash", "status": CandidateStatus.ROUND1_PASSED},
         {"name": "Assessed1", "email": "as1@test.com", "college": "Uni C", "branch": "IT",
-         "cgpa": 8.5, "passed_out_year": 2026, "language_choice": "javascript", "status": CandidateStatus.ROUND2_IN_PROGRESS},
+         "cgpa": 8.5, "passed_out_year": 2026, "language_choice": "javascript", "password_hash": "hash", "status": CandidateStatus.ROUND2_IN_PROGRESS},
         {"name": "Interviewed1", "email": "i1@test.com", "college": "Uni D", "branch": "CSE",
-         "cgpa": 9.0, "passed_out_year": 2026, "language_choice": "python", "status": CandidateStatus.INTERVIEW_SCHEDULED},
+         "cgpa": 9.0, "passed_out_year": 2026, "language_choice": "python", "password_hash": "hash", "status": CandidateStatus.INTERVIEW_SCHEDULED},
         {"name": "Selected1", "email": "s1@test.com", "college": "Uni E", "branch": "CSE",
-         "cgpa": 9.5, "passed_out_year": 2026, "language_choice": "go", "status": CandidateStatus.SELECTED},
+         "cgpa": 9.5, "passed_out_year": 2026, "language_choice": "go", "password_hash": "hash", "status": CandidateStatus.SELECTED},
     ]
 
     for cd in candidates_data:
@@ -116,13 +116,13 @@ async def test_get_hiring_funnel_with_branch_filter(db: AsyncSession):
 
     candidates = [
         {"name": "CSE Applied", "email": "cse@test.com", "college": "Uni A", "branch": "CSE",
-         "cgpa": 7.5, "passed_out_year": 2026, "language_choice": "python", "status": CandidateStatus.APPLIED},
+         "cgpa": 7.5, "passed_out_year": 2026, "language_choice": "python", "password_hash": "hash", "status": CandidateStatus.APPLIED},
         {"name": "CSE Applied2", "email": "cse2@test.com", "college": "Uni A", "branch": "CSE",
-         "cgpa": 7.5, "passed_out_year": 2026, "language_choice": "java", "status": CandidateStatus.ROUND1_REVIEW},
+         "cgpa": 7.5, "passed_out_year": 2026, "language_choice": "java", "password_hash": "hash", "status": CandidateStatus.ROUND1_REVIEW},
         {"name": "ECE Applied", "email": "ece@test.com", "college": "Uni A", "branch": "ECE",
-         "cgpa": 8.0, "passed_out_year": 2026, "language_choice": "python", "status": CandidateStatus.APPLIED},
+         "cgpa": 8.0, "passed_out_year": 2026, "language_choice": "python", "password_hash": "hash", "status": CandidateStatus.APPLIED},
         {"name": "Civil Applied", "email": "civil@test.com", "college": "Uni B", "branch": "CIVIL",
-         "cgpa": 7.0, "passed_out_year": 2026, "language_choice": "c++", "status": CandidateStatus.APPLIED},
+         "cgpa": 7.0, "passed_out_year": 2026, "language_choice": "c++", "password_hash": "hash", "status": CandidateStatus.APPLIED},
     ]
 
     for cd in candidates:
@@ -171,11 +171,13 @@ async def test_get_dashboard_with_data(db: AsyncSession):
     c1 = Candidate(
         cycle_id=cycle.id, name="C1", email="c1@test.com", college="Uni A",
         branch="CSE", cgpa=8.0, passed_out_year=2026, language_choice="python",
+        password_hash="hash",
         status=CandidateStatus.SELECTED,
     )
     c2 = Candidate(
         cycle_id=cycle.id, name="C2", email="c2@test.com", college="Uni B",
         branch="ECE", cgpa=7.5, passed_out_year=2026, language_choice="java",
+        password_hash="hash",
         status=CandidateStatus.APPLIED,
     )
     db.add_all([c1, c2])
