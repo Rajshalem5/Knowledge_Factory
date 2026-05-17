@@ -20,6 +20,7 @@ from app.features.auth.service import AuthService
 from app.features.candidates.models import Candidate
 from app.features.auth.models import User
 from app.core.security import hash_password
+from app.config import settings
 
 router = APIRouter()
 
@@ -99,7 +100,7 @@ def set_refresh_cookie(response: Response, token: str):
         key=REFRESH_TOKEN_COOKIE_NAME,
         value=token,
         httponly=True,
-        secure=False,  # Set True in production with HTTPS
+        secure=not settings.DEBUG,  # Secure in production, allow HTTP in dev
         samesite="lax",
         max_age=REFRESH_TOKEN_COOKIE_MAX_AGE,
         path="/api/auth",

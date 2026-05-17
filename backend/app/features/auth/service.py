@@ -18,6 +18,21 @@ from app.features.auth.schemas import (
 )
 from app.core.enums import Role
 
+# ── XSS prevention: sanitize user-supplied text fields ──────────
+import bleach
+
+
+def _sanitize_text(value: str | None, max_length: int = 200) -> str:
+    """Sanitize user-supplied text: strip tags, trim, enforce length.
+    
+    Follows the Three-Tier Boundary System from addyosmani/agent-skills:
+    'Validate all external input at the system boundary.'
+    """
+    if not value:
+        return ""
+    cleaned = bleach.clean(value, tags=[], strip=True)
+    return cleaned.strip()[:max_length]
+
 
 class AuthService:
     def __init__(self, db: AsyncSession):
@@ -69,9 +84,9 @@ class AuthService:
             cycle_id=cycle_id,
             email=register_data.email,
             password_hash=hash_password(register_data.password),
-            name=register_data.name,
-            college=register_data.college,
-            branch=register_data.branch,
+            name=_sanitize_text(register_data.name),
+            college=_sanitize_text(register_data.college),
+            branch=_sanitize_text(register_data.branch, max_length=50),
             cgpa=register_data.cgpa,
             passed_out_year=register_data.passed_out_year,
             language_choice=register_data.language_choice,

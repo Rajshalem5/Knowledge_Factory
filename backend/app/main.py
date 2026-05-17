@@ -67,13 +67,17 @@ RATE_LIMIT_MAX = 20  # requests per window
 @app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next):
     """Simple in-memory rate limiter for auth endpoints.
-    Disabled in DEBUG mode for test convenience."""
-    if settings.DEBUG:
-        return await call_next(request)
+    
+    In DEBUG mode uses a higher threshold so dev workflow is not interrupted.
+    Follows guidance from addyosmani/agent-skills security-and-hardening:
+    rate limiting should never be fully disabled — not even in dev.
+    """
     path = request.url.path
     # Only rate-limit auth endpoints
     if not path.startswith("/api/auth/") or path in ("/api/auth/me", "/api/auth/logout", "/api/auth/refresh", "/api/auth/confirm-password", "/api/auth/delete-account"):
         return await call_next(request)
+
+    max_requests = RATE_LIMIT_MAX * 5 if settings.DEBUG else RATE_LIMIT_MAX  # 100 in dev, 20 in prod
 
     client_ip = request.client.host if request.client else "unknown"
     key = f"{client_ip}:{path}"
@@ -82,7 +86,7 @@ async def rate_limit_middleware(request: Request, call_next):
     # Clean old entries
     _rate_limit_store[key] = [t for t in _rate_limit_store[key] if now - t < RATE_LIMIT_WINDOW]
 
-    if len(_rate_limit_store[key]) >= RATE_LIMIT_MAX:
+    if len(_rate_limit_store[key]) >= max_requests:
         from fastapi.responses import JSONResponse
         return JSONResponse(
             {"detail": "Too many requests. Please try again later."},
