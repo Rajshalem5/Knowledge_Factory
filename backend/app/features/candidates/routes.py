@@ -118,7 +118,8 @@ async def update_candidate_status(candidate_id: str, update: dict, db: AsyncSess
     # Validate FSM transition
     allowed_direct = {
         CandidateStatus.ROUND1_PASSED, CandidateStatus.ROUND1_REJECTED,
-        CandidateStatus.ROUND2_PASSED, CandidateStatus.ROUND2_REJECTED,
+        CandidateStatus.ROUND2_IN_PROGRESS, CandidateStatus.ROUND2_PASSED,
+        CandidateStatus.ROUND2_REJECTED, CandidateStatus.ROUND3_IN_PROGRESS,
         CandidateStatus.ROUND3_PASSED, CandidateStatus.ROUND3_REJECTED,
         CandidateStatus.INTERVIEW_SCHEDULED, CandidateStatus.INTERVIEW_COMPLETED,
     }
@@ -289,14 +290,18 @@ async def bulk_upload_candidates(
     # ── Step 1: Pre-validate & build candidate objects ────────────
     all_rows = []
     errors = []
+    from app.core.security import hash_password
     for i, row in enumerate(records):
         try:
             email = row.get("email", "").strip()
             if not email:
                 raise ValueError("Email is required")
+            # Generate temp password hash — candidate must use forgot-password flow
+            temp_hash = hash_password(str(uuid.uuid4()))
             candidate = Candidate(
                 cycle_id=cycle.id,
                 email=email,
+                password_hash=temp_hash,
                 name=row.get("name", "").strip(),
                 college=row.get("college", "").strip(),
                 branch=row.get("branch", "").strip(),

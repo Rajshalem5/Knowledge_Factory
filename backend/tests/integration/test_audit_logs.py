@@ -1,7 +1,7 @@
 """Integration tests for audit log routes.
 
 Tests list_audit_logs endpoint including auth enforcement,
-entity_type filtering, and pagination. Mounted at /api/admin/logs.
+entity_type filtering, and pagination. Mounted at /api/audit/logs.
 
 Since the audit middleware is a Phase 2 placeholder (no automatic audit
 logging), we seed audit log entries directly via the shared db_session.
@@ -18,9 +18,9 @@ from app.features.audit.models import AuditLog
 
 
 class TestAuditLogs:
-    """Test the GET /api/admin/logs endpoint."""
+    """Test the GET /api/audit/logs endpoint."""
 
-    BASE = "/api/admin/logs"
+    BASE = "/api/audit/logs"
 
     async def _login_admin(self, client: AsyncClient) -> str:
         resp = await client.post(

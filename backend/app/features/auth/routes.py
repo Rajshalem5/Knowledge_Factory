@@ -238,6 +238,12 @@ async def refresh_token(
         return {
             "access_token": token_data["access_token"],
             "token_type": "bearer",
+            "user": token_data.get("user", {
+                "id": candidate.id,
+                "email": candidate.email,
+                "name": candidate.name,
+                "role": "CANDIDATE",
+            }),
         }
 
     stmt = select(User).where(User.id == sub)
@@ -253,6 +259,12 @@ async def refresh_token(
     return {
         "access_token": token_data["access_token"],
         "token_type": "bearer",
+        "user": token_data.get("user", {
+            "id": user.id,
+            "email": user.email,
+            "name": user.name,
+            "role": user.role,
+        }),
     }
 
 

@@ -12,16 +12,17 @@ from httpx import AsyncClient
 class TestCodeExecution:
     """Test code execution API endpoints."""
 
-    async def _login_admin(self, client: AsyncClient) -> str:
+    async def _login_candidate(self, client: AsyncClient) -> str:
+        """Login as a seeded candidate (applied@test.com / Test@123)."""
         resp = await client.post("/api/auth/login", json={
-            "email": "admin@knowledgefactory.io", "password": "Admin@12345",
+            "email": "applied@test.com", "password": "Test@123",
         })
-        assert resp.status_code == 200
+        assert resp.status_code == 200, f"Candidate login failed: {resp.text}"
         return resp.json()["access_token"]
 
     async def test_01_execute_python_success(self, client: AsyncClient):
         """Test: Execute simple Python code successfully."""
-        token = await self._login_admin(client)
+        token = await self._login_candidate(client)
         headers = {"Authorization": f"Bearer {token}"}
 
         resp = await client.post(
@@ -40,7 +41,7 @@ class TestCodeExecution:
 
     async def test_02_execute_python_with_stdin(self, client: AsyncClient):
         """Test: Execute code with stdin provided."""
-        token = await self._login_admin(client)
+        token = await self._login_candidate(client)
         headers = {"Authorization": f"Bearer {token}"}
 
         resp = await client.post(
@@ -58,7 +59,7 @@ class TestCodeExecution:
 
     async def test_03_execute_unsupported_language(self, client: AsyncClient):
         """Test: Execute with an unsupported language (should return 502 or fallback)."""
-        token = await self._login_admin(client)
+        token = await self._login_candidate(client)
         headers = {"Authorization": f"Bearer {token}"}
 
         resp = await client.post(
@@ -80,7 +81,7 @@ class TestCodeExecution:
 
     async def test_05_execute_missing_code(self, client: AsyncClient):
         """Test: Execute without required 'code' field returns 422."""
-        token = await self._login_admin(client)
+        token = await self._login_candidate(client)
 
         resp = await client.post(
             "/api/code/execute",
@@ -91,7 +92,7 @@ class TestCodeExecution:
 
     async def test_06_evaluate_code(self, client: AsyncClient):
         """Test: Evaluate code against test cases."""
-        token = await self._login_admin(client)
+        token = await self._login_candidate(client)
         headers = {"Authorization": f"Bearer {token}"}
 
         resp = await client.post(
@@ -118,7 +119,7 @@ class TestCodeExecution:
 
     async def test_07_evaluate_invalid_language(self, client: AsyncClient):
         """Test: Evaluate with a missing language field returns 422."""
-        token = await self._login_admin(client)
+        token = await self._login_candidate(client)
 
         resp = await client.post(
             "/api/code/evaluate",

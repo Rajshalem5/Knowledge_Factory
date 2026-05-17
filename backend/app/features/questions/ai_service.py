@@ -10,9 +10,10 @@ import httpx
 from app.config import settings
 from app.features.questions.schemas import Question, TestCase
 
-# Track recently generated question titles to avoid duplicates
-_recent_titles: set = set()
-_RECENT_TITLES_MAX = 50
+# Growing pool of AI-generated questions (keyed by difficulty)
+# Starts empty, fills naturally as students request questions.
+# On AI timeout/failure, a random question is picked from here.
+_fallback_pool: dict[str, list[Question]] = {}
 
 SYSTEM_PROMPT = """\
 You are a competitive programming question generator.
@@ -151,9 +152,20 @@ def build_boilerplate(input_format: str, sample_input: str = "") -> dict[str, st
 
 
 def _generate_local_question(topic: str, difficulty: str) -> Question:
-    """Generate a question locally when AI is unavailable."""
+    """Generate a question locally when AI is unavailable.
+    
+    Checks the growing pool first (AI-generated questions from previous
+    successful runs). Falls back to the static LOCAL_QUESTIONS if the
+    pool is empty for this difficulty.
+    """
     import random
 
+    # Try the growing pool first
+    pool_questions = _fallback_pool.get(difficulty, [])
+    if pool_questions:
+        return random.choice(pool_questions)
+
+    # Fall back to static local pool
     pool = LOCAL_QUESTIONS.get(topic.lower(), LOCAL_QUESTIONS.get("default", LOCAL_QUESTIONS["default"]))
     candidates = [q for q in pool if q.get("difficulty", "easy") == difficulty]
     if not candidates:
@@ -232,16 +244,17 @@ async def generate_question(
         logging.getLogger(__name__).warning("AI_API_KEY not configured. Using local fallback.")
         return _generate_local_question(topic, difficulty)
 
-    # Try AI generation with up to 3 attempts (for dedup + transient failures)
-    max_attempts = 3
-    for attempt in range(max_attempts):
+    # ── Single AI attempt with 20s timeout → fallback pool ─────────
+    import asyncio
+
+    async def _try_ai() -> Question:
+        """Make one AI call. Raises on timeout or failure."""
         seed = random.randint(0, 999999)
         user_prompt = (
             f"Generate a completely UNIQUE {difficulty} coding problem about: {topic}. "
             f"Include exactly {num_public} public test cases and {num_private} private test cases. "
             f"stdin/stdout only. Output ONLY JSON. "
-            f"Do NOT reuse titles from Two Sum, Reverse Array, Palindrome Check, FizzBuzz, or any standard problem. "
-            f"Think of a fresh scenario. Seed: {seed}"
+            f"Seed: {seed}"
         )
 
         payload = {
@@ -254,96 +267,74 @@ async def generate_question(
             "temperature": 0.9,
         }
 
-        try:
-            async with httpx.AsyncClient(timeout=15.0) as client:
-                resp = await client.post(
-                    settings.AI_API_URL,
-                    headers={
-                        "Authorization": f"Bearer {settings.AI_API_KEY}",
-                        "Content-Type": "application/json",
-                    },
-                    json=payload,
-                )
-                resp.raise_for_status()
-
-            raw = resp.json()["choices"][0]["message"]["content"].strip()
-
-            # Strip markdown fences
-            raw = re.sub(r"^```[a-z]*\n?", "", raw, flags=re.MULTILINE)
-            raw = re.sub(r"```$", "", raw, flags=re.MULTILINE)
-            raw = raw.strip()
-
-            # Extract first JSON object
-            match = re.search(r"\{.*\}", raw, re.DOTALL)
-            if not match:
-                raise ValueError(f"No JSON in AI response: {raw[:300]}")
-
-            parsed = json.loads(match.group(0))
-
-            # Dedup check — retry if title seen recently
-            global _recent_titles
-            title = parsed["title"]
-            if title in _recent_titles:
-                raise ValueError(f"Duplicate title generated: {title}")
-
-            _recent_titles.add(title)
-            if len(_recent_titles) > _RECENT_TITLES_MAX:
-                _recent_titles.clear()
-
-            for key in ("title", "description", "public_test_cases", "private_test_cases"):
-                if key not in parsed:
-                    raise ValueError(f"AI response missing key: {key}")
-
-            # Normalise test cases
-            def make_cases(lst: list, is_public: bool) -> list[TestCase]:
-                out = []
-                for tc in lst:
-                    inp = str(tc.get("input", "")).rstrip("\n")
-                    expected = str(tc.get("expected_output", "")).strip()
-                    if inp and expected:
-                        out.append(TestCase(input=inp, expected_output=expected, is_public=is_public))
-                return out
-
-            public_cases = make_cases(parsed["public_test_cases"], True)
-            private_cases = make_cases(parsed["private_test_cases"], False)
-
-            if not public_cases:
-                raise ValueError("AI returned no valid public test cases")
-
-            # Fallback: generate private test cases locally if AI didn't return any
-            if not private_cases:
-                sr = random.Random(parsed["title"] + "_private")
-                for _ in range(num_private):
-                    n = sr.randint(5, 15)
-                    arr = [sr.randint(-10, 50) for _ in range(n)]
-                    inp = f"{n}\n{' '.join(map(str, arr))}"
-                    private_cases.append(TestCase(input=inp, expected_output="0", is_public=False))
-
-            # Build boilerplate from the actual first test case input
-            sample_input = public_cases[0].input if public_cases else ""
-            input_format = parsed.get("input_format", "")
-            boilerplate = build_boilerplate(input_format, sample_input)
-
-            return Question(
-                id=f"q_{uuid.uuid4().hex[:8]}",
-                title=parsed["title"],
-                description=parsed["description"],
-                difficulty=parsed.get("difficulty", difficulty).lower(),
-                boilerplate=boilerplate,
-                public_test_cases=public_cases,
-                private_test_cases=private_cases,
+        async with httpx.AsyncClient(timeout=25.0) as client:
+            resp = await client.post(
+                settings.AI_API_URL,
+                headers={
+                    "Authorization": f"Bearer {settings.AI_API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json=payload,
             )
+            resp.raise_for_status()
 
-        except Exception as exc:
-            import logging
-            if attempt < max_attempts - 1:
-                logging.getLogger(__name__).warning(
-                    "AI generation attempt %d/%d failed (%s). Retrying...",
-                    attempt + 1, max_attempts, exc,
-                )
-                continue
-            logging.getLogger(__name__).warning(
-                "AI generation failed after %d attempts (%s). Using local fallback.",
-                max_attempts, exc,
-            )
-            return _generate_local_question(topic, difficulty)
+        raw = resp.json()["choices"][0]["message"]["content"].strip()
+        raw = re.sub(r"^```[a-z]*\n?", "", raw, flags=re.MULTILINE)
+        raw = re.sub(r"```$", "", raw, flags=re.MULTILINE)
+        raw = raw.strip()
+        match = re.search(r"\{.*\}", raw, re.DOTALL)
+        if not match:
+            raise ValueError(f"No JSON in AI response: {raw[:300]}")
+        parsed = json.loads(match.group(0))
+
+        for key in ("title", "description", "public_test_cases", "private_test_cases"):
+            if key not in parsed:
+                raise ValueError(f"AI response missing key: {key}")
+
+        def make_cases(lst: list, is_public: bool) -> list[TestCase]:
+            out = []
+            for tc in lst:
+                inp = str(tc.get("input", "")).rstrip("\n")
+                expected = str(tc.get("expected_output", "")).strip()
+                if inp and expected:
+                    out.append(TestCase(input=inp, expected_output=expected, is_public=is_public))
+            return out
+
+        public_cases = make_cases(parsed["public_test_cases"], True)
+        private_cases = make_cases(parsed["private_test_cases"], False)
+        if not public_cases:
+            raise ValueError("AI returned no valid public test cases")
+        if not private_cases:
+            sr = random.Random(parsed["title"] + "_private")
+            for _ in range(num_private):
+                n = sr.randint(5, 15)
+                arr = [sr.randint(-10, 50) for _ in range(n)]
+                inp = f"{n}\n{' '.join(map(str, arr))}"
+                private_cases.append(TestCase(input=inp, expected_output="0", is_public=False))
+
+        sample_input = public_cases[0].input if public_cases else ""
+        input_format = parsed.get("input_format", "")
+        boilerplate = build_boilerplate(input_format, sample_input)
+
+        return Question(
+            id=f"q_{uuid.uuid4().hex[:8]}",
+            title=parsed["title"],
+            description=parsed["description"],
+            difficulty=parsed.get("difficulty", difficulty).lower(),
+            boilerplate=boilerplate,
+            public_test_cases=public_cases,
+            private_test_cases=private_cases,
+        )
+
+    try:
+        question = await asyncio.wait_for(_try_ai(), timeout=20.0)
+    except asyncio.TimeoutError:
+        logging.getLogger(__name__).warning("AI generation timed out (20s). Using pool fallback.")
+        return _generate_local_question(topic, difficulty)
+    except Exception as exc:
+        logging.getLogger(__name__).warning("AI generation failed (%s). Using pool fallback.", exc)
+        return _generate_local_question(topic, difficulty)
+
+    # ── On success: add to growing pool, then return ──
+    _fallback_pool.setdefault(question.difficulty, []).append(question)
+    return question
