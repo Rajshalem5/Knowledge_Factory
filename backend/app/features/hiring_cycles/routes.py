@@ -37,10 +37,15 @@ async def list_cycles(db: AsyncSession = Depends(get_db), current_user = Depends
 async def create_cycle(body: dict, db: AsyncSession = Depends(get_db), current_user = Depends(require_role([Role.ADMIN, Role.SUPERADMIN]))):
     from datetime import date
 
+    def _parse_date(val):
+        if isinstance(val, str):
+            return date.fromisoformat(val.split("T")[0])
+        return val
+
     cycle = HiringCycle(
         name=body.get("name", ""),
-        start_date=date.fromisoformat(body["start_date"]) if isinstance(body.get("start_date"), str) else body.get("start_date"),
-        end_date=date.fromisoformat(body["end_date"]) if isinstance(body.get("end_date"), str) else body.get("end_date"),
+        start_date=_parse_date(body.get("start_date")),
+        end_date=_parse_date(body.get("end_date")),
         status=CycleStatus.ACTIVE,
         eligibility_config=body.get("eligibility_config", {}),
         assessment_config=body.get("assessment_config", {}),

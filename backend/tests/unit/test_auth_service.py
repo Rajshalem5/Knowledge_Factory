@@ -39,10 +39,9 @@ async def test_authenticate_user_success():
     
     # Assert
     assert authenticated_user is not None
-    user, is_candidate = authenticated_user
-    assert user.email == "test@example.com"
-    assert user.id == "user-id"
-    assert is_candidate is False
+    assert authenticated_user.email == "test@example.com"
+    assert authenticated_user.id == "user-id"
+    assert authenticated_user.role == "ADMIN"
 
 @pytest.mark.asyncio
 async def test_authenticate_user_failure():

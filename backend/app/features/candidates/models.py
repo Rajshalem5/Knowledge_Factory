@@ -38,6 +38,10 @@ class Candidate(Base):
     email_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
+    created_by: Mapped[str | None] = mapped_column(String(36), nullable=True, default=None)
+    updated_by: Mapped[str | None] = mapped_column(String(36), nullable=True, default=None)
+    clerk_id: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None, index=True)
 
     # Relationships via back_populates
     assessments: Mapped[list["Assessment"]] = relationship(back_populates="candidate", lazy="selectin")

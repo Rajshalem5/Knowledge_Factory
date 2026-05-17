@@ -1,40 +1,40 @@
 {
   "POST /api/auth/login": {
-    "p50_ms": 264.6,
-    "p95_ms": 266.7,
-    "p99_ms": 266.7,
+    "p50_ms": 265.6,
+    "p95_ms": 266.6,
+    "p99_ms": 266.6,
     "codes": [
       200
     ]
   },
   "GET /api/screening/pipeline-stats": {
-    "p50_ms": 8.0,
-    "p95_ms": 8.1,
-    "p99_ms": 8.1,
+    "p50_ms": 6.6,
+    "p95_ms": 7.0,
+    "p99_ms": 7.0,
     "codes": [
-      200
+      401
     ]
   },
   "GET /api/candidates/": {
-    "p50_ms": 18.7,
-    "p95_ms": 20.1,
-    "p99_ms": 20.1,
+    "p50_ms": 18.1,
+    "p95_ms": 20.0,
+    "p99_ms": 20.0,
     "codes": [
       200
     ]
   },
   "GET /api/analytics/dashboard": {
-    "p50_ms": 9.2,
-    "p95_ms": 9.3,
-    "p99_ms": 9.3,
+    "p50_ms": 13.0,
+    "p95_ms": 13.1,
+    "p99_ms": 13.1,
     "codes": [
       200
     ]
   },
   "GET /api/analytics/funnel": {
-    "p50_ms": 10.5,
-    "p95_ms": 10.6,
-    "p99_ms": 10.6,
+    "p50_ms": 10.3,
+    "p95_ms": 10.5,
+    "p99_ms": 10.5,
     "codes": [
       200
     ]

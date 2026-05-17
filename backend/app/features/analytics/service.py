@@ -1,13 +1,22 @@
-"""Analytics service: funnel, dashboard, reports."""
+"""Analytics service: funnel, dashboard, reports with real data queries."""
 
 from datetime import date
-from sqlalchemy import func, select
+from sqlalchemy import func, select, case
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.enums import CandidateStatus
 from app.core.filters import apply_candidate_filters
 from app.features.candidates.models import Candidate
-from app.features.analytics.schemas import FunnelResponse, DashboardResponse
+from app.features.assessments.models import Score
+from app.features.proctoring.models import ProctoringRecord
+from app.features.analytics.schemas import (
+    FunnelResponse,
+    DashboardResponse,
+    PassRateItem,
+    CollegeBreakdownItem,
+    BranchPerformanceItem,
+    ProctoringViolationItem,
+)
 
 
 class AnalyticsService:
@@ -44,17 +53,8 @@ class AnalyticsService:
         min_score: float | None = None,
         max_score: float | None = None,
     ) -> FunnelResponse:
-        """Get hiring funnel counts with optional filters.
-
-        Stages:
-          applied    = APPLIED + ROUND1_REVIEW (awaiting screening decision)
-          eligible   = ROUND1_PASSED (passed screening)
-          assessed   = ROUND2_IN_PROGRESS + ROUND2_PASSED + ROUND2_REJECTED + ROUND3_IN_PROGRESS + ROUND3_PASSED + ROUND3_REJECTED
-          interviewed = INTERVIEW_SCHEDULED + INTERVIEW_COMPLETED + SELECTED
-          selected   = SELECTED
-        """
+        """Get hiring funnel counts with optional filters."""
         def _build_q(statuses: list[CandidateStatus]) -> select:
-            """Build a filtered count query for the given statuses."""
             q = select(func.count(Candidate.id)).where(Candidate.status.in_(statuses))
             q = apply_candidate_filters(
                 q,
@@ -107,24 +107,85 @@ class AnalyticsService:
         return FunnelResponse(**result)
 
     async def get_dashboard(self) -> DashboardResponse:
-        """Get dashboard metrics: total candidates, status breakdown, pass rates."""
+        """Get dashboard metrics with real data queries."""
+        # ── Total ──
         total_q = select(func.count(Candidate.id))
         total_r = await self.db.execute(total_q)
         total = total_r.scalar() or 0
 
+        # ── Status breakdown ──
         stmt = select(Candidate.status, func.count(Candidate.id)).group_by(Candidate.status)
         res = await self.db.execute(stmt)
         rows = res.all()
-        status_breakdown = {s: c for s, c in rows} if rows else {}
+        status_breakdown = {str(s): c for s, c in rows} if rows else {}
 
+        # ── Selected count / rate ──
         selected_q = select(func.count(Candidate.id)).where(Candidate.status == CandidateStatus.SELECTED)
         selected_r = await self.db.execute(selected_q)
         selected = selected_r.scalar() or 0
         select_rate = round((selected / total * 100), 1) if total > 0 else 0.0
 
+        # ── Average CGPA ──
         cgpa_q = select(func.avg(Candidate.cgpa))
         cgpa_r = await self.db.execute(cgpa_q)
         avg_cgpa = round(float(cgpa_r.scalar()) or 0, 2)
+
+        # ── Pass Rate Per Round (from Score table) ──
+        pass_rate_items: list[PassRateItem] = []
+        for round_label, round_enum in [("Round 2", "ROUND_2"), ("Round 3", "ROUND_3")]:
+            total_scores = select(func.count(Score.id)).where(Score.round == round_enum)
+            passed_scores = select(func.count(Score.id)).where(
+                Score.round == round_enum, Score.verdict == "PASS"
+            )
+            total_r = await self.db.execute(total_scores)
+            passed_r = await self.db.execute(passed_scores)
+            t = total_r.scalar() or 0
+            p = passed_r.scalar() or 0
+            rate = round(p / t * 100, 1) if t > 0 else 0.0
+            pass_rate_items.append(PassRateItem(round=round_label, pass_rate=rate))
+
+        # ── College-wise Breakdown ──
+        college_q = select(
+            Candidate.college,
+            func.count(Candidate.id).label("count"),
+            func.avg(Candidate.cgpa).label("avg_score"),
+        ).group_by(Candidate.college).order_by(func.count(Candidate.id).desc())
+        college_r = await self.db.execute(college_q)
+        college_breakdown = [
+            CollegeBreakdownItem(college=row.college or "Unknown", count=row.count, avg_score=round(float(row.avg_score) or 0, 1))
+            for row in college_r.fetchall() if row.college
+        ]
+
+        # ── Branch-wise Performance ──
+        branch_q = select(
+            Candidate.branch,
+            func.count(Candidate.id).label("count"),
+            func.avg(Candidate.cgpa).label("avg_score"),
+        ).group_by(Candidate.branch).order_by(func.count(Candidate.id).desc())
+        branch_r = await self.db.execute(branch_q)
+        branch_performance = [
+            BranchPerformanceItem(branch=row.branch or "Unknown", count=row.count, avg_score=round(float(row.avg_score) or 0, 1))
+            for row in branch_r.fetchall() if row.branch
+        ]
+
+        # ── Proctoring Violations ──
+        violations_q = select(
+            ProctoringRecord.violations_json,
+        )
+        violations_r = await self.db.execute(violations_q)
+        violation_counts: dict[str, int] = {}
+        for row in violations_r.fetchall():
+            vj = row.violations_json
+            if isinstance(vj, list):
+                for v in vj:
+                    vtype = v.get("type", "unknown") if isinstance(v, dict) else "unknown"
+                    violation_counts[vtype] = violation_counts.get(vtype, 0) + 1
+            elif isinstance(vj, dict):
+                vtype = vj.get("type", "unknown")
+                violation_counts[vtype] = violation_counts.get(vtype, 0) + 1
+        proctoring_violations = [
+            ProctoringViolationItem(type=t, count=c) for t, c in violation_counts.items()
+        ]
 
         return DashboardResponse(
             total_candidates=total,
@@ -132,13 +193,8 @@ class AnalyticsService:
             select_rate=select_rate,
             avg_cgpa=avg_cgpa,
             status_breakdown=status_breakdown,
-            # Add mock data for missing analytics
-            passRatePerRound=[
-                {"round": "Round 1", "passRate": 75.0},
-                {"round": "Round 2", "passRate": 60.0},
-                {"round": "Round 3", "passRate": 45.0},
-            ],
-            collegeBreakdown=[],  # Empty for now
-            branchPerformance=[],  # Empty for now
-            proctoringViolations=[],  # Empty for now
+            pass_rate_per_round=pass_rate_items,
+            college_breakdown=college_breakdown,
+            branch_performance=branch_performance,
+            proctoring_violations=proctoring_violations,
         )

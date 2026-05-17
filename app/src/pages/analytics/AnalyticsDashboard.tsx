@@ -25,7 +25,7 @@ export default function AnalyticsDashboard() {
                   <Users size={18} className="text-secondary" />
                   <div>
                     <p className="text-xs text-tertiary uppercase tracking-architectural">Total Candidates</p>
-                    <p className="text-lg font-bold text-on-surface">1,240</p>
+                    <p className="text-lg font-bold text-on-surface">{analytics.total_candidates.toLocaleString()}</p>
                   </div>
                 </div>
               </Card>

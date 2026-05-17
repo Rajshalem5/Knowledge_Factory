@@ -8,6 +8,7 @@ from app.database import get_db
 from app.dependencies import get_current_user
 from app.features.auth.schemas import (
     CandidateRegisterRequest,
+    ClerkSyncRequest,
     ForgotPasswordRequest,
     LoginRequest,
     OtpVerifyRequest,
@@ -18,8 +19,74 @@ from app.features.auth.schemas import (
 from app.features.auth.service import AuthService
 from app.features.candidates.models import Candidate
 from app.features.auth.models import User
+from app.core.security import hash_password
 
 router = APIRouter()
+
+# ── Re-auth for destructive actions ──────────────────────────
+@router.post("/confirm-password")
+async def confirm_password(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Verify password before destructive actions (delete account, data purge)."""
+    from app.core.security import verify_password
+    import json
+    body = json.loads(await request.body())
+    password = body.get("password", "")
+
+    # Fetch full user record
+    stmt = select(User).where(User.id == current_user.id)
+    res = await db.execute(stmt)
+    user = res.scalar_one_or_none()
+    if not user or not verify_password(password, user.password_hash or ""):
+        raise HTTPException(status_code=401, detail="Incorrect password")
+
+    return {"verified": True, "user_id": str(user.id)}
+
+
+@router.delete("/delete-account")
+async def delete_account(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Soft-delete account and cascade to all related records. Requires recent confirm-password call (5 min window)."""
+    from datetime import datetime, timezone, timedelta
+    from app.core.security import decode_token
+    import json
+
+    body = json.loads(await request.body())
+    token = body.get("reauth_token", "")
+
+    # Verify reauth token was issued in last 5 minutes
+    if not token:
+        raise HTTPException(status_code=400, detail="Re-authentication required. Call /confirm-password first.")
+    payload = decode_token(token)
+    if not payload or payload.get("sub") != current_user.id:
+        raise HTTPException(status_code=401, detail="Re-auth token invalid or expired")
+
+    # Fetch full user
+    stmt = select(User).where(User.id == current_user.id)
+    res = await db.execute(stmt)
+    user = res.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    now = datetime.now(timezone.utc)
+    user.deleted_at = now
+
+    # Cascade soft-delete candidates owned by this user
+    from app.features.candidates.models import Candidate
+    stmt = select(Candidate).where(Candidate.created_by == current_user.id)
+    res = await db.execute(stmt)
+    for candidate in res.scalars().all():
+        candidate.deleted_at = now
+
+    await db.commit()
+    clear_refresh_cookie(Response())
+    return {"message": "Account deleted successfully"}
 
 # Cookie settings for refresh token
 REFRESH_TOKEN_COOKIE_NAME = "kf_refresh_token"
@@ -195,36 +262,83 @@ async def logout(response: Response):
     return {"message": "Logged out"}
 
 
-@router.post("/verify-otp", response_model=TokenResponse)
-async def verify_otp(data: OtpVerifyRequest, db: AsyncSession = Depends(get_db)):
-    """Verify OTP and issue tokens (dev mode accepts any 6-digit code)."""
-    from app.core.security import create_access_token, create_refresh_token
+@router.post("/clerk-sync")
+async def clerk_sync(
+    data: ClerkSyncRequest,
+    db: AsyncSession = Depends(get_db),
+    response: Response = None,
+):
+    """Link a Clerk user to an existing KF user by email.
     
+    Called after successful Clerk authentication. If a KF user with the
+    same email exists, links the clerk_id and returns tokens. Otherwise
+    returns 404 so the frontend can redirect to registration.
+    """
+    # Check User table first (admin, hr, interviewer, etc.)
     stmt = select(User).where(User.email == data.email)
     res = await db.execute(stmt)
     user = res.scalar_one_or_none()
 
+    # If not found in User, check Candidate table
+    from app.features.candidates.models import Candidate
     if not user:
-        raise HTTPException(status_code=400, detail="Email not registered")
+        stmt = select(Candidate).where(Candidate.email == data.email)
+        res = await db.execute(stmt)
+        candidate = res.scalar_one_or_none()
+        if not candidate:
+            raise HTTPException(
+                status_code=404,
+                detail="No existing account found with this email. Please register first.",
+            )
+        # Link clerk_id to candidate
+        candidate.clerk_id = data.clerk_id
+        await db.commit()
 
-    # Dev-mode: auto-accept any 6-digit OTP
-    if user.password_hash and len(data.otp) == 6:
-        access_token = create_access_token(subject=str(user.id), email=user.email, role=user.role)
-        refresh_tok = create_refresh_token(subject=str(user.id))
-        
-        return TokenResponse(
-            access_token=access_token,
-            refresh_token=refresh_tok,
-            token_type="bearer",
-            user=UserResponse(
-                id=user.id,
-                email=user.email,
-                name=user.name,
-                role=user.role,
-            ),
+        auth_service = AuthService(db)
+        user_like = User(
+            id=candidate.id,
+            email=candidate.email,
+            name=candidate.name,
+            role="CANDIDATE",
+            password_hash=candidate.password_hash or "",
         )
+        token_data = auth_service.generate_token_response(user_like)
+        set_refresh_cookie(response, token_data["refresh_token"])
+        return {
+            "access_token": token_data["access_token"],
+            "refresh_token": token_data["refresh_token"],
+            "token_type": "bearer",
+            "user": token_data["user"],
+        }
 
-    raise HTTPException(status_code=400, detail="OTP expired or invalid")
+    # Link clerk_id to existing user
+    user.clerk_id = data.clerk_id
+    if data.name and not user.name:
+        user.name = data.name
+    await db.commit()
+
+    auth_service = AuthService(db)
+    token_data = auth_service.generate_token_response(user)
+    set_refresh_cookie(response, token_data["refresh_token"])
+    return {
+        "access_token": token_data["access_token"],
+        "refresh_token": token_data["refresh_token"],
+        "token_type": "bearer",
+        "user": token_data["user"],
+    }
+
+
+@router.post("/verify-otp", response_model=TokenResponse)
+async def verify_otp(data: OtpVerifyRequest, db: AsyncSession = Depends(get_db)):
+    """Verify OTP and issue tokens.
+
+    NOTE: OTP infrastructure not yet deployed — this endpoint requires
+    a stored OTP record with expiration. Contact admin to enable.
+    """
+    raise HTTPException(
+        status_code=501,
+        detail="OTP verification not yet configured. Contact your administrator.",
+    )
 
 
 @router.post("/forgot-password", status_code=status.HTTP_200_OK)
@@ -236,15 +350,20 @@ async def forgot_password(data: ForgotPasswordRequest, db: AsyncSession = Depend
 
     if user:
         from app.core.security import create_access_token
+        from app.integrations.email import send_password_reset_email as send_reset
+
         # Generate password reset token (would normally send via email)
         reset_token = create_access_token(
             subject=str(user.id),
             email=user.email,
-            role=user.role + "_RESET"
+            role=user.role,
+            token_type="password_reset",
         )
-        # TODO: Send reset_token via email
+        # Send reset email
+        await send_reset(to=user.email, reset_token=reset_token)
+
         return {"message": "If email exists, a reset link has been sent."}
-    
+
     # Don't reveal if email exists
     return {"message": "If email exists, a reset link has been sent."}
 

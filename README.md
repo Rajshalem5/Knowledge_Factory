@@ -844,6 +844,33 @@ flowchart LR
 
 ---
 
+## 17. Production Checklist Progress
+
+Progress against the [Vibe Coding Checklist](https://www.praneethkalluri.com/vibe-coding-checklist).
+
+### Category Status
+
+| # | Category | Status | Notes |
+|---|----------|--------|-------|
+| 01 | Databases & Data | ✓ DONE | `deleted_at`, `created_at`, `updated_at`, `created_by`, `updated_by` added to all models |
+| 02 | Secrets & Access | ✓ DONE | JWT secret rotated. `.env.dev`, `.env.staging`, `.env.prod` templates created. Production env never committed |
+| 03 | Auth & Authorization | ✓ DONE | `POST /api/auth/confirm-password` + `DELETE /api/auth/delete-account` implemented. Re-auth required for destructive actions |
+| 04 | Cost & Controls | ✓ DONE | `LOGIN_RATE_LIMIT=10/m`, `CODE_EXEC_RATE_LIMIT=20/m` configured. `BILLING_ALERTS.md` ops doc created |
+| 05 | Deployment & Environment | ✓ DONE | `backup_db.sh` script, `UPTIME_MONITORING.md`, `ENVIRONMENTS.md` docs created |
+| 06 | Monitoring & Observability | ✓ DONE | `TimedRotatingFileHandler` (logs/app.log, 7-day retention) + Sentry SDK initialized in `main.py` |
+| 07 | Security & Privacy | ✓ DONE | Cookie consent banner (`CookieConsent.tsx`), `/privacy` + `/terms` pages, bleach input sanitization added |
+| 08 | Error Handling | ⏳ PENDING | Per-endpoint error responses need consistent schema across all routes |
+| 09 | Performance | ⏳ PENDING | DB indexes on foreign keys. Async queries. SQLite → PostgreSQL migration for production |
+| 10 | Legal & Compliance | ✓ DONE | Privacy Policy + Terms of Service pages live at `/privacy`, `/terms` |
+| 11 | Maintenance & Operations | ✓ DONE | `DISASTER_RECOVERY.md`, `backup_db.sh`, env rotation, production checklist tracked here |
+
+### Remaining Tasks
+
+- **Category 08**: Standardize error response schema ( `{ error: string; detail?: string; code?: string }` ) across all route files
+- **Category 09**: Add `index=True` to all foreign key columns; migrate from SQLite to PostgreSQL before production
+
+---
+
 ## Assumptions & Gaps
 
 | Item | Status |

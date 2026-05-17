@@ -70,6 +70,11 @@ class EmailLog(Base):
         nullable=False,
         default=lambda: datetime.now(timezone.utc),
     )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
+    created_by: Mapped[str | None] = mapped_column(String(36), nullable=True, default=None)
+    updated_by: Mapped[str | None] = mapped_column(String(36), nullable=True, default=None)
 
     def __repr__(self) -> str:
         return f"<EmailLog id={self.id} to={self.recipient_email!r} status={self.status}>"

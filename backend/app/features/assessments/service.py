@@ -169,6 +169,12 @@ class AssessmentService:
             if current == expected_status:
                 candidate.status = next_status
 
+        # After Round 3 completion, auto-advance to INTERVIEW_SCHEDULED
+        if round_val == AssessmentRound.ROUND_3:
+            current = CandidateStatus(candidate.status) if isinstance(candidate.status, str) else candidate.status
+            if current == CandidateStatus.ROUND3_PASSED:
+                candidate.status = CandidateStatus.INTERVIEW_SCHEDULED
+
         assessment.status = AssessmentStatus.COMPLETED
         assessment.ended_at = datetime.now(timezone.utc)
 

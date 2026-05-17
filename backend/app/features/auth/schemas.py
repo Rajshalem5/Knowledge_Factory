@@ -73,3 +73,9 @@ class UserResponse(BaseModel):
     role: str
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class ClerkSyncRequest(BaseModel):
+    clerk_id: str = Field(..., min_length=1)
+    email: EmailStr
+    name: str = Field(default="", max_length=255)

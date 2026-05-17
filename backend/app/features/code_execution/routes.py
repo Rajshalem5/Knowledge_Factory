@@ -1,8 +1,8 @@
-"""Code execution routes."""
+"""Code execution routes — restricted to CANDIDATE role."""
 
 import logging
 from fastapi import APIRouter, Depends, HTTPException
-from app.dependencies import get_current_user
+from app.dependencies import CANDIDATE_ONLY
 from app.features.code_execution.schemas import (
     CodeExecutionRequest,
     CodeExecutionResponse,
@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 @router.post("/execute", response_model=CodeExecutionResponse)
 async def execute_code(
     request: CodeExecutionRequest,
-    current_user=Depends(get_current_user),
+    current_user=Depends(CANDIDATE_ONLY),
 ):
     """Run code with custom stdin — used by the Run button."""
     service = PistonExecutionService()
@@ -35,7 +35,7 @@ async def execute_code(
 @router.post("/evaluate", response_model=EvaluationResult)
 async def evaluate_code(
     request: EvaluationRequest,
-    current_user=Depends(get_current_user),
+    current_user=Depends(CANDIDATE_ONLY),
 ):
     """
     Evaluate code against test cases supplied in the request.
@@ -53,7 +53,7 @@ async def evaluate_code(
 async def evaluate_against_question(
     question_id: str,
     request: CodeExecutionRequest,
-    current_user=Depends(get_current_user),
+    current_user=Depends(CANDIDATE_ONLY),
 ):
     """
     Evaluate code against ALL test cases (public + private) for a question.

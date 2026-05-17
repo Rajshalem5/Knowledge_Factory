@@ -25,3 +25,6 @@ class HiringCycle(Base):
     created_by: Mapped[str | None] = mapped_column(PortableUUID, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
+    updated_by: Mapped[str | None] = mapped_column(PortableUUID, nullable=True)
+    created_by: Mapped[str | None] = mapped_column(PortableUUID, nullable=True)

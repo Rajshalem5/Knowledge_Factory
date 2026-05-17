@@ -15,13 +15,14 @@ import enum
 
 class Role(str, enum.Enum):
     """
-    User roles for non-candidate humans (staff).
-    Candidates do NOT use this enum — they have their own auth model.
+    User roles — includes staff roles plus CANDIDATE for the in-memory
+    user-like object created when candidates authenticate via /api/auth/login.
     """
     SUPERADMIN = "SUPERADMIN"
     ADMIN = "ADMIN"
     HR = "HR"
     INTERVIEWER = "INTERVIEWER"
+    CANDIDATE = "CANDIDATE"
 
 
 class UserStatus(str, enum.Enum):

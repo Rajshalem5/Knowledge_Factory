@@ -30,6 +30,11 @@ class Assessment(Base):
     status: Mapped[AssessmentStatus] = mapped_column(String(20), nullable=False, default=AssessmentStatus.NOT_STARTED)
     time_limit: Mapped[int] = mapped_column(Integer, nullable=False, default=60)
     termination_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
+    created_by: Mapped[str | None] = mapped_column(String(36), nullable=True, default=None)
+    updated_by: Mapped[str | None] = mapped_column(String(36), nullable=True, default=None)
 
     candidate: Mapped["Candidate"] = relationship(back_populates="assessments", lazy="selectin")
     submissions: Mapped[list["Submission"]] = relationship(back_populates="assessment", lazy="selectin")
@@ -44,6 +49,11 @@ class Submission(Base):
     payload_json: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     time_spent_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
     submitted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
+    created_by: Mapped[str | None] = mapped_column(String(36), nullable=True, default=None)
+    updated_by: Mapped[str | None] = mapped_column(String(36), nullable=True, default=None)
 
     assessment: Mapped["Assessment"] = relationship(back_populates="submissions", lazy="selectin")
 
@@ -64,5 +74,10 @@ class Score(Base):
     verdict: Mapped[ScoreVerdict] = mapped_column(String(10), nullable=False)
     feedback_json: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     evaluated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
+    created_by: Mapped[str | None] = mapped_column(String(36), nullable=True, default=None)
+    updated_by: Mapped[str | None] = mapped_column(String(36), nullable=True, default=None)
 
     candidate: Mapped["Candidate"] = relationship(back_populates="scores", lazy="selectin")

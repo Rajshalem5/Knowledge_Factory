@@ -1,10 +1,11 @@
-"""Candidate management routes."""
+"""Candidate management routes — includes assessment results for HR."""
 
 from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from app.database import get_db
 from app.dependencies import get_current_user, require_role
@@ -97,6 +98,14 @@ async def get_candidate(candidate_id: str, db: AsyncSession = Depends(get_db), c
 async def update_candidate_status(candidate_id: str, update: dict, db: AsyncSession = Depends(get_db), current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN]))):
     from app.features.candidates.models import Candidate
     raw_status = update["status"]
+
+    # Prevent direct status update to SELECTED/FINAL_REJECTED — must use /selection endpoint
+    if raw_status.upper() in ("SELECTED", "FINAL_REJECTED"):
+        raise HTTPException(
+            status_code=422,
+            detail="Use the /api/selection endpoints for selection/rejection decisions",
+        )
+
     # Try parsing as full backend enum first, then as simplified display status
     try:
         new_status = CandidateStatus(raw_status.upper())
@@ -105,6 +114,20 @@ async def update_candidate_status(candidate_id: str, update: dict, db: AsyncSess
         if not mapped:
             raise HTTPException(status_code=422, detail=f"Invalid status: {raw_status}")
         new_status = mapped
+
+    # Validate FSM transition
+    allowed_direct = {
+        CandidateStatus.ROUND1_PASSED, CandidateStatus.ROUND1_REJECTED,
+        CandidateStatus.ROUND2_PASSED, CandidateStatus.ROUND2_REJECTED,
+        CandidateStatus.ROUND3_PASSED, CandidateStatus.ROUND3_REJECTED,
+        CandidateStatus.INTERVIEW_SCHEDULED, CandidateStatus.INTERVIEW_COMPLETED,
+    }
+    if new_status not in allowed_direct:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Cannot manually set status to {new_status.value}. Use proper pipeline endpoints.",
+        )
+
     service = CandidateService(db)
     try:
         candidate = await service.update_status(candidate_id, new_status)
@@ -113,6 +136,72 @@ async def update_candidate_status(candidate_id: str, update: dict, db: AsyncSess
     if not candidate:
         raise HTTPException(status_code=404, detail="Candidate not found")
     return candidate
+
+
+@router.get("/{candidate_id}/assessments")
+async def get_candidate_assessments(
+    candidate_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN])),
+):
+    """Get all assessment submissions and scores for a candidate — HR view."""
+    from app.features.assessments.models import Assessment, Submission, Score
+
+    # Get all assessments for this candidate
+    stmt = (
+        select(Assessment)
+        .where(Assessment.candidate_id == candidate_id)
+        .order_by(Assessment.created_at.desc())
+    )
+    res = await db.execute(stmt)
+    assessments = res.scalars().all()
+
+    result = []
+    for a in assessments:
+        # Get submissions for this assessment
+        sub_stmt = select(Submission).where(Submission.assessment_id == a.id)
+        sub_res = await db.execute(sub_stmt)
+        submissions = sub_res.scalars().all()
+
+        # Get scores for this candidate/round
+        score_stmt = select(Score).where(
+            Score.candidate_id == candidate_id,
+            Score.round == a.round,
+        )
+        score_res = await db.execute(score_stmt)
+        scores = score_res.scalars().all()
+
+        result.append({
+            "assessment_id": a.id,
+            "round": a.round.value if hasattr(a.round, "value") else a.round,
+            "status": a.status.value if hasattr(a.status, "value") else a.status,
+            "started_at": a.started_at.isoformat() if a.started_at else None,
+            "ended_at": a.ended_at.isoformat() if a.ended_at else None,
+            "time_limit": a.time_limit,
+            "submissions": [
+                {
+                    "id": s.id,
+                    "section": s.section.value if hasattr(s.section, "value") else s.section,
+                    "submitted_at": s.submitted_at.isoformat() if s.submitted_at else None,
+                    "code_snippet": (s.payload_json or {}).get("code", "")[:500] if s.payload_json else "",
+                }
+                for s in submissions
+            ],
+            "scores": [
+                {
+                    "id": sc.id,
+                    "correctness": sc.correctness,
+                    "quality": sc.quality,
+                    "design": sc.design,
+                    "weighted_total": float(sc.weighted_total),
+                    "verdict": sc.verdict.value if hasattr(sc.verdict, "value") else sc.verdict,
+                    "evaluated_at": sc.evaluated_at.isoformat() if sc.evaluated_at else None,
+                }
+                for sc in scores
+            ],
+        })
+
+    return {"data": result}
 
 
 async def _process_bulk_upload_csv(file: UploadFile | None) -> BulkUploadPreview:

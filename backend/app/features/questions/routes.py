@@ -1,7 +1,7 @@
-"""Question generation routes."""
+"""Question generation routes — restricted to CANDIDATE role."""
 
 from fastapi import APIRouter, HTTPException, Depends
-from app.dependencies import get_current_user
+from app.dependencies import CANDIDATE_ONLY
 from app.features.questions.schemas import (
     QuestionGenerationRequest,
     QuestionPublicView,
@@ -19,7 +19,7 @@ _question_store: dict[str, Question] = {}
 @router.post("/generate", response_model=QuestionPublicView)
 async def generate(
     req: QuestionGenerationRequest,
-    current_user=Depends(get_current_user),
+    current_user=Depends(CANDIDATE_ONLY),
 ):
     """
     Generate a question via AI.
@@ -53,7 +53,7 @@ async def generate(
 @router.get("/{question_id}/public", response_model=QuestionPublicView)
 async def get_question_public(
     question_id: str,
-    current_user=Depends(get_current_user),
+    current_user=Depends(CANDIDATE_ONLY),
 ):
     """Get public view of a question (no private test cases)."""
     q = _question_store.get(question_id)

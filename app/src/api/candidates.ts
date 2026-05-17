@@ -6,18 +6,38 @@
 import { api } from './client';
 import type { Candidate, PaginatedResponse } from '../types';
 
+export interface AssessmentResult {
+  assessment_id: string;
+  round: string;
+  status: string;
+  started_at: string | null;
+  ended_at: string | null;
+  time_limit: number;
+  submissions: {
+    id: string;
+    section: string;
+    submitted_at: string | null;
+    code_snippet: string;
+  }[];
+  scores: {
+    id: string;
+    correctness: number;
+    quality: number;
+    design: number;
+    weighted_total: number;
+    verdict: string;
+    evaluated_at: string | null;
+  }[];
+}
+
 export const candidatesApi = {
-  /**
-   * Get all candidates with pagination and filters
-   * GET /api/candidates
-   */
-  getAll: (params?: { 
-    page?: number; 
-    limit?: number; 
-    status?: string; 
+  getAll: (params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
     name?: string;
-    branch?: string; 
-    college?: string; 
+    branch?: string;
+    college?: string;
     search?: string;
     passed_out_year?: number;
     cgpa_min?: number;
@@ -44,48 +64,31 @@ export const candidatesApi = {
     sort_by?: string;
     sort_order?: string;
   }) =>
-    api.get<PaginatedResponse<Candidate>>('/api/candidates/', { 
-      params: params as Record<string, string | number | boolean | undefined> 
+    api.get<PaginatedResponse<Candidate>>('/api/candidates/', {
+      params: params as Record<string, string | number | boolean | undefined>,
     }),
 
-  /**
-   * Get candidate by ID
-   * GET /api/candidates/:id
-   */
   getById: (id: string) =>
     api.get<Candidate>(`/api/candidates/${id}`),
 
-  /**
-   * Get current user's profile
-   * GET /api/candidates/me
-   */
   getMe: () =>
     api.get<Candidate>('/api/candidates/me'),
 
-  /**
-   * Update candidate status
-   * PATCH /api/candidates/:id/status
-   */
   updateStatus: (id: string, status: string) =>
     api.patch<Candidate>(`/api/candidates/${id}/status`, { status }),
 
-  /**
-   * Bulk upload candidates from CSV
-   * POST /api/candidates/bulk-upload
-   */
   bulkUpload: (file: File) => {
     const formData = new FormData();
     formData.append('file', file);
     return api.post<unknown>('/api/candidates/bulk-upload', formData) as Promise<unknown>;
   },
 
-  /**
-   * Preview bulk upload before saving
-   * POST /api/candidates/bulk-upload/preview
-   */
   previewBulkUpload: (file: File) => {
     const formData = new FormData();
     formData.append('file', file);
     return api.post<unknown>('/api/candidates/bulk-upload/preview', formData) as Promise<unknown>;
   },
+
+  getAssessments: (id: string) =>
+    api.get<{ data: AssessmentResult[] }>(`/api/candidates/${id}/assessments`),
 };

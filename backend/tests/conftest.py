@@ -84,9 +84,9 @@ async def setup_database():
 
         # Seed test candidates in APPLIED status for screening tests
         candidates_data = [
-            {"name": "Test Candidate Applied", "email": "applied@test.com", "college": "Test Uni", "branch": "CSE", "cgpa": 8.5, "passed_out_year": 2026, "language_choice": "python", "status": "APPLIED"},
-            {"name": "Low CGPA Candidate", "email": "lowcgpa@test.com", "college": "Test Uni", "branch": "CSE", "cgpa": 5.5, "passed_out_year": 2026, "language_choice": "java", "status": "APPLIED"},
-            {"name": "Wrong Branch Candidate", "email": "wrongbranch@test.com", "college": "Other Uni", "branch": "CIVIL", "cgpa": 7.5, "passed_out_year": 2026, "language_choice": "python", "status": "APPLIED"},
+            {"name": "Test Candidate Applied", "email": "applied@test.com", "college": "Test Uni", "branch": "CSE", "cgpa": 8.5, "passed_out_year": 2026, "language_choice": "python", "status": "APPLIED", "password_hash": hash_password("Test@123")},
+            {"name": "Low CGPA Candidate", "email": "lowcgpa@test.com", "college": "Test Uni", "branch": "CSE", "cgpa": 5.5, "passed_out_year": 2026, "language_choice": "java", "status": "APPLIED", "password_hash": hash_password("Test@123")},
+            {"name": "Wrong Branch Candidate", "email": "wrongbranch@test.com", "college": "Other Uni", "branch": "CIVIL", "cgpa": 7.5, "passed_out_year": 2026, "language_choice": "python", "status": "APPLIED", "password_hash": hash_password("Test@123")},
         ]
         for cd in candidates_data:
             c = Candidate(cycle_id=cycle.id, **cd)

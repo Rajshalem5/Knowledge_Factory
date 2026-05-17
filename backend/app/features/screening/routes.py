@@ -1,34 +1,101 @@
 """Screening routes - updates candidate statuses live based on eligibility."""
 
 import json
+from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from app.database import get_db
 from app.features.candidates.models import Candidate
 from app.features.hiring_cycles.models import HiringCycle
-from app.core.enums import CandidateStatus
+from app.core.enums import CandidateStatus, Role
+from app.core.filters import apply_candidate_filters
+from app.dependencies import require_role
 
 router = APIRouter()
 
 
 @router.get("/pipeline-stats")
-async def get_pipeline_stats(db: AsyncSession = Depends(get_db)):
-    """Get pipeline statistics for dashboard."""
+async def get_pipeline_stats(
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN])),
+    # -- Filter query params --
+    has_assessment: bool | None = Query(None, description="Filter by whether candidates have assessments"),
+    assessment_status: str | None = Query(None, description="Filter candidates whose assessment has this status"),
+    target_statuses: str | None = Query(None, description="Comma-separated list of statuses to include in stats"),
+    branch: str | None = Query(None, description="Filter by branch name"),
+    college: str | None = Query(None, description="Filter by college name"),
+    search: str | None = Query(None, description="Search term (name, email, college)"),
+    cgpa_min: float | None = Query(None, ge=0.0, le=10.0),
+    cgpa_max: float | None = Query(None, ge=0.0, le=10.0),
+    created_after: date | None = Query(None),
+    created_before: date | None = Query(None),
+):
+    """Get pipeline statistics for dashboard with optional filters."""
     try:
+        # Build base query with filters
         stmt = select(
             Candidate.status,
-            func.count(Candidate.id).label('count')
-        ).group_by(Candidate.status)
+            func.count(Candidate.id).label("count")
+        )
+
+        # Apply shared candidate filters
+        stmt = apply_candidate_filters(
+            stmt,
+            branch=branch,
+            college=college,
+            search=search,
+            cgpa_min=cgpa_min,
+            cgpa_max=cgpa_max,
+            has_assessment=has_assessment,
+            assessment_status=assessment_status,
+            created_after=created_after,
+            created_before=created_before,
+        )
+
+        stmt = stmt.group_by(Candidate.status)
         result = await db.execute(stmt)
         status_counts = {row.status: row.count for row in result.fetchall()}
 
+        # Apply target_statuses filter on the response
+        if target_statuses:
+            targets = set(s.strip().upper() for s in target_statuses.split(",") if s.strip())
+            # Ensure all requested statuses appear (with 0 for missing)
+            status_counts = {k: v for k, v in status_counts.items() if k in targets}
+            for t in targets:
+                status_counts.setdefault(t, 0)
+
+        # Aggregates also respect filters
         total_stmt = select(func.count(Candidate.id))
+        total_stmt = apply_candidate_filters(
+            total_stmt,
+            branch=branch,
+            college=college,
+            search=search,
+            cgpa_min=cgpa_min,
+            cgpa_max=cgpa_max,
+            has_assessment=has_assessment,
+            assessment_status=assessment_status,
+            created_after=created_after,
+            created_before=created_before,
+        )
         total_result = await db.execute(total_stmt)
         total_count = total_result.scalar() or 0
 
         avg_stmt = select(func.avg(Candidate.cgpa))
+        avg_stmt = apply_candidate_filters(
+            avg_stmt,
+            branch=branch,
+            college=college,
+            search=search,
+            cgpa_min=cgpa_min,
+            cgpa_max=cgpa_max,
+            has_assessment=has_assessment,
+            assessment_status=assessment_status,
+            created_after=created_after,
+            created_before=created_before,
+        )
         avg_result = await db.execute(avg_stmt)
         avg_cgpa = float(avg_result.scalar() or 0)
 
@@ -39,8 +106,8 @@ async def get_pipeline_stats(db: AsyncSession = Depends(get_db)):
                 "avg_cgpa": round(avg_cgpa, 2),
                 "assessment_completion_rate": 0,
                 "in_progress_count": 0,
-                "completed_count": total_count
-            }
+                "completed_count": total_count,
+            },
         }
     except Exception:
         return {
@@ -50,13 +117,16 @@ async def get_pipeline_stats(db: AsyncSession = Depends(get_db)):
                 "avg_cgpa": 0,
                 "assessment_completion_rate": 0,
                 "in_progress_count": 0,
-                "completed_count": 0
-            }
+                "completed_count": 0,
+            },
         }
 
 
 @router.post("/run")
-async def run_screening(db: AsyncSession = Depends(get_db)):
+async def run_screening(
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN])),
+):
     """Run screening: evaluate APPLIED candidates against eligibility config and update statuses live."""
     # Get active hiring cycle with eligibility config
     cycle_stmt = select(HiringCycle).where(HiringCycle.status == "ACTIVE").limit(1)
@@ -92,8 +162,8 @@ async def run_screening(db: AsyncSession = Depends(get_db)):
         cleaned = b.strip().upper()
         # Remove extra spaces, punctuation
         import re
-        cleaned = re.sub(r'[^A-Z0-9 ]', '', cleaned)
-        cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+        cleaned = re.sub(r"[^A-Z0-9 ]", "", cleaned)
+        cleaned = re.sub(r"\s+", " ", cleaned).strip()
         return BRANCH_ALIASES.get(cleaned, cleaned)
 
     # Get all APPLIED candidates

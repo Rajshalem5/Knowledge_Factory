@@ -6,6 +6,8 @@ import { ProtectedRoute } from './routes/ProtectedRoute';
 import Landing from './pages/Landing';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
+import ClerkSignInPage from './pages/auth/ClerkSignInPage';
+import AuthRedirect from './pages/auth/AuthRedirect';
 import OTPVerification from './pages/auth/OTPVerification';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import Portal from './pages/candidate/Portal';
@@ -16,8 +18,13 @@ import InterviewPanel from './pages/interviewer/InterviewPanel';
 import SelectionPanel from './pages/selection/SelectionPanel';
 import AnalyticsDashboard from './pages/analytics/AnalyticsDashboard';
 import SuperAdminPanel from './pages/superadmin/SuperAdminPanel';
+import Privacy from './pages/legal/Privacy';
+import Terms from './pages/legal/Terms';
+import Settings from './pages/Settings/Settings';
+import AdminDashboard from './pages/Admin/Dashboard';
+import CookieConsent from './components/CookieConsent';
 
-function AuthRedirect() {
+function AuthRedirectFallback() {
   const { user } = useAuth();
   const role = user?.role;
   if (!role) return <Navigate to="/login" replace />;
@@ -26,11 +33,20 @@ function AuthRedirect() {
 
 export default function App() {
   return (
-    <Routes>
+    <>
+      <Routes>
       {/* Public routes */}
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+
+      {/* Clerk auth routes — sign-in only, sign-up redirects to register */}
+      <Route path="/sign-in/*" element={<ClerkSignInPage />} />
+      <Route path="/sign-up" element={<Navigate to="/register" replace />} />
+      <Route path="/sign-up/*" element={<Navigate to="/register" replace />} />
+      <Route path="/redirect" element={<AuthRedirect />} />
+
+      {/* Legacy auth routes */}
       <Route path="/verify-otp" element={<OTPVerification />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
 
@@ -91,8 +107,28 @@ export default function App() {
         </ProtectedRoute>
       } />
 
+      {/* Legal pages */}
+      <Route path="/privacy" element={<Privacy />} />
+      <Route path="/terms" element={<Terms />} />
+
+      {/* Settings */}
+      <Route path="/settings" element={
+        <ProtectedRoute allowedRoles={['hr', 'admin', 'superadmin']}>
+          <Settings />
+        </ProtectedRoute>
+      } />
+
+      {/* Admin Dashboard */}
+      <Route path="/admin" element={
+        <ProtectedRoute allowedRoles={['admin', 'superadmin']}>
+          <AdminDashboard />
+        </ProtectedRoute>
+      } />
+
       {/* Fallback */}
-      <Route path="*" element={<AuthRedirect />} />
+      <Route path="*" element={<AuthRedirectFallback />} />
     </Routes>
+    <CookieConsent />
+    </>
   );
 }

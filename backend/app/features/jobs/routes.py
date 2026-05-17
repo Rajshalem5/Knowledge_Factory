@@ -6,7 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 
 from app.database import get_db
-from app.dependencies import get_current_user, AuthUser, HR_AND_ABOVE
+from app.dependencies import get_current_user, AuthUser, HR_AND_ABOVE, require_role
+from app.core.enums import Role
 
 router = APIRouter()
 
@@ -75,7 +76,7 @@ async def create_job(
 async def list_jobs(
     status: str | None = None,
     db: AsyncSession = Depends(get_db),
-    current_user: AuthUser = Depends(get_current_user),
+    current_user: AuthUser = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN])),
 ):
     """List all job postings."""
     query = "SELECT id, title, job_description, skillset, location, experience_level, openings, status, created_at FROM jobs"
@@ -112,7 +113,7 @@ async def list_jobs(
 async def get_job(
     job_id: str,
     db: AsyncSession = Depends(get_db),
-    current_user: AuthUser = Depends(get_current_user),
+    current_user: AuthUser = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN])),
 ):
     """Get a single job by ID."""
     result = await db.execute(

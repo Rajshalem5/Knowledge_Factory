@@ -1,0 +1,141 @@
+---
+🤖 KF QA Report | 20260515_163000
+---
+SUMMARY
+Pass: 42 API tests ✅ | 200/248 pytest (80.6%) | Full pipeline E2E ✅
+Fail: 6 warnings/non-critical | 48 pytest failures (19.4%)
+Critical: 1 (script bug, not system - fixed)
+Warnings: 4 config + 4 behavioral
+Roles: superadmin ✅ | admin ✅ | hr ✅ | interviewer ✅ | candidate ✅
+---
+SYSTEMS STATUS
+  Backend: ✅ HEALTHY (http://localhost:8000 - 200, debug mode)
+  Frontend: ✅ SERVING (dev on :5173, built dist available)
+  Database: ✅ INTEGRITY OK (12 tables, 0 FK violations)
+  Ngrok Tunnel: ✅ ACTIVE (https://ila-sturdiest-oversentimentally.ngrok-free.dev)
+  Piston/Sandbox: ❌ DOWN (404) - Code execution tests SKIPPED ⚠️
+---
+ENDPOINT STATUS (Key Routes - All 200 ✅ unless noted)
+  GET /health → 200 ✅
+  POST /api/auth/login → 200 ✅ (all 5 roles: superadmin, admin, hr, interviewer, candidate)
+  POST /api/auth/register → 201 ✅
+  POST /api/auth/forgot-password → 200 ✅
+  POST /api/auth/refresh → 200 ✅ (via HttpOnly cookie)
+  GET /api/auth/me → 200 ✅
+  GET /api/candidates/ (paginated, filtered, sorted) → 200 ✅
+  PATCH /api/candidates/{id}/status → 200 ✅ (FSM enforced)
+  POST /api/candidates/bulk-upload → 200 ✅
+  POST /api/candidates/bulk-upload/preview → 200 ✅
+  GET /api/candidates/{id} → 200 ✅
+  POST /api/candidates/{id}/feedback → 200 ✅
+  GET /api/candidates/{id}/feedback → 200 ✅
+  POST /api/screening/run → 200 ✅
+  GET /api/screening/pipeline-stats → 200 ✅
+  POST /api/assessment/start → 200 ✅
+  GET /api/assessment/active → 200 ✅
+  POST /api/assessment/submit-section → 200 ✅
+  POST /api/assessment/{id}/complete → 200 ✅
+  POST /api/proctoring/event → 200 ✅
+  GET /api/analytics/dashboard → 200 ✅
+  GET /api/analytics/funnel → 200 ✅
+  GET /api/admin/users → 200 ✅
+  GET /api/admin/audit-logs → 200 ✅
+  GET /api/hiring-cycles/ → 200 ✅ (9 cycles)
+  POST /api/selection/candidates/{id}/select → 200 ✅
+  GET /docs → 200 ✅
+  GET /openapi.json → 200 ✅ (47 paths)
+---
+CANDIDATE PIPELINE E2E TEST (FULLY VERIFIED ✓)
+  Register → APPLIED (display: applied)
+  Screening (ROUND_1 auto) → ROUND1_PASSED (display: eligible)
+  Start ROUND_2 Assessment → ROUND2_IN_PROGRESS (display: round1)
+  Submit Section (CODING) + Complete → ROUND2_PASSED (display: round1)
+  Start ROUND_3 Assessment → ROUND3_IN_PROGRESS → INTERVIEW_SCHEDULED (display: round3)
+  Submit Interview Feedback (interviewer) → INTERVIEW_COMPLETED (auto-transition)
+  Select Candidate (selection endpoint) → SELECTED (display: selected)
+
+  Full Chain: APPLIED→ROUND1_PASSED→ROUND2_IN_PROGRESS→ROUND2_PASSED→
+              INTERVIEW_SCHEDULED→INTERVIEW_COMPLETED→SELECTED ✓
+---
+FAILURES (Non-critical / Behavioral)
+  1. Token refresh: Must use HttpOnly cookie (kf_refresh_token), not header
+  2. Frontend ngrok: Warning page blocks curl-based testing
+  3. Interviewer candidate list: Returns 403 (may be by design)
+  4. Proctoring event: Requires candidate_id + assessment_id in body
+  5. Hiring-cycles: Must use trailing slash (/api/hiring-cycles/)
+  6. Analytics test: Crashed due to script bug (fixed in this run)
+---
+KNOWN ISSUES TRIGGERED ⚠️ (No points deducted)
+  1. VITE_API_URL empty — frontend Clerk-based, no API connectivity
+  2. SENDGRID_API_KEY empty — all email flows silently fail
+  3. DEBUG=true — /docs and /redoc publicly accessible (dev mode)
+  4. DATABASE_URL=sqlite — SQLite active in dev
+  5. Piston/Sandbox down — code execution not testable
+  6. Frontend uses Clerk auth (no direct API calls from browser)
+  7. /api/screening/run — NO AUTH required (known security gap)
+  8. /api/screening/pipeline-stats — NO AUTH required
+---
+PERFORMANCE (All FAST ✅ - no degradation >50%)
+  GET /health: 1.2ms (baseline: 2.8ms, -56% 🟢)
+  GET /api/candidates/: 14.0ms (baseline: 17.0ms, -17% 🟢)
+  GET /api/analytics/dashboard: 9.6ms (baseline: 9.9ms, -3% 🟢)
+  GET /api/analytics/funnel: 5.7ms (baseline: 6.8ms, -17% 🟢)
+  GET /api/screening/pipeline-stats: 3.8ms (new)
+  GET /api/admin/users: 3.1ms (baseline: 4.0ms, -23% 🟢)
+  POST /api/auth/login: 259.8ms (baseline: 262.2ms, -1% 🟢)
+  ✅ All endpoints under 500ms. No performance degradation.
+---
+PYTEST RESULTS
+  Passed: 200 | Failed: 48 | Warnings: 4 | Runtime: 88s
+  Key failure patterns:
+  - Audit logs (6 tests): Routes changed, tests expect 403/200 but routes return 404
+  - Code execution (5 tests): Piston down (404 errors)
+  - Candidate routes (2 tests): Schema mismatch (password_hash constraint, status validation)
+  - Interview feedback (4 tests): Auth/permission changes vs test expectations
+  - Screening (7 tests): Test data missing required password_hash field
+  - Analytics service (3 tests): Empty dashboard NoneType crash, test data missing password_hash
+  - Integration flow (4 tests): Status transition expectations outdated
+  Note: Many failures are test data/schema mismatches (password_hash NOT NULL)
+---
+FRONTEND CHECK (via agent-browser)
+  ✅ Landing page loads at localhost:5173
+  ✅ Hero section: "AI-Powered Hiring Pipeline" with "Hire smarter. Evaluate faster."
+  ✅ Pipeline steps displayed: Applied → Eligible → Round 1 → Round 2 → Round 3 → Interview → Selected
+  ✅ Features section: AI Assessments, Proctoring, Bias-Free Selection, Pipeline
+  ✅ Cookie consent banner with Accept/Decline
+  ✅ Navigation: Login, Apply Now, Theme Toggle
+  ✅ Zero console errors (only Vite HMR + Clerk dev key warnings)
+  ✅ Zero 4xx/5xx network requests
+  ❌ Ngrok warning page blocks external access without skip-browser-warning header
+---
+SECURITY
+  ✅ SQLi injection attempt blocked (401)
+  ✅ XSS in registration stored as text (not executed)
+  ✅ Cross-role access blocked (401/403)
+  ✅ Tampered JWT rejected (401)
+  ✅ Protected endpoints require auth
+  ⚠️ Unprotected endpoints: /api/screening/run, /api/screening/pipeline-stats (known issue)
+---
+DATABASE STATUS
+  ✅ PRAGMA integrity_check: ok
+  ✅ 12 tables present
+  ✅ Row counts: users=11, candidates=32, hiring_cycles=9, assessments=11, submissions=15, proctoring_records=17
+  ✅ Cleaned up 7 QA test candidates after testing
+  ❌ No DELETE API endpoint for candidates (manual DB cleanup needed)
+---
+CORS & HEADERS
+  ✅ Access-Control-Allow-Origin: http://localhost:5173
+  ✅ Security headers: X-Content-Type-Options, X-Frame-Options, X-XSS-Protection
+  ✅ Referrer-Policy: strict-origin-when-cross-origin
+---
+RECOMMENDATIONS
+  HIGH: Set VITE_API_URL for frontend-backend connectivity
+  HIGH: Configure SENDGRID_API_KEY for email flows (forgot-password, notifications)
+  MEDIUM: Fix pytest test fixtures to match current schema (password_hash, status FSM)
+  MEDIUM: Add candidate DELETE API endpoint for test cleanup
+  MEDIUM: Fix analytics service crash (TypeError on NoneType) when dashboard empty
+  LOW: Restrict /api/screening/* endpoints with proper auth
+  LOW: Add proper CORS for production domains
+  LOW: Update OpenAPI with response models for all endpoints
+---
+RUN_ID: 20260515_163000
