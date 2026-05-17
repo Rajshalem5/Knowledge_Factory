@@ -250,13 +250,17 @@ async def preview_bulk_upload(
     return await _process_bulk_upload_csv(file)
 
 
+# ── Bulk upload chunking ──────────────────────────────────────
+BULK_UPLOAD_CHUNK_SIZE = 100
+
+
 @router.post("/bulk-upload", status_code=status.HTTP_201_CREATED)
 async def bulk_upload_candidates(
     file: UploadFile | None = File(None),
     db: AsyncSession = Depends(get_db),
     current_user=Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN])),
 ):
-    """Bulk upload candidates from CSV — validate, preview, and save valid records."""
+    """Bulk upload candidates from CSV — validates, chunks, inserts."""
     from app.features.candidates.models import Candidate
     from app.features.hiring_cycles.models import HiringCycle
     import csv
@@ -282,13 +286,17 @@ async def bulk_upload_candidates(
     if not cycle:
         raise HTTPException(status_code=500, detail="No active hiring cycle")
 
-    saved = 0
+    # ── Step 1: Pre-validate & build candidate objects ────────────
+    all_rows = []
     errors = []
     for i, row in enumerate(records):
         try:
+            email = row.get("email", "").strip()
+            if not email:
+                raise ValueError("Email is required")
             candidate = Candidate(
                 cycle_id=cycle.id,
-                email=row.get("email", "").strip(),
+                email=email,
                 name=row.get("name", "").strip(),
                 college=row.get("college", "").strip(),
                 branch=row.get("branch", "").strip(),
@@ -298,13 +306,50 @@ async def bulk_upload_candidates(
                 status=CandidateStatus.APPLIED,
                 phone=row.get("phone", "").strip() or None,
             )
-            db.add(candidate)
-            saved += 1
+            all_rows.append(candidate)
         except (ValueError, KeyError) as e:
             errors.append({"row": i + 2, "error": str(e)})
 
-    if saved > 0:
-        await db.flush()
+    if not all_rows:
+        return {
+            "batch_id": str(uuid.uuid4())[:8],
+            "total_records": len(records),
+            "saved": 0,
+            "errors": errors,
+        }
+
+    # ── Step 2: Bulk-check existing emails ────────────────────────
+    new_emails = {c.email for c in all_rows}
+    existing = set()
+    for chunk_start in range(0, len(new_emails), 500):
+        email_chunk = list(new_emails)[chunk_start:chunk_start + 500]
+        stmt = select(Candidate.email).where(Candidate.email.in_(email_chunk))
+        res = await db.execute(stmt)
+        existing.update(row[0] for row in res.fetchall())
+
+    dupes_skipped = 0
+    valid_rows = []
+    for c in all_rows:
+        if c.email in existing:
+            dupes_skipped += 1
+            continue
+        valid_rows.append(c)
+        existing.add(c.email)  # prevent intra-batch duplicates
+
+    # ── Step 3: Chunked insert ────────────────────────────────────
+    saved = 0
+    for chunk_start in range(0, len(valid_rows), BULK_UPLOAD_CHUNK_SIZE):
+        chunk = valid_rows[chunk_start:chunk_start + BULK_UPLOAD_CHUNK_SIZE]
+        try:
+            db.add_all(chunk)
+            await db.commit()
+            saved += len(chunk)
+        except Exception as e:
+            await db.rollback()
+            errors.append({
+                "row": f"chunk-{chunk_start // BULK_UPLOAD_CHUNK_SIZE + 1}",
+                "error": f"Chunk insert failed: {str(e)}",
+            })
 
     return {
         "batch_id": str(uuid.uuid4())[:8],
