@@ -128,6 +128,8 @@ async def run_screening(
     current_user=Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN])),
 ):
     """Run screening: evaluate APPLIED candidates against eligibility config and update statuses live."""
+    import asyncio
+
     # Get active hiring cycle with eligibility config
     cycle_stmt = select(HiringCycle).where(HiringCycle.status == "ACTIVE").limit(1)
     cycle_result = await db.execute(cycle_stmt)
@@ -147,7 +149,99 @@ async def run_screening(
     allowed_branches = [b.upper() for b in config.get("allowed_branches", ["CSE", "ECE", "IT", "EEE"])]
     allowed_years = config.get("passed_out_years", None)
 
-    # Branch name normalization: map common full names to short codes
+    # Get all APPLIED candidates (fast DB query, yields to event loop)
+    stmt = select(Candidate).where(Candidate.status == CandidateStatus.APPLIED.value)
+    result = await db.execute(stmt)
+    candidates = result.scalars().all()
+
+    # Pack candidate data into plain dicts for the CPU-bound thread
+    candidate_dicts = [
+        {
+            "id": c.id,
+            "name": c.name,
+            "email": c.email,
+            "cgpa": float(c.cgpa) if c.cgpa else 0,
+            "branch": (c.branch or "").strip(),
+            "passed_out_year": c.passed_out_year,
+            "custom_fields_raw": c.custom_fields,
+        }
+        for c in candidates
+    ]
+
+    # ── CPU-bound screening logic runs in a thread → event loop stays free ──
+    results = await asyncio.to_thread(
+        _screen_candidates_sync,
+        candidate_dicts,
+        min_cgpa,
+        allowed_branches,
+        allowed_years,
+    )
+
+    # ── Apply decisions on the main thread (DB writes) ──
+    details = []
+    passed = 0
+    rejected = 0
+    for decision in results:
+        cid = decision["id"]
+        status_val = decision["status"]
+        reasons = decision["reasons"]
+
+        # Fetch the ORM object (already in session)
+        stmt = select(Candidate).where(Candidate.id == cid)
+        res = await db.execute(stmt)
+        candidate = res.scalar_one_or_none()
+        if not candidate:
+            continue
+
+        candidate.status = status_val
+        if reasons:
+            existing = candidate.custom_fields or {}
+            if isinstance(existing, str):
+                try:
+                    existing = json.loads(existing)
+                except Exception:
+                    existing = {}
+            existing["screening_notes"] = "; ".join(reasons)
+            candidate.custom_fields = existing
+            rejected += 1
+        else:
+            passed += 1
+
+        details.append({
+            "name": decision["name"],
+            "email": decision["email"],
+            "result": "REJECTED" if reasons else "ELIGIBLE",
+            "reasons": reasons,
+        })
+
+    await db.commit()
+
+    return {
+        "screened": len(candidates),
+        "passed": passed,
+        "rejected": rejected,
+        "min_cgpa": min_cgpa,
+        "allowed_branches": allowed_branches,
+        "cycle_name": cycle.name,
+        "details": details,
+    }
+
+
+# ── Pure sync function (runs in thread pool via asyncio.to_thread) ─────────
+def _screen_candidates_sync(
+    candidate_dicts: list[dict],
+    min_cgpa: float,
+    allowed_branches: list[str],
+    allowed_years: list[int] | None,
+) -> list[dict]:
+    """CPU-bound screening logic — no async, no DB, pure Python.
+    
+    Runs in a thread pool so the async event loop stays free to handle
+    other requests during regex/alias matching.
+    """
+    import json
+    import re
+
     BRANCH_ALIASES = {
         "COMPUTER SCIENCE": "CSE", "COMPUTERSCIENCE": "CSE", "CS": "CSE", "C.S": "CSE", "C.S.": "CSE",
         "INFORMATION TECHNOLOGY": "IT", "INFORMATIONTECHNOLOGY": "IT", "INFO TECH": "IT", "I.T": "IT", "I.T.": "IT",
@@ -158,78 +252,41 @@ async def run_screening(
     }
 
     def normalize_branch(b: str) -> str:
-        """Normalize branch name to standard code using aliases."""
         cleaned = b.strip().upper()
-        # Remove extra spaces, punctuation
-        import re
         cleaned = re.sub(r"[^A-Z0-9 ]", "", cleaned)
         cleaned = re.sub(r"\s+", " ", cleaned).strip()
         return BRANCH_ALIASES.get(cleaned, cleaned)
 
-    # Get all APPLIED candidates
-    stmt = select(Candidate).where(Candidate.status == CandidateStatus.APPLIED.value)
-    result = await db.execute(stmt)
-    candidates = result.scalars().all()
+    from app.core.enums import CandidateStatus
 
-    screened = len(candidates)
-    passed = 0
-    rejected = 0
-    details = []
-
-    for candidate in candidates:
+    results = []
+    for d in candidate_dicts:
         reasons = []
 
         # Check CGPA
-        cgpa = float(candidate.cgpa) if candidate.cgpa else 0
+        cgpa = d["cgpa"]
         if cgpa < min_cgpa:
             reasons.append(f"CGPA {cgpa} < {min_cgpa}")
 
         # Check branch (with name normalization)
-        branch_raw = (candidate.branch or "").strip()
+        branch_raw = d["branch"]
         branch_normalized = normalize_branch(branch_raw) if branch_raw else ""
         if branch_normalized and branch_normalized not in allowed_branches:
-            reasons.append(f"Branch '{candidate.branch}' not in allowed list")
+            reasons.append(f"Branch '{branch_raw}' not in allowed list")
 
         # Check passed-out year
-        if allowed_years and candidate.passed_out_year:
-            if candidate.passed_out_year not in allowed_years:
-                reasons.append(f"Year {candidate.passed_out_year} not in {allowed_years}")
+        if allowed_years and d["passed_out_year"]:
+            if d["passed_out_year"] not in allowed_years:
+                reasons.append(f"Year {d['passed_out_year']} not in {allowed_years}")
 
-        if reasons:
-            candidate.status = CandidateStatus.ROUND1_REJECTED.value
-            existing = candidate.custom_fields or {}
-            if isinstance(existing, str):
-                try:
-                    existing = json.loads(existing)
-                except Exception:
-                    existing = {}
-            existing["screening_notes"] = "; ".join(reasons)
-            candidate.custom_fields = existing
-            rejected += 1
-            details.append({
-                "name": candidate.name,
-                "email": candidate.email,
-                "result": "REJECTED",
-                "reasons": reasons
-            })
-        else:
-            candidate.status = CandidateStatus.ROUND1_PASSED.value
-            passed += 1
-            details.append({
-                "name": candidate.name,
-                "email": candidate.email,
-                "result": "ELIGIBLE",
-                "reasons": []
-            })
+        status_val = CandidateStatus.ROUND1_REJECTED.value if reasons else CandidateStatus.ROUND1_PASSED.value
 
-    await db.commit()
+        results.append({
+            "id": d["id"],
+            "name": d["name"],
+            "email": d["email"],
+            "status": status_val,
+            "reasons": reasons,
+        })
 
-    return {
-        "screened": screened,
-        "passed": passed,
-        "rejected": rejected,
-        "min_cgpa": min_cgpa,
-        "allowed_branches": allowed_branches,
-        "cycle_name": cycle.name,
-        "details": details,
-    }
+    return results
