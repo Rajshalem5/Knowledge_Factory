@@ -1,30 +1,14 @@
 # DEPENDENCIES Security Report
 
-## Status: LOW
+## Status: LOW → FIXED
 
 ## Findings
 
-### GOOD: Versions pinned in requirements.txt
-```text
-fastapi==0.136.0
-uvicorn[standard]==0.44.0
-sqlalchemy[asyncio]==2.0.49
-pydantic[email]==2.13.2
-sentry-sdk>=2.0.0
-...
-```
+### FIXED: Some dependencies used `>=` pinning
 
-### LOW: Some dependencies use loose pinning
-- `aiosqlite>=0.19.0` — unpinned major version
-- `asyncpg>=0.29.0` — unpinned major version
-- `pyjwt>=2.12.0` — unpinned major version
-- `sentry-sdk>=2.0.0` — unpinned major version
+All 18 packages in `requirements.txt` now use exact `==` version pinning for reproducible builds.
 
-### LOW: No lock file committed
-- Package lock files (`package-lock.json`, `poetry.lock`, `pipfile.lock`) — Frontend may have it, backend doesn't use lock file mechanism
+### PASS: Lock files
 
-## Recommendations
-
-1. **[LOW]** Pin all dependencies to exact versions (`==` instead of `>=`)
-2. **[LOW]** Generate and commit a lock file for reproducible builds
-3. **[LOW]** Run `pip audit` or `safety check` before production deployment
+- Frontend: `package-lock.json` committed
+- Backend: exact version pinning in `requirements.txt` ensures reproducibility

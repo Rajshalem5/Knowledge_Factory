@@ -1,6 +1,7 @@
 """Authentication routes - simplified without multi-tenancy."""
 
 from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
+from pathlib import Path
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -8,12 +9,15 @@ from app.database import get_db
 from app.dependencies import get_current_user
 from app.features.auth.schemas import (
     CandidateRegisterRequest,
+    ChangePasswordRequest,
     ClerkSyncRequest,
     ForgotPasswordRequest,
     LoginRequest,
     OtpVerifyRequest,
     ResetPasswordRequest,
     TokenResponse,
+    UpdateProfileRequest,
+    UserProfileResponse,
     UserResponse,
 )
 from app.features.auth.service import AuthService
@@ -416,3 +420,115 @@ async def reset_password(data: ResetPasswordRequest, db: AsyncSession = Depends(
         
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to reset password: {str(e)}")
+
+
+# ── Profile Settings (all authenticated users) ──────────────────────
+
+
+@router.get("/me/profile", response_model=UserProfileResponse)
+async def get_profile(
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Get full profile for the current user (staff or candidate)."""
+    auth_service = AuthService(db)
+    try:
+        return await auth_service.get_profile(current_user.id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.patch("/me", response_model=UserProfileResponse)
+async def update_profile(
+    data: UpdateProfileRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Update current user's profile (name only for now)."""
+    auth_service = AuthService(db)
+    try:
+        return await auth_service.update_profile(current_user.id, data.name)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.post("/change-password")
+async def change_password(
+    data: ChangePasswordRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Change password for the current user."""
+    auth_service = AuthService(db)
+    try:
+        await auth_service.change_password(
+            current_user.id,
+            data.current_password,
+            data.new_password,
+        )
+        return {"message": "Password updated successfully"}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/upload-photo")
+async def upload_photo(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Upload a profile photo (JPEG/PNG, max 2MB)."""
+    import os
+    import uuid
+    import aiofiles
+
+    UPLOAD_DIR = Path(__file__).resolve().parent.parent.parent.parent / "uploads" / "avatars"
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+    form = await request.form()
+    photo = form.get("photo")
+    if not photo:
+        raise HTTPException(status_code=400, detail="No photo file provided")
+
+    content = await photo.read()
+
+    # Validate file type by magic bytes
+    if len(content) < 4:
+        raise HTTPException(status_code=400, detail="File too small or empty")
+    if content[:4] not in (b"\xff\xd8\xff\xe0", b"\xff\xd8\xff\xe1", b"\x89PNG"):
+        raise HTTPException(status_code=400, detail="Only JPEG and PNG files are allowed")
+
+    # Validate file size (2MB max)
+    if len(content) > 2 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File too large (max 2MB)")
+
+    # Determine extension
+    ext = ".jpg" if content[:2] == b"\xff\xd8" else ".png"
+
+    # Save to disk
+    filename = f"{uuid.uuid4()}{ext}"
+    filepath = UPLOAD_DIR / filename
+    async with aiofiles.open(str(filepath), "wb") as f:
+        await f.write(content)
+
+    photo_url = f"/uploads/avatars/{filename}"
+
+    # Update the user/candidate record
+    auth_service = AuthService(db)
+    stmt = select(User).where(User.id == current_user.id)
+    result = await db.execute(stmt)
+    user_obj = result.scalar_one_or_none()
+
+    if user_obj:
+        user_obj.photo_url = photo_url
+    else:
+        stmt = select(Candidate).where(Candidate.id == current_user.id)
+        result = await db.execute(stmt)
+        candidate_obj = result.scalar_one_or_none()
+        if candidate_obj:
+            candidate_obj.photo_url = photo_url
+        else:
+            raise HTTPException(status_code=404, detail="User not found")
+
+    await db.flush()
+    return {"photo_url": photo_url}

@@ -109,7 +109,7 @@ async def rate_limit_middleware(request: Request, call_next):
     if not path.startswith("/api/auth/") or path in ("/api/auth/me", "/api/auth/logout", "/api/auth/refresh", "/api/auth/confirm-password", "/api/auth/delete-account"):
         return await call_next(request)
 
-    max_requests = RATE_LIMIT_MAX * 5 if settings.DEBUG else RATE_LIMIT_MAX  # 100 in dev, 20 in prod
+    max_requests = RATE_LIMIT_MAX * 50 if settings.DEBUG else RATE_LIMIT_MAX  # 1000 in dev, 20 in prod
 
     client_ip = request.client.host if request.client else "unknown"
     key = f"{client_ip}:{path}"
@@ -143,6 +143,25 @@ async def maintenance_middleware(request: Request, call_next):
 if settings.SENTRY_DSN:
     import sentry_sdk
     sentry_sdk.init(dsn=settings.SENTRY_DSN, traces_sample_rate=0.1)
+    logger.info("Sentry initialized — %s", settings.SENTRY_DSN[:30] + "...")
+
+# ── Catch-All Exception Middleware ─────────────────────────────
+@app.middleware("http")
+async def catch_exceptions(request: Request, call_next):
+    """Log every unhandled 500 + return clean JSON.
+    
+    With Sentry: Sentry auto-captures the exception.
+    Without Sentry: ensures errors are at least logged server-side.
+    """
+    try:
+        return await call_next(request)
+    except Exception as exc:
+        logger.exception("500 on %s %s: %s", request.method, request.url.path, exc)
+        from fastapi.responses import JSONResponse
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "Something went wrong"},
+        )
 
 # ── Feature Routers ───────────────────────────────────────────────
 from app.features.auth.routes import router as auth_router
@@ -158,6 +177,7 @@ from app.features.screening.routes import router as screening_router
 from app.features.code_execution.routes import router as code_execution_router
 from app.features.questions.routes import router as questions_router
 from app.features.audit.routes import router as audit_router
+from app.features.superadmin.routes import router as superadmin_router
 
 app.include_router(auth_router, prefix="/api/auth", tags=["Auth"])
 app.include_router(candidates_router, prefix="/api/candidates", tags=["Candidates"])
@@ -172,6 +192,7 @@ app.include_router(admin_router, prefix="/api/admin", tags=["Admin"])
 app.include_router(hiring_cycles_router, prefix="/api/hiring-cycles", tags=["Hiring Cycles"])
 app.include_router(screening_router, prefix="/api/screening", tags=["Screening"])
 app.include_router(audit_router, prefix="/api/audit", tags=["Audit"])
+app.include_router(superadmin_router, prefix="/api/superadmin", tags=["SuperAdmin"])
 
 
 @app.get("/health")

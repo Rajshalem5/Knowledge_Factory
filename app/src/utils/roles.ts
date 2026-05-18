@@ -56,11 +56,11 @@ export function getStatusLabel(candidate: { display_status?: string; status?: st
 
 export function canAccessRoute(role: Role, route: string): boolean {
   const routes: Record<Role, string[]> = {
-    candidate: ['/portal', '/assessment'],
-    hr: ['/dashboard', '/candidates', '/selection', '/analytics'],
-    interviewer: ['/interview', '/candidates'],
-    admin: ['/dashboard', '/candidates', '/selection', '/analytics', '/interview'],
-    superadmin: ['/superadmin', '/dashboard', '/candidates', '/selection', '/analytics'],
+    candidate: ['/portal', '/assessment', '/settings'],
+    hr: ['/dashboard', '/candidates', '/selection', '/analytics', '/settings'],
+    interviewer: ['/interview', '/candidates', '/settings'],
+    admin: ['/dashboard', '/candidates', '/selection', '/analytics', '/interview', '/settings'],
+    superadmin: ['/superadmin', '/dashboard', '/candidates', '/selection', '/analytics', '/settings'],
   };
   return routes[role]?.some(r => route.startsWith(r)) ?? false;
 }

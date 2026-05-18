@@ -1,15 +1,17 @@
 # ERROR_HANDLING Security Report
 
-## Status: LOW
+## Status: LOW → FIXED
 
 ## Findings
 
-### LOW: No global exception handler
+### FIXED: No global exception handler
 
-The application does not have a global exception handler that catches and sanitizes unhandled exceptions. However:
-- `settings.DEBUG=true` in dev — this is acceptable for development
-- In production (`DEBUG=false`), FastAPI's default error handling returns generic `{"detail": "Internal Server Error"}` for unhandled exceptions
-- The app uses `HTTPException` for expected errors with safe messages
+**Fix applied:**
+- Added `SENTRY_DSN` field to `Settings` in `backend/app/core/config.py`
+- Wired up Sentry init in `main.py` (was already stubbed but missing config)
+- Added catch-all middleware that logs every unhandled 500 and returns clean JSON
+- In production: Sentry captures + groups + traces every error
+- In development: errors are at least logged server-side with full traceback
 
 ### PASS: docs disabled in production
 ```python

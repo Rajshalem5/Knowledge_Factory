@@ -20,7 +20,7 @@ import AnalyticsDashboard from './pages/analytics/AnalyticsDashboard';
 import SuperAdminPanel from './pages/superadmin/SuperAdminPanel';
 import Privacy from './pages/legal/Privacy';
 import Terms from './pages/legal/Terms';
-import Settings from './pages/Settings/Settings';
+import SettingsPage from './pages/settings/SettingsPage';
 import AdminDashboard from './pages/Admin/Dashboard';
 import CookieConsent from './components/CookieConsent';
 
@@ -111,10 +111,10 @@ export default function App() {
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/terms" element={<Terms />} />
 
-      {/* Settings */}
+      {/* Settings — accessible to all authenticated users */}
       <Route path="/settings" element={
-        <ProtectedRoute allowedRoles={['hr', 'admin', 'superadmin']}>
-          <Settings />
+        <ProtectedRoute allowedRoles={['candidate', 'hr', 'admin', 'superadmin', 'interviewer']}>
+          <SettingsPage />
         </ProtectedRoute>
       } />
 

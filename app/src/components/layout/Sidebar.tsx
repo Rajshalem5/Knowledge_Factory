@@ -10,11 +10,13 @@ import {
   Code,
   Factory,
   LogOut,
+  Settings,
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { useAuth } from '../../contexts/AuthContext';
 import type { Role } from '../../types';
 import { ROLE_LABELS } from '../../utils/roles';
+import { useState, useRef, useEffect } from 'react';
 
 interface NavItem {
   label: string;
@@ -64,10 +66,31 @@ export function Sidebar({ collapsed = false, className }: SidebarProps) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const role = user?.role;
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setShowUserMenu(false);
+      }
+    }
+    if (showUserMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showUserMenu]);
 
   if (!user || !role) return null;
 
   const items = NAV_ITEMS[role];
+
+  const handleLogout = () => {
+    setShowUserMenu(false);
+    logout();
+    navigate('/');
+  };
 
   return (
     <aside
@@ -103,8 +126,14 @@ export function Sidebar({ collapsed = false, className }: SidebarProps) {
         ))}
       </nav>
 
-      <div className="p-3">
-        <div className={cn('flex items-center gap-3', collapsed && 'justify-center')}>
+      <div className="p-3 relative" ref={menuRef}>
+        <button
+          onClick={() => setShowUserMenu(prev => !prev)}
+          className={cn(
+            'flex items-center gap-3 w-full text-left',
+            collapsed && 'justify-center',
+          )}
+        >
           <div className="w-8 h-8 rounded-full bg-on-primary-container/15 flex items-center justify-center flex-shrink-0">
             <span className="text-xs font-bold text-on-primary-container">{user.name.charAt(0)}</span>
           </div>
@@ -115,15 +144,31 @@ export function Sidebar({ collapsed = false, className }: SidebarProps) {
             </div>
           )}
           {!collapsed && (
-            <button
-              onClick={() => { logout(); navigate('/'); }}
-              className="text-on-primary-container/60 hover:text-danger transition-colors"
-              title="Logout"
-            >
-              <LogOut size={16} />
-            </button>
+            <LogOut size={14} className="text-on-primary-container/40" />
           )}
-        </div>
+        </button>
+
+        {showUserMenu && (
+          <div className={cn(
+            'absolute bottom-full left-3 right-3 mb-1 rounded-md bg-surface-container-high ghost-shadow overflow-hidden',
+            collapsed && 'left-1/2 -translate-x-1/2 w-40',
+          )}>
+            <button
+              onClick={() => { setShowUserMenu(false); navigate('/settings'); }}
+              className="flex items-center gap-2 w-full px-3 py-2 text-sm text-on-surface hover:bg-surface-variant/20 transition-colors"
+            >
+              <Settings size={14} />
+              Settings
+            </button>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 w-full px-3 py-2 text-sm text-danger hover:bg-surface-variant/20 transition-colors"
+            >
+              <LogOut size={14} />
+              Logout
+            </button>
+          </div>
+        )}
       </div>
     </aside>
   );

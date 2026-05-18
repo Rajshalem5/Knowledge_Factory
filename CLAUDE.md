@@ -372,3 +372,8 @@ All previously tracked API mismatches have been fixed. See commit history for de
 - CORS properly configured for allowed origins
 - File upload validation and type checking
 - Rate limiting on authentication and code execution endpoints
+
+<!-- SPECKIT START -->
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan
+<!-- SPECKIT END -->

@@ -215,6 +215,21 @@ async def _process_bulk_upload_csv(file: UploadFile | None) -> BulkUploadPreview
         return BulkUploadPreview(batch_id="", total_records=0, valid_records=0, invalid_records=0, preview=[], errors=[])
 
     content = await file.read()
+
+    # Validate: size, magic bytes, UTF-8 decode
+    from app.core.file_validation import validate_upload, FileValidationError
+    try:
+        validate_upload(
+            file.filename or "upload.csv",
+            content,
+            allow_text=True,      # CSV is plain text
+        )
+    except FileValidationError as e:
+        return BulkUploadPreview(
+            batch_id="", total_records=0, valid_records=0, invalid_records=0,
+            preview=[], errors=[{"row": 0, "error": str(e)}],
+        )
+
     text = content.decode("utf-8")
     reader = csv.DictReader(io.StringIO(text))
     records = list(reader)
@@ -272,6 +287,18 @@ async def bulk_upload_candidates(
         raise HTTPException(status_code=400, detail="No file provided")
 
     content = await file.read()
+
+    # Validate: size, magic bytes, UTF-8 decode
+    from app.core.file_validation import validate_upload, FileValidationError
+    try:
+        validate_upload(
+            file.filename or "upload.csv",
+            content,
+            allow_text=True,
+        )
+    except FileValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
     text = content.decode("utf-8")
     reader = csv.DictReader(io.StringIO(text))
     records = list(reader)

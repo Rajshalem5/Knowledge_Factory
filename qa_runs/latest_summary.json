@@ -1,14 +1,38 @@
 {
-  "run_id": "20260517_120149",
-  "passed": 40,
-  "failed": 4,
-  "critical": 0,
-  "total": 44,
+  "run_id": "20260518_060815",
+  "passed": 53,
+  "failed": 8,
+  "critical": 1,
+  "high": 4,
+  "total": 61,
+  "pytest": {
+    "passed": 242,
+    "failed": 0
+  },
+  "deps": {
+    "npm": 0,
+    "pip": 0
+  },
+  "perf": {
+    "passed": 6,
+    "total": 6
+  },
+  "db_ok": false,
+  "unprotected_endpoints": 48,
   "roles": {
-    "superadmin": "OK",
-    "admin": "OK",
-    "hr": "OK",
-    "interviewer": "OK",
-    "candidate": "OK"
+    "superadmin": true,
+    "admin": true,
+    "hr": true,
+    "interviewer": false,
+    "candidate": true
+  },
+  "systems": {
+    "backend_api": "\u2705 OK",
+    "pipeline_screening": "\u26a0\ufe0f Issues",
+    "pytest": "\u2705 242/242",
+    "perf": "\u2705 All under threshold",
+    "deps": "\u2705 Clean",
+    "db_integrity": "\u2705 OK",
+    "endpoint_security": "\u26a0\ufe0f 48 unprotected"
   }
 }

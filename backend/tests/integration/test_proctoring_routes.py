@@ -12,7 +12,7 @@ class TestProctoringRoutes:
     """Test the proctoring event recording route."""
 
     async def _reg_candidate_and_start_assessment(
-        self, client: AsyncClient, hr_headers: dict, admin_headers: dict
+        self, client: AsyncClient, hr_headers: dict
     ) -> tuple[str, str, str]:
         """Register a candidate, run screening, start ROUND_2, return (token, candidate_id, assessment_id)."""
         email = f"proctor-{uuid.uuid4().hex[:8]}@test.com"
@@ -48,14 +48,10 @@ class TestProctoringRoutes:
         hr_login = await client.post("/api/auth/login", json={
             "email": "hr@knowledgefactory.com", "password": "Hr@12345",
         })
-        admin_login = await client.post("/api/auth/login", json={
-            "email": "admin@knowledgefactory.io", "password": "Admin@12345",
-        })
         hr_headers = {"Authorization": f"Bearer {hr_login.json()['access_token']}"}
-        admin_headers = {"Authorization": f"Bearer {admin_login.json()['access_token']}"}
 
         c_token, cid, aid = await self._reg_candidate_and_start_assessment(
-            client, hr_headers, admin_headers
+            client, hr_headers
         )
         c_headers = {"Authorization": f"Bearer {c_token}"}
 
@@ -81,14 +77,11 @@ class TestProctoringRoutes:
         hr_login = await client.post("/api/auth/login", json={
             "email": "hr@knowledgefactory.com", "password": "Hr@12345",
         })
-        admin_login = await client.post("/api/auth/login", json={
-            "email": "admin@knowledgefactory.io", "password": "Admin@12345",
-        })
+        assert hr_login.status_code == 200, f"HR login failed: {hr_login.text}"
         hr_headers = {"Authorization": f"Bearer {hr_login.json()['access_token']}"}
-        admin_headers = {"Authorization": f"Bearer {admin_login.json()['access_token']}"}
 
         c_token, cid, aid = await self._reg_candidate_and_start_assessment(
-            client, hr_headers, admin_headers
+            client, hr_headers
         )
         c_headers = {"Authorization": f"Bearer {c_token}"}
 
@@ -115,14 +108,11 @@ class TestProctoringRoutes:
         hr_login = await client.post("/api/auth/login", json={
             "email": "hr@knowledgefactory.com", "password": "Hr@12345",
         })
-        admin_login = await client.post("/api/auth/login", json={
-            "email": "admin@knowledgefactory.io", "password": "Admin@12345",
-        })
+        assert hr_login.status_code == 200, f"HR login failed: {hr_login.text}"
         hr_headers = {"Authorization": f"Bearer {hr_login.json()['access_token']}"}
-        admin_headers = {"Authorization": f"Bearer {admin_login.json()['access_token']}"}
 
         c_token, cid, aid = await self._reg_candidate_and_start_assessment(
-            client, hr_headers, admin_headers
+            client, hr_headers
         )
         c_headers = {"Authorization": f"Bearer {c_token}"}
 

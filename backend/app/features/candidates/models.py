@@ -33,6 +33,7 @@ class Candidate(Base):
     govt_id_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
     language_choice: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    photo_url: Mapped[str | None] = mapped_column(String(500), nullable=True, default=None)
     custom_fields: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     status: Mapped[CandidateStatus] = mapped_column(String(30), nullable=False, default=CandidateStatus.APPLIED, index=True)
     email_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

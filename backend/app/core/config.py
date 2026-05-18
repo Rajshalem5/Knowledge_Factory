@@ -4,6 +4,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str
     SECRET_KEY: str
     ALGORITHM: str
+    SENTRY_DSN: str | None = None
 
     model_config = SettingsConfigDict(
         env_file=".env",

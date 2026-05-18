@@ -22,9 +22,9 @@
 | 12 | XSS | PASS | [report](reports/XSS_REPORT.md) | — |
 | 13 | PAYMENT_WEBHOOKS | N/A | [report](reports/PAYMENT_WEBHOOKS_REPORT.md) | — |
 | 14 | FILE_UPLOADS | MEDIUM | [report](reports/FILE_UPLOADS_REPORT.md) | — |
-| 15 | ERROR_HANDLING | LOW | [report](reports/ERROR_HANDLING_REPORT.md) | — |
+| 15 | ERROR_HANDLING | LOW → FIXED | [report](reports/ERROR_HANDLING_REPORT.md) | — |
 | 16 | PASSWORD_HASHING | PASS | [report](reports/PASSWORD_HASHING_REPORT.md) | — |
-| 17 | DEPENDENCIES | LOW | [report](reports/DEPENDENCIES_REPORT.md) | — |
+| 17 | DEPENDENCIES | LOW → FIXED | [report](reports/DEPENDENCIES_REPORT.md) | — |
 
 ## Issues Fixed During Audit
 

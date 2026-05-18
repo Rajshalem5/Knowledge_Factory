@@ -26,3 +26,4 @@ class User(Base):
     created_by: Mapped[str | None] = mapped_column(String(36), nullable=True, default=None)
     updated_by: Mapped[str | None] = mapped_column(String(36), nullable=True, default=None)
     clerk_id: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None, index=True)
+    photo_url: Mapped[str | None] = mapped_column(String(500), nullable=True, default=None)

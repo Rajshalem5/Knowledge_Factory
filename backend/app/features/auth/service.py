@@ -116,3 +116,105 @@ class AuthService:
                 "role": role,
             },
         }
+
+    async def update_profile(self, user_id: str, name: str) -> dict:
+        """Update name for either a User or Candidate. Returns updated profile."""
+        # Try User table first (staff)
+        stmt = select(User).where(User.id == user_id)
+        result = await self.db.execute(stmt)
+        user = result.scalar_one_or_none()
+
+        if user:
+            user.name = _sanitize_text(name)
+            await self.db.flush()
+            return {
+                "id": str(user.id),
+                "email": user.email,
+                "name": user.name,
+                "role": user.role.value if hasattr(user.role, "value") else str(user.role),
+                "photo_url": user.photo_url,
+                "status": user.status.value if hasattr(user.status, "value") else str(user.status),
+                "created_at": user.created_at.isoformat() if user.created_at else None,
+            }
+
+        # Try Candidate table
+        stmt = select(Candidate).where(Candidate.id == user_id)
+        result = await self.db.execute(stmt)
+        candidate = result.scalar_one_or_none()
+
+        if candidate:
+            candidate.name = _sanitize_text(name)
+            await self.db.flush()
+            return {
+                "id": str(candidate.id),
+                "email": candidate.email,
+                "name": candidate.name,
+                "role": "CANDIDATE",
+                "photo_url": candidate.photo_url,
+                "status": None,
+                "created_at": candidate.created_at.isoformat() if candidate.created_at else None,
+            }
+
+        raise ValueError("User not found")
+
+    async def change_password(self, user_id: str, current_password: str, new_password: str) -> None:
+        """Verify current password and update to new password."""
+        # Check User table
+        stmt = select(User).where(User.id == user_id)
+        result = await self.db.execute(stmt)
+        user = result.scalar_one_or_none()
+
+        if user:
+            if not verify_password(current_password, user.password_hash):
+                raise ValueError("Current password is incorrect")
+            user.password_hash = hash_password(new_password)
+            await self.db.flush()
+            return
+
+        # Check Candidate table
+        stmt = select(Candidate).where(Candidate.id == user_id)
+        result = await self.db.execute(stmt)
+        candidate = result.scalar_one_or_none()
+
+        if candidate:
+            if not verify_password(current_password, candidate.password_hash):
+                raise ValueError("Current password is incorrect")
+            candidate.password_hash = hash_password(new_password)
+            await self.db.flush()
+            return
+
+        raise ValueError("User not found")
+
+    async def get_profile(self, user_id: str) -> dict:
+        """Get full profile for a user (staff or candidate)."""
+        stmt = select(User).where(User.id == user_id)
+        result = await self.db.execute(stmt)
+        user = result.scalar_one_or_none()
+
+        if user:
+            return {
+                "id": str(user.id),
+                "email": user.email,
+                "name": user.name,
+                "role": user.role.value if hasattr(user.role, "value") else str(user.role),
+                "photo_url": user.photo_url,
+                "status": user.status.value if hasattr(user.status, "value") else str(user.status),
+                "created_at": user.created_at.isoformat() if user.created_at else None,
+            }
+
+        stmt = select(Candidate).where(Candidate.id == user_id)
+        result = await self.db.execute(stmt)
+        candidate = result.scalar_one_or_none()
+
+        if candidate:
+            return {
+                "id": str(candidate.id),
+                "email": candidate.email,
+                "name": candidate.name,
+                "role": "CANDIDATE",
+                "photo_url": candidate.photo_url,
+                "status": None,
+                "created_at": candidate.created_at.isoformat() if candidate.created_at else None,
+            }
+
+        raise ValueError("User not found")

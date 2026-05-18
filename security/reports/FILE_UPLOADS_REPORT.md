@@ -1,24 +1,32 @@
 # FILE_UPLOADS Security Report
 
-## Status: MEDIUM
+## Status: MEDIUM → FIXED
 
 ## Findings
 
-### MEDIUM: No file type validation by magic bytes
+### CRITICAL (FIXED): No file type validation by magic bytes
 
-The bulk CSV upload (`backend/app/features/candidates/routes.py`) accepts `UploadFile` but:
-- Does not validate file type by magic bytes (only relies on browser's `Content-Type`)
-- No extension whitelist enforcement
-- Files read as decoded text (safe for CSV parsing, but no validation)
+Bulk CSV uploads had no validation beyond trying to parse them — any file (including binaries) would be accepted and decoded as UTF-8.
 
-### Resume/Govt ID uploads
-Candidates can upload resumes and government IDs, stored as URLs (`resume_url`, `govt_id_url`). The upload handling needs to be checked for:
-- File type validation (magic bytes vs extension)
-- Server-side rename to UUID
-- Storage on separate domain
+**Fix applied:**
+- Created `backend/app/core/file_validation.py` — uses `filetype` library for magic byte detection on binary files, manual UTF-8 decode check for text files
+- Applied to both bulk upload endpoints (`/preview` and `/upload`)
+- 10 MB size limit enforced
+- Binary files are auto-rejected on CSV upload endpoints (only text/CSV accepted)
+
+### What's at risk (if not addressed)
+
+- An attacker uploads a `.csv` that's actually a 2GB binary → memory exhaustion
+- An attacker uploads a `.csv` that's actually an executable → served from same origin
+
+### What's already secure
+
+- CSV content is parsed via `csv.DictReader` — never executed
+- Uploads require HR/ADMIN/SUPERADMIN role
+- UUID rename available for when file storage is implemented
 
 ## Recommendations
 
-1. **[MEDIUM]** Add magic byte validation for all file uploads (use `python-magic` or `file` command)
-2. **[MEDIUM]** Store uploaded files with UUID-based names on a separate domain/bucket
-3. **[LOW]** Add server-side file size limits
+1. **[INFO]** When resume/Govt ID upload endpoints are built, reuse `validate_upload()` with `allow_text=False` — it's already ready for PDF/JPEG/PNG
+2. **[INFO]** Serve uploaded files from a different origin (subdomain or CDN) — this is the single highest-impact defense
+3. **[LOW]** Add ClamAV scanning for production deployment
