@@ -1,18 +1,8 @@
-"""Shared FastAPI dependencies - simplified without multi-tenancy.
-
-Provides:
-  - get_current_user: JWT-based user resolution (users + candidates)
-  - require_role: narrow role check (e.g. require_role([Role.HR]))
-  - require_roles: string-based role check for superadmin/jobs/phase2
-  - HR_AND_ABOVE: convenience dependency (HR, ADMIN, SUPERADMIN)
-  - CANDIDATE_ONLY: convenience dependency
-  - AuthUser: type alias for return type
-"""
-
-from typing import Any
+"""Shared FastAPI dependencies - simplified without multi-tenancy."""
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from jose import JWTError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -25,15 +15,12 @@ from app.core.enums import Role
 
 security = HTTPBearer()
 
-# ── Type alias ──────────────────────────────────────────────────────
-AuthUser = User
-
 
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: AsyncSession = Depends(get_db),
-) -> User:
-    """Get current authenticated user from JWT token."""
+) -> User | Candidate:
+    """Get current authenticated user or candidate from JWT token."""
     payload = decode_token(credentials.credentials)
     if payload is None:
         raise HTTPException(
@@ -46,93 +33,35 @@ async def get_current_user(
     if sub is None:
         raise HTTPException(status_code=401, detail="Invalid token payload")
 
-    # Look up user in users table first
-    stmt = select(User).where(User.id == sub)
-    result = await db.execute(stmt)
-    user = result.scalar_one_or_none()
-
-    if user:
-        return user
-
-    # Look up in candidates table
+    # Check candidates first
     stmt = select(Candidate).where(Candidate.id == sub)
     result = await db.execute(stmt)
     candidate = result.scalar_one_or_none()
 
     if candidate:
-        # Convert candidate to user-like object
-        user_like = User(
-            id=candidate.id,
-            email=candidate.email,
-            name=candidate.name,
-            role="CANDIDATE",
-            password_hash=candidate.password_hash,
-        )
-        return user_like
+        return candidate
 
-    raise HTTPException(status_code=404, detail="User not found")
+    # Check users
+    stmt = select(User).where(User.id == sub)
+    result = await db.execute(stmt)
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return user
 
 
-# ── Role-based dependency factories ─────────────────────────────────
-
-def require_role(allowed_roles: list[Role | str]):
-    """Dependency factory: require one of the given roles.
-
-    Usage:
-        Depends(require_role([Role.HR, Role.ADMIN]))
-    """
-    allowed = {r.value if isinstance(r, Role) else r for r in allowed_roles}
-
-    async def role_checker(current_user: User = Depends(get_current_user)):
-        role = current_user.role
-        if role not in allowed:
+def require_role(allowed_roles: list[str]):
+    """Decorator to require specific roles for endpoint access."""
+    async def role_checker(current_user: User | Candidate = Depends(get_current_user)):
+        role = "CANDIDATE" if isinstance(current_user, Candidate) else current_user.role
+        
+        if role not in allowed_roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Insufficient permissions",
+                detail="Insufficient permissions"
             )
         return current_user
 
     return role_checker
-
-
-def require_roles(*allowed_roles: str):
-    """Dependency factory for string-based role checks.
-
-    Usage:
-        Depends(require_roles("SUPERADMIN"))
-        Depends(require_roles("HR", "ADMIN", "SUPERADMIN"))
-    """
-    allowed = set(allowed_roles)
-
-    async def role_checker(current_user: User = Depends(get_current_user)):
-        role = current_user.role
-        if role not in allowed:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Insufficient permissions",
-            )
-        return current_user
-
-    return role_checker
-
-
-# ── Convenience dependencies ────────────────────────────────────────
-
-async def HR_AND_ABOVE(current_user: User = Depends(get_current_user)) -> User:
-    """Allow HR, ADMIN, and SUPERADMIN roles."""
-    if current_user.role not in ("HR", "ADMIN", "SUPERADMIN"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Insufficient permissions",
-        )
-    return current_user
-
-
-async def CANDIDATE_ONLY(current_user: User = Depends(get_current_user)) -> User:
-    """Allow only CANDIDATE role."""
-    if current_user.role != "CANDIDATE":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only candidates can access this endpoint",
-        )
-    return current_user

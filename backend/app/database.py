@@ -29,7 +29,7 @@ from app.config import settings
 
 # ── Portable UUID type (works on SQLite + PostgreSQL) ───────────────
 class PortableUUID(TypeDecorator):
-    """UUID stored as String(36) on all dialects, returned as str."""
+    """UUID stored as String(36) on all dialects, returned as Python uuid.UUID."""
     impl = String(36)
     cache_ok = True
 
@@ -37,7 +37,7 @@ class PortableUUID(TypeDecorator):
         return str(value) if value else None
 
     def process_result_value(self, value: Any, dialect=None):
-        return str(value) if value else None
+        return uuid.UUID(value) if value else None
 
 
 # Convenience factory: PortableUUID(primary_key=True, default=uuid.uuid4)
@@ -50,13 +50,9 @@ def portable_uuid_col(**kwargs):
 # config.py. asyncpg is the driver (fast, pure-Python async PostgreSQL).
 
 
-# For PostgreSQL via pgBouncer/Supabase pooler, disable prepared statement caching.
-_connect_args = {"statement_cache_size": 0} if "postgresql" in settings.DATABASE_URL else {}
-
 engine = create_async_engine(
     settings.DATABASE_URL,
     echo=settings.DB_ECHO,
-    connect_args=_connect_args,
 )
 
 # ── Session Factory ────────────────────────────────────────────────

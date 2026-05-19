@@ -4,9 +4,7 @@ Candidate schemas: Lists, Details, Updates.
 
 from datetime import datetime
 from typing import Any, Optional
-from pydantic import BaseModel, EmailStr
-from decimal import Decimal
-
+from pydantic import BaseModel, ConfigDict, EmailStr
 from app.core.enums import CandidateStatus
 
 
@@ -15,7 +13,7 @@ class CandidateBase(BaseModel):
     email: EmailStr
     college: str
     branch: str
-    cgpa: Decimal
+    cgpa: float
     passed_out_year: int
     language_choice: str
 
@@ -35,19 +33,12 @@ class CandidateRead(CandidateBase):
     proctoring_flags: list = []
     interview_feedback: Optional[dict] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
     @classmethod
     def from_orm_compat(cls, candidate) -> "CandidateRead":
         """Build a CandidateRead from an ORM model, computing display_status and nested relations."""
-        try:
-            status_val = CandidateStatus(candidate.status) if isinstance(candidate.status, str) else candidate.status
-            display_status = status_val.display_status
-        except (ValueError, AttributeError) as e:
-            print(f"DEBUG: Status conversion error for {candidate.status}: {e}")
-            status_val = CandidateStatus.APPLIED
-            display_status = "applied"
+        status_val = CandidateStatus(candidate.status) if isinstance(candidate.status, str) else candidate.status
         
         # Build scores
         scores = []
@@ -75,33 +66,42 @@ class CandidateRead(CandidateBase):
                     "interviewerName": fb.interviewer.name if hasattr(fb, 'interviewer') and fb.interviewer else "",
                     "completedAt": fb.submitted_at.isoformat() if fb.submitted_at else None,
                 }
+
+        # Build proctoring flags from violations_json
+        proctoring_flags = []
+        if hasattr(candidate, 'proctoring_records') and candidate.proctoring_records:
+            for record in candidate.proctoring_records:
+                violations = record.violations_json or []
+                for i, v in enumerate(violations):
+                    proctoring_flags.append({
+                        "id": f"{record.id}_{i}",
+                        "type": v.get("type", "unknown"),
+                        "timestamp": v.get("timestamp", ""),
+                        "details": str(v.get("evidence", {})),
+                    })
         
-        try:
-            return cls(
-                id=candidate.id,
-                name=candidate.name,
-                email=candidate.email,
-                college=candidate.college or "",
-                branch=candidate.branch or "",
-                cgpa=candidate.cgpa or 0.0,
-                passed_out_year=candidate.passed_out_year or 0,
-                language_choice=candidate.language_choice or "",
-                email_verified=getattr(candidate, 'email_verified', False),
-                phone=getattr(candidate, 'phone', None),
-                resume_url=getattr(candidate, 'resume_url', None),
-                govt_id_url=getattr(candidate, 'govt_id_url', None),
-                status=status_val,
-                display_status=display_status,
-                created_at=candidate.created_at,
-                updated_at=candidate.updated_at,
-                cycle_id=candidate.cycle_id,
-                scores=scores,
-                interview_feedback=interview_feedback,
-            )
-        except Exception as e:
-            print(f"DEBUG: Schema creation error: {e}")
-            print(f"DEBUG: Candidate data: {candidate.__dict__}")
-            raise
+        return cls(
+            id=candidate.id,
+            name=candidate.name,
+            email=candidate.email,
+            college=candidate.college,
+            branch=candidate.branch,
+            cgpa=candidate.cgpa,
+            passed_out_year=candidate.passed_out_year,
+            language_choice=candidate.language_choice,
+            email_verified=getattr(candidate, 'email_verified', False),
+            phone=getattr(candidate, 'phone', None),
+            resume_url=getattr(candidate, 'resume_url', None),
+            govt_id_url=getattr(candidate, 'govt_id_url', None),
+            status=status_val,
+            display_status=status_val.display_status,
+            created_at=candidate.created_at,
+            updated_at=candidate.updated_at,
+            cycle_id=candidate.cycle_id,
+            scores=scores,
+            interview_feedback=interview_feedback,
+            proctoring_flags=proctoring_flags,
+        )
 
 
 class CandidateListResponse(BaseModel):

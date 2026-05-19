@@ -5,7 +5,6 @@
  */
 
 import { tokenStore } from './token';
-import { authApi } from './auth';
 
 const API_BASE = import.meta.env.VITE_API_URL !== undefined && import.meta.env.VITE_API_URL !== ''
   ? import.meta.env.VITE_API_URL
@@ -14,6 +13,9 @@ const API_BASE = import.meta.env.VITE_API_URL !== undefined && import.meta.env.V
 interface RequestOptions extends RequestInit {
   params?: Record<string, string | number | boolean | undefined>;
 }
+
+// Guard to prevent infinite 401 → refresh → 401 → refresh loop
+let _isRefreshing = false;
 
 async function request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
   const { params, ...fetchOptions } = options;
@@ -41,12 +43,29 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
 
   let response = await fetch(url, { ...fetchOptions, headers, credentials: 'include' });
 
-  // 401 — attempt silent refresh via cookie, then retry once
-  // BUT NOT for login requests (they should fail immediately)
-  if (response.status === 401 && !endpoint.includes('/auth/login')) {
+  // 401 — if we had a token, try silent refresh via cookie, then retry once
+  // _isRefreshing flag prevents infinite loop if /refresh itself returns 401
+  // Skip refresh if there's no token (e.g. login with wrong password)
+  if (response.status === 401 && !_isRefreshing && token) {
+    _isRefreshing = true;
     try {
-      const refreshRes = await authApi.refreshToken();
-      const normalized = await authApi.normalizeTokenResponse(refreshRes);
+      // Call refresh directly (not through api.post) to bypass our own 401 handler
+      const refreshRes = await fetch(
+        `${API_BASE}/api/auth/refresh`,
+        { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' } }
+      );
+      if (!refreshRes.ok) throw new Error('Refresh failed');
+      const data = await refreshRes.json();
+      const normalized = {
+        token: data.access_token,
+        refresh_token: data.refresh_token || '',
+        user: {
+          id: String(data.user.id),
+          email: data.user.email,
+          name: data.user.name,
+          role: data.user.role.toLowerCase(),
+        },
+      };
       tokenStore.setAccessToken(normalized.token);
 
       headers['Authorization'] = `Bearer ${normalized.token}`;
@@ -54,6 +73,8 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
     } catch {
       tokenStore.clear();
       throw new Error('Session expired. Please log in again.');
+    } finally {
+      _isRefreshing = false;
     }
   }
 

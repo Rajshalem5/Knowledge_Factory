@@ -38,32 +38,25 @@ class AuthService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def authenticate(self, login_data: LoginRequest) -> User | None:
-        """Authenticate user or candidate. Returns User or None."""
+    async def authenticate(self, login_data: LoginRequest) -> tuple[Any, bool] | None:
+        """Authenticate user or candidate. Returns (entity, is_candidate) or None."""
         # Check users table first
         stmt = select(User).where(User.email == login_data.email)
         result = await self.db.execute(stmt)
         user = result.scalars().first()
 
-        if user and user.password_hash and verify_password(login_data.password, user.password_hash):
-            return user
+        if user and verify_password(login_data.password, user.password_hash):
+            return (user, False)
 
         # Check candidates table
-        from app.features.candidates.models import Candidate
         stmt = select(Candidate).where(Candidate.email == login_data.email)
         result = await self.db.execute(stmt)
         candidate = result.scalars().first()
 
-        if candidate and candidate.password_hash and verify_password(login_data.password, candidate.password_hash):
-            # Convert candidate to user-like object for token generation
-            user_like = User(
-                id=candidate.id,
-                email=candidate.email,
-                name=candidate.name,
-                role="CANDIDATE",  # Set role as CANDIDATE
-                password_hash=candidate.password_hash
-            )
-            return user_like
+        if candidate and candidate.password_hash and verify_password(
+            login_data.password, candidate.password_hash
+        ):
+            return (candidate, True)
 
         return None
 
@@ -96,11 +89,15 @@ class AuthService:
         return new_candidate
 
     @staticmethod
-    def generate_token_response(user: User) -> dict:
+    def generate_token_response(user_or_candidate: Any) -> dict:
         """Generate token response with user info."""
-        subject = str(user.id)
-        email = user.email
-        role = user.role.value if hasattr(user.role, 'value') else str(user.role)
+        from app.features.candidates.models import Candidate
+        
+        is_candidate = isinstance(user_or_candidate, Candidate)
+
+        subject = str(user_or_candidate.id)
+        email = user_or_candidate.email
+        role = "CANDIDATE" if is_candidate else (user_or_candidate.role.value if hasattr(user_or_candidate.role, 'value') else str(user_or_candidate.role))
 
         access_token = create_access_token(subject=subject, email=email, role=role)
         refresh_tok = create_refresh_token(subject=subject)
@@ -110,9 +107,9 @@ class AuthService:
             "refresh_token": refresh_tok,
             "token_type": "bearer",
             "user": {
-                "id": user.id,
-                "email": user.email,
-                "name": user.name,  # This maps to full_name column
+                "id": user_or_candidate.id,
+                "email": user_or_candidate.email,
+                "name": user_or_candidate.name,
                 "role": role,
             },
         }

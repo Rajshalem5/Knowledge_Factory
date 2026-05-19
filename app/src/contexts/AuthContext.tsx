@@ -1,11 +1,10 @@
 /**
  * Authentication Context — manages user auth state.
- * Uses Clerk as the primary auth provider and syncs user data
- * with the Knowledge Factory backend for role management.
+ * Access token in memory (not localStorage — reduces XSS exposure).
+ * Refresh token in httpOnly cookie — set by backend, sent automatically.
  */
 
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
-import { useAuth as useClerkAuth, useUser, useClerk } from '@clerk/react';
 import type { User } from '../types';
 import { authApi } from '../api/auth';
 import { tokenStore } from '../api/token';
@@ -15,8 +14,8 @@ interface AuthContextValue {
   token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (data: RegisterData) => Promise<void>;
+  login: (email: string, password: string) => Promise<User>;
+  register: (data: RegisterData | FormData) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
   hasRole: (role: string[]) => boolean;
@@ -26,81 +25,77 @@ interface RegisterData {
   name: string;
   email: string;
   password: string;
-  college: string;
-  branch: string;
-  cgpa: number;
-  passed_out_year: number;
-  language_choice: string;
+  college?: string;
+  branch?: string;
+  cgpa?: number;
+  passed_out_year?: number;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { isLoaded: clerkLoaded, isSignedIn, getToken } = useClerkAuth();
-  const { user: clerkUser } = useUser();
-  const { signOut } = useClerk();
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [isVerifying, setIsVerifying] = useState(true);
+  const [token, setToken] = useState<string | null>(() => tokenStore.getAccessToken());
+  const [isVerifying, setIsVerifying] = useState(false);
 
-  // Sync Clerk auth state → local user state
+  // On mount: try cookie-based refresh for session persistence across reloads
   useEffect(() => {
-    if (!clerkLoaded) return;
+    const accessToken = tokenStore.getAccessToken();
 
-    if (!isSignedIn || !clerkUser) {
-      setUser(null);
-      setToken(null);
-      tokenStore.clear();
-      setIsVerifying(false);
+    if (!accessToken) {
+      // No in-memory token — try cookie-based refresh
+      authApi.refreshToken()
+        .then((refreshRes: any) => {
+          if (!refreshRes || !refreshRes.access_token) throw new Error('no refresh');
+          return authApi.normalizeTokenResponse(refreshRes as any);
+        })
+        .then((normalized) => {
+          if (normalized) {
+            tokenStore.setAccessToken(normalized.token);
+            setToken(normalized.token);
+            setUser(normalized.user);
+          }
+        })
+        .catch(() => {
+          // No cookie either — user needs to log in
+        })
+        .finally(() => setIsVerifying(false));
       return;
     }
 
-    // Get role from Clerk user's public metadata
-    const role = clerkUser.publicMetadata?.role as string | undefined;
-
-    // Fall back to fetching user profile from KF backend if no role in metadata
-    const activeUser = clerkUser; // captured at effect time, non-null here
-    async function syncUser() {
-      try {
-        const clerkToken = await getToken();
-        if (!clerkToken || !activeUser) {
-          setUser(null);
-          setIsVerifying(false);
-          return;
+    // Have an in-memory token — verify current session
+    authApi.getMe()
+      .then((userData) => {
+        setUser({
+          id: userData.id,
+          email: userData.email,
+          name: userData.name,
+          role: userData.role.toLowerCase() as User['role'],
+        });
+      })
+      .catch(() => {
+        // Try refresh as fallback (cookie-based)
+        return authApi.refreshToken();
+      })
+      .then((refreshRes) => {
+        if (refreshRes) {
+          return authApi.normalizeTokenResponse(refreshRes);
         }
-
-        // Store the Clerk token for API calls
-        tokenStore.setAccessToken(clerkToken);
-        setToken(clerkToken);
-
-        if (role) {
-          setUser({
-            id: activeUser.id,
-            email: activeUser.primaryEmailAddress?.emailAddress || '',
-            name: activeUser.fullName || activeUser.username || 'User',
-            role: role.toLowerCase() as User['role'],
-          });
-        } else {
-          // Fetch user profile from the KF backend to get role
-          const userData = await authApi.getMe();
-          setUser({
-            id: userData.id,
-            email: userData.email,
-            name: userData.name,
-            role: userData.role.toLowerCase() as User['role'],
-          });
+      })
+      .then((normalized) => {
+        if (normalized) {
+          tokenStore.setAccessToken(normalized.token);
+          setToken(normalized.token);
+          setUser(normalized.user);
         }
-      } catch {
-        setUser(null);
-        setToken(null);
+      })
+      .catch(() => {
         tokenStore.clear();
-      } finally {
-        setIsVerifying(false);
-      }
-    }
-
-    syncUser();
-  }, [clerkLoaded, isSignedIn, clerkUser, getToken]);
+        setToken(null);
+        setUser(null);
+      })
+      .finally(() => setIsVerifying(false));
+  }, []);
 
   const handleLogout = useCallback(() => {
     tokenStore.clear();
@@ -109,17 +104,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
-    // Use Clerk's sign-in via the prebuilt UI instead
-    // This path is kept for backward compatibility
     const response = await authApi.login({ email, password });
     tokenStore.setAccessToken(response.token);
     setToken(response.token);
     setUser(response.user);
+    return response.user;
   }, []);
 
-  const register = useCallback(async (data: RegisterData) => {
-    // Use Clerk's sign-up via the prebuilt UI instead
-    // This path is kept for backward compatibility
+  const register = useCallback(async (data: RegisterData | FormData) => {
     const response = await authApi.register(data);
     tokenStore.setAccessToken(response.token);
     setToken(response.token);
@@ -129,12 +121,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshUser = useCallback(async () => {
     if (!token) return;
     try {
-      const clerkToken = await getToken();
-      if (clerkToken) {
-        tokenStore.setAccessToken(clerkToken);
-        setToken(clerkToken);
-      }
-
       const userData = await authApi.getMe();
       setUser({
         id: userData.id,
@@ -145,13 +131,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       handleLogout();
     }
-  }, [token, getToken, handleLogout]);
+  }, [token, handleLogout]);
 
   const logout = useCallback(() => {
-    signOut();
     authApi.logout().catch(() => {});
     handleLogout();
-  }, [signOut, handleLogout]);
+  }, [handleLogout]);
 
   const hasRole = useCallback((roles: string[]): boolean => {
     if (!user) return false;
@@ -171,7 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     hasRole,
   };
 
-  if (isVerifying && clerkLoaded) {
+  if (isVerifying) {
     return null; // Block render until session is verified
   }
 

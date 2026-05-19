@@ -1,7 +1,7 @@
-"""Analytics schemas — snake_case fields matching frontend types."""
+"""Analytics schemas."""
 
 from typing import Any
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class FunnelResponse(BaseModel):
@@ -12,24 +12,24 @@ class FunnelResponse(BaseModel):
     selected: int = 0
 
 
-class PassRateItem(BaseModel):
+class PassRatePerRound(BaseModel):
     round: str
     pass_rate: float
 
 
-class CollegeBreakdownItem(BaseModel):
+class CollegeBreakdown(BaseModel):
     college: str
     count: int
-    avg_score: float
+    avg_score: float = 0.0
 
 
-class BranchPerformanceItem(BaseModel):
+class BranchPerformance(BaseModel):
     branch: str
     count: int
-    avg_score: float
+    avg_score: float = 0.0
 
 
-class ProctoringViolationItem(BaseModel):
+class ProctoringViolation(BaseModel):
     type: str
     count: int
 
@@ -40,10 +40,10 @@ class DashboardResponse(BaseModel):
     select_rate: float
     avg_cgpa: float
     status_breakdown: dict[str, Any]
-    pass_rate_per_round: list[PassRateItem] = []
-    college_breakdown: list[CollegeBreakdownItem] = []
-    branch_performance: list[BranchPerformanceItem] = []
-    proctoring_violations: list[ProctoringViolationItem] = []
+    pass_rate_per_round: list[PassRatePerRound] = []
+    college_breakdown: list[CollegeBreakdown] = []
+    branch_performance: list[BranchPerformance] = []
+    proctoring_violations: list[ProctoringViolation] = []
 
 
 class OrganizationRead(BaseModel):
@@ -55,5 +55,4 @@ class OrganizationRead(BaseModel):
     active_hiring_cycles: int = 0
     status: str = "ACTIVE"
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
