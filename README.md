@@ -1,3 +1,255 @@
+# Knowledge Factory — Intern Hiring Platform
+
+> A full-stack platform for high-volume campus recruitment with role-based assessments, code execution sandbox, and analytics dashboards.
+
+---
+
+## 🚀 Quick Start Guide (From Scratch)
+
+A step-by-step guide for developers who want to clone this repo and run the project locally for the first time.
+
+### 📋 Prerequisites
+
+Make sure you have these installed:
+
+| Tool | Version | Check Command |
+|------|---------|---------------|
+| **Python** | 3.12+ | `python3 --version` |
+| **pip** | (comes with Python) | `pip --version` |
+| **Node.js** | 20+ | `node --version` |
+| **npm** | 9+ | `npm --version` |
+| **Git** | any recent | `git --version` |
+
+> **Windows users:** Run all commands in **Git Bash** or WSL (Windows Subsystem for Linux). The backend uses async SQLite which works on all platforms.
+
+---
+
+### 1️⃣ Clone the Repository
+
+```bash
+git clone <repo-url> knowledge-factory
+cd knowledge-factory
+git checkout dev
+```
+
+Replace `<repo-url>` with the actual GitHub repository URL.
+
+---
+
+### 2️⃣ Backend Setup (Python / FastAPI)
+
+```bash
+# Move into the backend directory
+cd backend
+
+# Create a Python virtual environment
+python3 -m venv venv
+
+# Activate it
+# On macOS/Linux:
+source venv/bin/activate
+# On Windows (Git Bash / WSL):
+# source venv/Scripts/activate
+
+# Upgrade pip
+pip install --upgrade pip
+
+# Install dependencies
+pip install -r requirements.txt
+```
+
+#### Configure Backend Environment
+
+Copy the example env file — this gives you sensible defaults for local development:
+
+```bash
+cp .env.example .env
+```
+
+Your `.env` will use **SQLite** by default (no database server needed). For local testing, you just need to set:
+
+| Variable | What to set | Notes |
+|----------|-------------|-------|
+| `JWT_SECRET_KEY` | Any random string | Generate one: `python3 -c "import secrets; print(secrets.token_hex(32))"` |
+| `AI_API_KEY` | Optional for dev | Skip if you don't need AI question generation |
+| `SANDBOX_URL` | Leave as-is | Code sandbox — you can test without it |
+
+> **💡 Tip:** The app auto-creates SQLite tables on startup — no migration commands needed for local dev.
+
+#### Start the Backend
+
+```bash
+# Make sure you're in the backend/ directory with venv active
+uvicorn app.main:app --reload --port 8000
+```
+
+You should see:
+```
+INFO:     Uvicorn running on http://127.0.0.1:8000
+INFO:     Application startup complete.
+```
+
+Open **http://localhost:8000/docs** in your browser — you'll see the Swagger API docs. This means the backend is running!
+
+> **Keep this terminal open.** The backend needs to keep running. Open a new terminal window for the next step.
+
+---
+
+### 3️⃣ Frontend Setup (React / Vite)
+
+Open a **new terminal** window and navigate back to the project root:
+
+```bash
+cd knowledge-factory  # or wherever you cloned the repo
+cd app
+```
+
+#### Install Dependencies
+
+```bash
+npm install
+```
+
+#### Configure Frontend Environment
+
+```bash
+cp .env.example .env
+```
+
+Edit `app/.env` — the defaults work out of the box for local development. It should look like:
+
+```env
+VITE_API_URL=http://localhost:8000
+VITE_CLERK_PUBLISHABLE_KEY=pk_test_bGl2ZS1zZWFndWxsLTIzLmNsZXJrLmFjY291bnRzLmRldiQ
+```
+
+> The `VITE_API_URL` is already set to `http://localhost:8000` (the backend). The Clerk key is a public test key — it's safe to share.
+
+#### Start the Frontend Dev Server
+
+```bash
+npm run dev
+```
+
+You should see:
+```
+  VITE v8.x.x  ready in XXX ms
+  ➜  Local:   http://localhost:5173/
+```
+
+Open **http://localhost:5173** in your browser. The frontend is now talking to your local backend via Vite's proxy.
+
+---
+
+### 4️⃣ Verify It Works
+
+**Backend:** http://localhost:8000/docs — you should see FastAPI Swagger UI with all endpoints listed.
+
+**Frontend:** http://localhost:5173 — you should see the Knowledge Factory landing page.
+
+**Quick smoke test:**
+
+```bash
+# Test backend — should return health or auth info
+curl http://localhost:8000/api/auth/me
+```
+
+If you get a JSON response (even an error like `{"detail": "Not authenticated"}`), the backend is responding correctly.
+
+---
+
+### 5️⃣ Default Accounts (after seeding)
+
+The project includes a seed script that creates test accounts. To run it:
+
+```bash
+# In the backend directory with venv active
+cd backend
+source venv/bin/activate
+python -m app.seed
+```
+
+After seeding, you can login with these accounts:
+
+| Role | Email | Password |
+|------|-------|----------|
+| **Super Admin** | `superadmin@kf.com` (or similar — check seed.py) | `Admin@12345` |
+| **HR** | `hr@kf.com` | `Hr@12345` |
+
+> ⚠️ Passwords in seed.py may be redacted. Check `backend/app/seed.py` for actual working credentials or the latest seeded accounts.
+
+---
+
+### 6️⃣ Stopping the Project
+
+- Press **Ctrl+C** in each terminal to stop the backend and frontend
+- Deactivate the Python venv: `deactivate`
+
+---
+
+### ⚠️ Common Issues & Fixes
+
+| Symptom | Likely Cause | Fix |
+|---------|-------------|-----|
+| `pip install` fails | Missing Python dev headers | `sudo apt install python3-dev` (Linux) or use `brew` (macOS) |
+| `npm install` fails | Node.js too old | Upgrade to Node.js 20+: `nvm install 20` or download from nodejs.org |
+| `ModuleNotFoundError` | venv not activated | Run `source venv/bin/activate` first |
+| Frontend calls return 404 | Backend not running | Start the backend on port 8000 |
+| Frontend proxy errors | Vite proxy can't reach backend | Check `app/vite.config.ts` — target should be `http://localhost:8000` |
+| Database errors | Missing tables | Delete the old DB and restart (auto-creates on startup): `rm backend/knowledge_factory.db` |
+| `address already in use` | Port 8000 or 5173 taken | Kill the process: `lsof -ti:8000 | xargs kill` or change port in the run command |
+| `aiosqlite` errors | Wrong Python version | Use Python 3.12+ |
+
+---
+
+### 📁 Project Layout (Quick Reference)
+
+```
+knowledge-factory/
+├── backend/               # FastAPI Python backend (port 8000)
+│   ├── app/
+│   │   ├── main.py       # Entry point
+│   │   ├── config.py     # Environment config
+│   │   ├── models/       # SQLAlchemy models
+│   │   ├── routes/       # API endpoints
+│   │   ├── services/     # Business logic
+│   │   └── utils/        # Helpers (OTP, code runner)
+│   ├── requirements.txt
+│   └── .env              # Backend config (copy from .env.example)
+│
+├── app/                   # React frontend (port 5173)
+│   ├── src/
+│   │   ├── pages/        # Route pages
+│   │   ├── components/   # UI components
+│   │   ├── api/          # API client
+│   │   ├── contexts/     # Auth, Theme
+│   │   ├── hooks/        # Custom React hooks
+│   │   └── types/        # TypeScript types
+│   ├── package.json
+│   └── .env              # Frontend config
+│
+└── README.md             # This file
+```
+
+---
+
+### 🧪 Optional: Run Without Frontend
+
+If you only want to test the backend API, just start the backend and use Swagger at http://localhost:8000/docs. No frontend needed.
+
+### 🌐 Optional: Expose via ngrok
+
+If you want to test from another device or share with a friend:
+
+```bash
+# Install ngrok: https://ngrok.com/download
+ngrok http 8000
+```
+
+This gives you a public URL like `https://abc123.ngrok-free.dev`. Share that URL — your friend can open the Swagger docs or the frontend (if frontend is also proxied).
+
+---
+
 # Knowledge Factory - Technical Documentation
 
 > Comprehensive documentation for the Knowledge Factory intern hiring platform.
