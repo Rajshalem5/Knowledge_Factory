@@ -1,12 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Badge } from '../../components/ui';
 import { Timer } from '../../components/assessment/Timer';
 import { CodeEditor } from '../../components/assessment/CodeEditor';
+import { ProctoringOverlay } from '../../components/assessment/ProctoringOverlay';
 import { useCodeExecution } from '../../hooks/useCodeExecution';
 import { useQuestion } from '../../hooks/useQuestion';
-import { useActiveAssessments, useCompleteAssessment, useSubmitSection } from '../../hooks/useAssessment';
-import { Play, Send, ChevronDown, RefreshCw, CheckCircle, XCircle, Lock, CheckSquare } from 'lucide-react';
+import { useActiveAssessments, useCompleteAssessment, useSubmitSection, useStartAssessment } from '../../hooks/useAssessment';
+import { useMyCandidateProfile } from '../../hooks/useCandidates';
+import { useProctoring } from '../../hooks/useProctoring';
+import { Play, Send, ChevronDown, RefreshCw, CheckCircle, XCircle, Lock, CheckSquare, Monitor, Camera, AlertTriangle, Loader2 } from 'lucide-react';
 import { api } from '../../api/client';
 import type { EvaluationResponse } from '../../api/code-execution';
 
@@ -30,14 +33,150 @@ export default function Assessment() {
   const [evalResult, setEvalResult]     = useState<EvaluationResponse | null>(null);
   const [runOutput, setRunOutput]       = useState<{ status: string; output: string } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showStartModal, setShowStartModal] = useState(false);
+  const [startError, setStartError] = useState<string | null>(null);
 
   const { question, isGenerating, generate } = useQuestion();
   const { runCode, isExecuting } = useCodeExecution();
-  const { data: activeAssessments } = useActiveAssessments();
+  const { data: profile } = useMyCandidateProfile();
+  const { data: activeAssessments, isLoading: assessmentsLoading, error: assessmentsError } = useActiveAssessments();
+  const startAssessment = useStartAssessment();
   const completeAssessment = useCompleteAssessment();
   const submitSection = useSubmitSection();
+  const hasTriggeredStart = useRef(false);
+
   const activeAssessment = activeAssessments?.[0];
   const hasSubmitted = evalResult !== null;
+
+  // ── Proctoring (always called unconditionally; gated behind valid ID + user action) ──
+  const proctoring = useProctoring({
+    assessmentAttemptId: activeAssessment?.id || '',
+    onTerminated: (reason) => {
+      alert(`Assessment terminated: ${reason}`);
+      navigate('/portal');
+    }
+  });
+
+  const { 
+    status: proctorStatus, 
+    riskLevel, 
+    riskScore, 
+    isWebcamActive, 
+    isMicActive, 
+    connectionStatus, 
+    stream,
+    start: startProctoring,
+  } = proctoring;
+
+  // ── Auto-create assessment session if none exists ──
+  useEffect(() => {
+    console.log('[Assessment] activeAssessments loaded:', !!activeAssessments, 'count:', activeAssessments?.length);
+    if (hasTriggeredStart.current) return;
+    if (assessmentsLoading) return;
+    if (!activeAssessments) return; // still loading or error
+
+    if (activeAssessments.length === 0 && profile) {
+      console.log('[Assessment] No active assessments found. Creating one...');
+      hasTriggeredStart.current = true;
+      const round = profile.status === 'ROUND3_IN_PROGRESS' || profile.status === 'ROUND2_PASSED' ? 'ROUND_3' : 'ROUND_2';
+      console.log('[Assessment] Starting assessment for round:', round);
+      startAssessment.mutate({ round }, {
+        onSuccess: (newAssessment) => {
+          console.log('[Assessment] Assessment created successfully:', newAssessment.id);
+          // React Query will refetch ['assessments-active'], so we just show the modal
+          setShowStartModal(true);
+        },
+        onError: (err) => {
+          console.error('[Assessment] Failed to create assessment:', err);
+          setStartError('Failed to prepare assessment. Please go back and try again.');
+        },
+      });
+    } else if (activeAssessments.length > 0 && proctoring.status === 'idle') {
+      console.log('[Assessment] Found existing active assessment:', activeAssessments[0].id);
+      setShowStartModal(true);
+    }
+  }, [activeAssessments, assessmentsLoading, profile, startAssessment]);
+
+  // ── Guard: loading state while assessment session is being prepared ──
+  if (assessmentsLoading || startAssessment.isPending) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-[var(--bg-base)]">
+        <div className="text-center max-w-sm p-8">
+          <Loader2 size={40} className="text-secondary mx-auto mb-4 animate-spin" />
+          <h2 className="text-base font-semibold text-on-surface mb-1">Preparing assessment session...</h2>
+          <p className="text-xs text-on-surface-variant">Loading your assessment data</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Guard: if assessments failed to load, show friendly error ──
+  if (assessmentsError && !activeAssessments) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-[var(--bg-base)]">
+        <div className="text-center max-w-md p-8">
+          <AlertTriangle size={48} className="text-warning mx-auto mb-4" />
+          <h2 className="text-lg font-semibold text-on-surface mb-2">Unable to load assessment</h2>
+          <p className="text-sm text-on-surface-variant mb-4">
+            There was a problem loading your assessment data. This may be due to a session timeout.
+          </p>
+          <Button onClick={() => navigate('/login')}>
+            Go to Login
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Guard: assessment creation failed ──
+  if (startAssessment.isError && !activeAssessment) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-[var(--bg-base)]">
+        <div className="text-center max-w-md p-8">
+          <AlertTriangle size={48} className="text-danger mx-auto mb-4" />
+          <h2 className="text-lg font-semibold text-on-surface mb-2">Assessment setup failed</h2>
+          <p className="text-sm text-on-surface-variant mb-4">
+            {(startAssessment.error as Error)?.message || 'Could not create assessment session.'}
+          </p>
+          <Button onClick={() => navigate('/portal')}>
+            Back to Portal
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Guard: no active assessment even after trying ──
+  if (!activeAssessment) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-[var(--bg-base)]">
+        <div className="text-center max-w-sm p-8">
+          <Loader2 size={40} className="text-secondary mx-auto mb-4 animate-spin" />
+          <h2 className="text-base font-semibold text-on-surface mb-1">Preparing assessment session...</h2>
+        </div>
+      </div>
+    );
+  }
+
+  const handleStartAssessment = async () => {
+    setStartError(null);
+    console.log('[Assessment] User clicked Start. assessmentAttemptId:', activeAssessment?.id);
+    try {
+      // Step 1: requestFullscreen (only if not already in fullscreen)
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen();
+      }
+
+      // Step 2: start proctoring (requests webcam/mic, init session, connect WS)
+      await startProctoring();
+
+      // Step 3: dismiss modal, assessment begins
+      setShowStartModal(false);
+    } catch (err: any) {
+      console.error('[Assessment] Failed to start assessment:', err);
+      setStartError(err?.message || 'Failed to start assessment. Please try again.');
+    }
+  };
 
   const handleComplete = () => {
     if (!activeAssessment) return;
@@ -53,7 +192,6 @@ export default function Assessment() {
     setRunOutput(null);
     const q = await generate({ topic, difficulty, num_public_cases: 2, num_private_cases: 4 });
     if (q) {
-      // Pre-fill custom input with first public test case
       if (q.public_test_cases?.[0]) {
         setCustomInput(q.public_test_cases[0].input);
       }
@@ -65,7 +203,6 @@ export default function Assessment() {
     }
   };
 
-  // Switch language → swap boilerplate if question loaded
   const handleLanguageChange = (lang: LangId) => {
     setLanguage(lang);
     setShowLangMenu(false);
@@ -74,7 +211,6 @@ export default function Assessment() {
     }
   };
 
-  // RUN — execute with custom stdin, show raw output
   const handleRun = async () => {
     setRunOutput(null);
     setEvalResult(null);
@@ -87,7 +223,6 @@ export default function Assessment() {
     });
   };
 
-  // SUBMIT — evaluate against ALL test cases (public + private) via question id
   const handleSubmit = async () => {
     if (!question) return;
     setIsSubmitting(true);
@@ -98,8 +233,6 @@ export default function Assessment() {
     `/api/code/evaluate-question/${question.id}`,
     { language, code, stdin: '' }
   );
-      // Record the submission in the assessment pipeline FIRST,
-      // so the submission is persisted before enabling "Complete & Advance"
       if (activeAssessment) {
         await submitSection.mutateAsync({
           assessment_id: activeAssessment.id,
@@ -150,11 +283,7 @@ export default function Assessment() {
 
       {/* ── Body ── */}
       <div className="flex flex-1 overflow-hidden">
-
-        {/* ── Left: Problem Panel ── */}
         <div className="w-1/2 flex flex-col overflow-hidden border-r border-outline-variant">
-
-          {/* Generate controls */}
           <div className="shrink-0 px-4 py-3 bg-[var(--bg-layer1)] flex flex-col gap-2">
             <div className="flex gap-2">
               <input
@@ -183,7 +312,6 @@ export default function Assessment() {
             </Button>
           </div>
 
-          {/* Problem content */}
           <div className="flex-1 overflow-y-auto p-5">
             {!question ? (
               <div className="flex flex-col items-center justify-center h-full gap-3 text-tertiary">
@@ -204,8 +332,6 @@ export default function Assessment() {
                 <p className="text-sm text-on-surface-variant whitespace-pre-wrap leading-relaxed mb-6">
                   {question.description}
                 </p>
-
-                {/* Public test cases */}
                 <div>
                   <h3 className="text-[11px] font-medium uppercase tracking-widest text-tertiary mb-3">
                     Example Test Cases
@@ -223,8 +349,6 @@ export default function Assessment() {
                     ))}
                   </div>
                 </div>
-
-                {/* Private test cases indicator */}
                 <div className="mt-4 flex items-center gap-2 text-xs text-tertiary">
                   <Lock size={11} />
                   <span>4 hidden test cases used for final scoring</span>
@@ -234,10 +358,7 @@ export default function Assessment() {
           </div>
         </div>
 
-        {/* ── Right: Editor + Output ── */}
         <div className="w-1/2 flex flex-col bg-[var(--bg-layer1)]">
-
-          {/* Toolbar */}
           <div className="flex items-center justify-between px-3 py-1.5 shrink-0">
             <span className="text-xs text-tertiary uppercase tracking-widest">Solution</span>
             <div className="relative">
@@ -267,12 +388,10 @@ export default function Assessment() {
             </div>
           </div>
 
-          {/* Editor */}
           <div className="flex-1 overflow-hidden">
             <CodeEditor key={language} initialValue={code} onChange={setCode} className="h-full" />
           </div>
 
-          {/* Custom input */}
           <div className="shrink-0 bg-[var(--bg-base)] px-3 pt-2 pb-1">
             <span className="text-[10px] text-tertiary uppercase tracking-widest">Custom Input (stdin)</span>
             <textarea
@@ -286,10 +405,7 @@ export default function Assessment() {
             />
           </div>
 
-          {/* Output panel */}
           <div className="h-44 bg-[var(--bg-base)] overflow-y-auto">
-
-            {/* Run output */}
             {runOutput && (
               <div className="p-3">
                 <span className={`text-[10px] uppercase tracking-widest font-medium
@@ -301,8 +417,6 @@ export default function Assessment() {
                 </pre>
               </div>
             )}
-
-            {/* Evaluation results */}
             {evalResult && (
               <div className="p-3">
                 <div className="flex items-center gap-3 mb-2">
@@ -334,7 +448,6 @@ export default function Assessment() {
                 </div>
               </div>
             )}
-
             {!runOutput && !evalResult && (
               <div className="p-4 text-xs text-tertiary">
                 Run your code or submit to see results
@@ -343,6 +456,61 @@ export default function Assessment() {
           </div>
         </div>
       </div>
+
+      {/* ── Start Assessment Modal ── */}
+      {showStartModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-[var(--bg-layer2)] rounded-xl shadow-2xl border border-outline-variant max-w-md w-full mx-4 p-8">
+            <div className="text-center mb-6">
+              <Monitor size={48} className="text-secondary mx-auto mb-4" />
+              <h2 className="text-xl font-bold text-on-surface mb-2">Start Assessment</h2>
+              <p className="text-sm text-on-surface-variant">
+                This assessment uses proctoring. You'll need to grant camera and microphone access, and the page will switch to fullscreen.
+              </p>
+            </div>
+
+            {startError && (
+              <div className="mb-4 p-3 rounded-lg bg-danger/10 border border-danger/30 text-xs text-danger flex items-start gap-2">
+                <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+                <span>{startError}</span>
+              </div>
+            )}
+
+            <div className="space-y-3 mb-6">
+              <div className="flex items-center gap-3 text-xs text-on-surface-variant">
+                <Monitor size={16} className="text-secondary shrink-0" />
+                <span>Fullscreen mode will be enabled</span>
+              </div>
+              <div className="flex items-center gap-3 text-xs text-on-surface-variant">
+                <Camera size={16} className="text-secondary shrink-0" />
+                <span>Webcam & microphone access required</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Button size="lg" onClick={handleStartAssessment} className="w-full justify-center">
+                <Camera size={16} />
+                Start Assessment
+              </Button>
+              <Button size="sm" variant="secondary" onClick={() => navigate('/portal')} className="w-full justify-center">
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* ── Proctoring Overlay ── */}
+      <ProctoringOverlay
+        status={proctorStatus}
+        riskLevel={riskLevel}
+        riskScore={riskScore}
+        isWebcamActive={isWebcamActive}
+        isMicActive={isMicActive}
+        connectionStatus={connectionStatus}
+        stream={stream}
+        onRetry={handleStartAssessment}
+      />
     </div>
   );
 }

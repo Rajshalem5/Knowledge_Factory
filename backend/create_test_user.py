@@ -3,23 +3,17 @@ Create a test candidate user for testing the assessment page.
 """
 
 import asyncio
-import sys
 from datetime import date
 from sqlalchemy import select
 
 from app.database import async_session_factory
 from app.core.security import hash_password
-from app.core.enums import Role, UserStatus, TenantStatus, CycleStatus, CandidateStatus
+from app.core.enums import TenantStatus, CycleStatus, CandidateStatus
 
 # Import all models to ensure relationships are configured
-from app.features.auth.models import Tenant, User
+from app.features.auth.models import Tenant
 from app.features.candidates.models import Candidate
 from app.features.hiring_cycles.models import HiringCycle
-from app.features.assessments.models import Assessment, Submission, Score
-from app.features.proctoring.models import ProctoringRecord
-from app.features.interviews.models import InterviewFeedback
-from app.features.audit.models import AuditLog
-from app.features.analytics.models import AIGenerationLog
 
 
 async def create_test_user():

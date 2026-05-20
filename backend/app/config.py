@@ -24,15 +24,20 @@ class Settings(BaseSettings):
     APP_VERSION: str = "0.1.0"
     DEBUG: bool = False
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
+    PROCTORING_SERVICE_WS_URL: str = "ws://localhost:8001"
 
     # ── Database ───────────────────────────────────────────────────
-    DATABASE_URL: str = "postgresql+asyncpg://kf_user:kf_password@localhost:5432/knowledge_factory"
-    DB_POOL_SIZE: int = 20
+    # Local development: SQLite (single file, no server needed)
+    # Production: Set to postgresql+asyncpg://... for PostgreSQL
+    DATABASE_URL: str = "sqlite+aiosqlite:///./knowledge_factory.db"
+    DB_POOL_SIZE: int = 5  # SQLite uses connection pooling differently
     DB_MAX_OVERFLOW: int = 10
     DB_ECHO: bool = False
 
     # ── Redis ──────────────────────────────────────────────────────
-    REDIS_URL: str = "redis://localhost:6379/0"
+    # Optional for local development (session cache, task queue)
+    # Leave empty to disable Redis features
+    REDIS_URL: str = ""  # Set to "redis://localhost:6379/0" if using Redis
 
     # ── JWT / Security ─────────────────────────────────────────────
     JWT_PRIVATE_KEY: str = ""
@@ -80,6 +85,27 @@ class Settings(BaseSettings):
     # ── Proctoring ─────────────────────────────────────────────────
     PROCTORING_MAX_WARNINGS: int = 3
     PROCTORING_EVENT_INTERVAL_SECONDS: int = 5
+    PROCTORING_SERVICE_WS_URL: str = "ws://localhost:8001"
+    PROCTORING_JWT_SECRET: str = "dev-proctoring-secret-stable"
+    
+    # ── Proctoring Risk Weights ────────────────────────────────────
+    TAB_SWITCH_WEIGHT: float = 10
+    COPY_PASTE_WEIGHT: float = 10
+    WINDOW_BLUR_WEIGHT: float = 15
+    NO_FACE_WEIGHT: float = 20
+    VOICE_DETECTED_WEIGHT: float = 15
+    MULTIPLE_PERSON_WEIGHT: float = 60
+    PHONE_DETECTED_WEIGHT: float = 80
+    FULLSCREEN_EXIT_WEIGHT: float = 20
+    
+    # ── Proctoring Risk Management ─────────────────────────────────
+    RISK_TERMINATION_THRESHOLD: float = 100
+    RISK_DECAY_PERCENT: float = 0.05  # 5% decay
+    RISK_DECAY_INTERVAL: int = 10     # Every 10 seconds
+    FRAME_CAPTURE_INTERVAL: float = 1.0
+    SCREENSHOT_STORAGE_PATH: str = "screenshots"
+    HIGH_RISK_AUTO_TERMINATE: bool = True
+    WEBSOCKET_HEARTBEAT_TIMEOUT: int = 30
 
     # ── Rate Limiting ──────────────────────────────────────────────
     LOGIN_RATE_LIMIT: str = "5/15min"

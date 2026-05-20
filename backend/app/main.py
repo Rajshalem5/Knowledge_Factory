@@ -1,6 +1,7 @@
 """FastAPI app bootstrap — all routers wired with security middleware."""
 
 import logging
+import os
 from contextlib import asynccontextmanager
 from datetime import date, datetime, timezone
 
@@ -20,6 +21,8 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     """Startup and shutdown event handling."""
     logger.info("Starting Knowledge Factory API...")
+    logger.info("Active SQLite database: %s", settings.DATABASE_URL)
+
     from app.database import async_session_factory, Base
     from sqlalchemy import create_engine as create_sync_engine
 
@@ -28,16 +31,31 @@ async def lifespan(app: FastAPI):
     from app.features.candidates.models import Candidate
     from app.features.hiring_cycles.models import HiringCycle
     from app.features.assessments.models import Assessment, Submission, Score
-    from app.features.proctoring.models import ProctoringRecord
+    from app.features.proctoring.models import ProctoringSession, ProctoringEvent, ProctoringEvidence, RiskSnapshot
     from app.features.interviews.models import InterviewFeedback
     from app.features.audit.models import AuditLog
     from app.features.analytics.models import AIGenerationLog
     from app.features.notifications.models import EmailLog
 
     if "sqlite" in settings.DATABASE_URL:
+        import sqlite3
+        db_path = settings.DATABASE_URL.replace("sqlite+aiosqlite:///", "")
+        abs_path = os.path.abspath(db_path)
+        logger.info("DB path: %s", abs_path)
+
         sync_engine = create_sync_engine(settings.DATABASE_URL.replace("+aiosqlite://", "://"))
         Base.metadata.create_all(bind=sync_engine)
         sync_engine.dispose()
+
+        # Log active alembic version
+        try:
+            conn = sqlite3.connect(db_path)
+            cur = conn.execute("SELECT version_num FROM alembic_version")
+            version = cur.fetchone()[0]
+            logger.info("Alembic version: %s", version)
+            conn.close()
+        except Exception:
+            logger.warning("Alembic version not stamped (fresh DB)")
 
     logger.info("Database initialized.")
     yield

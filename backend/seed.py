@@ -14,7 +14,6 @@ from app.features.auth.models import User
 from app.features.candidates.models import Candidate
 from app.features.hiring_cycles.models import HiringCycle
 from app.features.assessments.models import Assessment, Submission, Score
-from app.features.proctoring.models import ProctoringRecord
 from app.features.interviews.models import InterviewFeedback
 from app.features.audit.models import AuditLog
 from app.features.analytics.models import AIGenerationLog
@@ -51,7 +50,7 @@ def seed():
                 existing.name = su["name"]
                 existing.role = su["role"]
                 existing.status = UserStatus.ACTIVE
-                print(f"Updated staff: {su['email']} / {su['password']}")
+                print(f"Updated staff: {su['email']} (Password: {su['password']})")
                 if su["role"] == Role.ADMIN:
                     created_by = existing
             else:
@@ -64,7 +63,7 @@ def seed():
                 )
                 session.add(user)
                 session.flush()
-                print(f"Created staff: {su['email']} / {su['password']}")
+                print(f"Created staff: {su['email']} (Password: {su['password']})")
                 if su["role"] == Role.ADMIN:
                     created_by = user
         
@@ -103,31 +102,38 @@ def seed():
         else:
             print("Active hiring cycle already exists")
         
-        # Seed test candidates if none exist
-        existing_candidate = session.query(Candidate).first()
-        if not existing_candidate:
-            candidates_data = [
-                {"name": "Alice Sharma", "email": "alice@test.com", "password": "Candidate@123", "college": "IIT Bombay", "branch": "CSE", "cgpa": 8.7, "passed_out_year": 2026, "language_choice": "python"},
-                {"name": "Bob Patel", "email": "bob@test.com", "password": "Candidate@123", "college": "NIT Trichy", "branch": "ECE", "cgpa": 7.2, "passed_out_year": 2026, "language_choice": "java"},
-                {"name": "Charlie Singh", "email": "charlie@test.com", "password": "Candidate@123", "college": "DTU Delhi", "branch": "IT", "cgpa": 6.5, "passed_out_year": 2025, "language_choice": "python"},
-                {"name": "Divya Kumar", "email": "divya@test.com", "password": "Candidate@123", "college": "VIT Vellore", "branch": "CSE", "cgpa": 9.1, "passed_out_year": 2026, "language_choice": "cpp"},
-                {"name": "Esha Gupta", "email": "esha@test.com", "password": "Candidate@123", "college": "SRM Chennai", "branch": "EEE", "cgpa": 5.8, "passed_out_year": 2026, "language_choice": "python"},
-            ]
-            for cd in candidates_data:
-                pw = cd.pop("password")
+        # Seed test candidates
+        candidates_data = [
+            {"name": "Alice Sharma", "email": "alice@test.com", "password": "Candidate@123", "college": "IIT Bombay", "branch": "CSE", "cgpa": 8.7, "passed_out_year": 2026, "language_choice": "python"},
+            {"name": "Bob Patel", "email": "bob@test.com", "password": "Candidate@123", "college": "NIT Trichy", "branch": "ECE", "cgpa": 7.2, "passed_out_year": 2026, "language_choice": "java"},
+            {"name": "Test Candidate", "email": "candidate@test.com", "password": "Candidate@123", "college": "Test University", "branch": "CSE", "cgpa": 8.5, "passed_out_year": 2026, "language_choice": "python"},
+        ]
+        
+        for cd in candidates_data:
+            pw = cd.pop("password")
+            existing = session.query(Candidate).filter(Candidate.email == cd["email"]).first()
+            if existing:
+                existing.password_hash = hash_password(pw)
+                existing.name = cd["name"]
+                existing.college = cd["college"]
+                existing.branch = cd["branch"]
+                existing.cgpa = cd["cgpa"]
+                existing.passed_out_year = cd["passed_out_year"]
+                existing.language_choice = cd["language_choice"]
+                print(f"Updated candidate: {cd['email']} (Password: {pw})")
+            else:
                 c = Candidate(
                     cycle_id=cycle.id,
                     password_hash=hash_password(pw),
                     **cd,
                 )
                 session.add(c)
-            print(f"Created {len(candidates_data)} test candidates (password: Candidate@123)")
-        else:
-            print("Test candidates already exist")
+                print(f"Created candidate: {cd['email']} (Password: {pw})")
         
         session.commit()
         
         # ── Verify ──────────────────────────────────────────────────
+        print("\nVerifying credentials...")
         for su in staff_users:
             user = session.query(User).filter(User.email == su["email"]).first()
             if user:
@@ -136,7 +142,13 @@ def seed():
             else:
                 print(f"  Verify {su['email']}: NOT FOUND")
         
-        print("Seed complete!")
+        # Verify candidate@test.com
+        test_c = session.query(Candidate).filter(Candidate.email == "candidate@test.com").first()
+        if test_c:
+            ok = verify_password_test("Candidate@123", test_c.password_hash)
+            print(f"  Verify candidate@test.com: {'PASS' if ok else 'FAIL'}")
+        
+        print("\nSeed complete!")
 
 
 def verify_password_test(plain_password: str, hashed_password: str) -> bool:

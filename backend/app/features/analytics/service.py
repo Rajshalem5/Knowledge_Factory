@@ -175,16 +175,35 @@ class AnalyticsService:
                 avg_score=round(float(row[2] or 0), 2),
             ))
 
-        # Proctoring violations from ProctoringRecord violations_json
-        from app.features.proctoring.models import ProctoringRecord
-        proctor_q = select(ProctoringRecord.violations_json)
-        proctor_rows = await self.db.execute(proctor_q)
+        # Proctoring violations: normalized RiskSnapshot.active_flags is stored per session over time.
+        # active_flags is expected to be a dict of violation/event types (implementation-dependent).
+        from app.features.proctoring.models import RiskSnapshot
+
+        snapshots_q = select(RiskSnapshot.active_flags)
+        snapshots_rows = await self.db.execute(snapshots_q)
+
         violation_type_counts: dict[str, int] = {}
-        for row in proctor_rows.all():
-            violations = row[0] or []
-            for evt in violations:
-                evt_type = evt.get("type", "unknown")
-                violation_type_counts[evt_type] = violation_type_counts.get(evt_type, 0) + 1
+        for row in snapshots_rows.all():
+            active_flags = row[0] or {}
+
+            # Support both shapes:
+            # 1) {"types": [{"type": "cheating", ...}, ...]} (legacy-ish)
+            # 2) {"cheating": 2, "no_face": 1} (counts)
+            if isinstance(active_flags, dict) and "types" in active_flags and isinstance(active_flags["types"], list):
+                for evt in active_flags["types"]:
+                    evt_type = (evt or {}).get("type", "unknown")
+                    violation_type_counts[evt_type] = violation_type_counts.get(evt_type, 0) + 1
+            elif isinstance(active_flags, dict):
+                for k, v in active_flags.items():
+                    if k == "types":
+                        continue
+                    try:
+                        count_inc = int(v)
+                    except (TypeError, ValueError):
+                        count_inc = 1 if v else 0
+                    if count_inc:
+                        violation_type_counts[str(k)] = violation_type_counts.get(str(k), 0) + count_inc
+
         proctoring_violations = [
             ProctoringViolation(type=t, count=c)
             for t, c in sorted(violation_type_counts.items(), key=lambda x: -x[1])

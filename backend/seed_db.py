@@ -13,7 +13,6 @@ from app.features.auth.models import User
 from app.features.candidates.models import Candidate
 from app.features.hiring_cycles.models import HiringCycle
 from app.features.assessments.models import Assessment, Submission, Score
-from app.features.proctoring.models import ProctoringRecord
 from app.features.interviews.models import InterviewFeedback
 from app.features.audit.models import AuditLog
 from app.features.analytics.models import AIGenerationLog

@@ -1,5 +1,7 @@
 """Assessment routes."""
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,15 +11,30 @@ from app.features.assessments.schemas import AssessmentStart, AssessmentRead, Su
 from app.features.assessments.service import AssessmentService
 from app.core.enums import Role, AssessmentStatus
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
 
 
 @router.post("/start", response_model=AssessmentRead)
 async def start_assessment(start_data: AssessmentStart, db: AsyncSession = Depends(get_db), current_user=Depends(get_current_user)):
+    logger.info(
+        "POST /api/assessment/start | candidate_id=%s | round=%s | payload=%s",
+        current_user.id, start_data.round, start_data.model_dump(),
+    )
     service = AssessmentService(db)
     try:
-        return await service.start_assessment(current_user.id, start_data)
+        result = await service.start_assessment(current_user.id, start_data)
+        logger.info(
+            "POST /api/assessment/start success | assessment_id=%s | round=%s | status=%s",
+            result.id, result.round, result.status,
+        )
+        return result
     except ValueError as e:
+        logger.warning(
+            "POST /api/assessment/start failed 400 | candidate_id=%s | round=%s | detail=%s",
+            current_user.id, start_data.round, str(e),
+        )
         raise HTTPException(status_code=400, detail=str(e))
 
 
@@ -25,7 +42,9 @@ async def start_assessment(start_data: AssessmentStart, db: AsyncSession = Depen
 async def get_active_assessments(db: AsyncSession = Depends(get_db), current_user=Depends(get_current_user)):
     """Get all active/in-progress assessments for the candidate."""
     service = AssessmentService(db)
-    return await service.get_assessment(current_user.id)
+    assessments = await service.get_assessment(current_user.id)
+    logger.info("GET /api/assessment/active | candidate_id=%s | count=%d", current_user.id, len(assessments))
+    return assessments
 
 
 @router.post("/{assessment_id}/complete", response_model=AssessmentRead)

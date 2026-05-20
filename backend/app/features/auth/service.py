@@ -1,8 +1,11 @@
 """Authentication business logic - simplified without multi-tenancy."""
 
+import logging
 from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+logger = logging.getLogger(__name__)
 
 from app.core.security import (
     hash_password,
@@ -25,23 +28,39 @@ class AuthService:
 
     async def authenticate(self, login_data: LoginRequest) -> tuple[Any, bool] | None:
         """Authenticate user or candidate. Returns (entity, is_candidate) or None."""
+        logger.debug(f"Attempting authentication for email: {login_data.email}")
+        
         # Check users table first
         stmt = select(User).where(User.email == login_data.email)
         result = await self.db.execute(stmt)
         user = result.scalars().first()
 
-        if user and verify_password(login_data.password, user.password_hash):
-            return (user, False)
+        if user:
+            logger.debug(f"Found user in users table. Verifying password...")
+            if verify_password(login_data.password, user.password_hash):
+                logger.info(f"User authentication successful: {login_data.email}")
+                return (user, False)
+            else:
+                logger.warning(f"User authentication failed (password mismatch): {login_data.email}")
+        else:
+            logger.debug(f"User not found in users table: {login_data.email}")
 
         # Check candidates table
         stmt = select(Candidate).where(Candidate.email == login_data.email)
         result = await self.db.execute(stmt)
         candidate = result.scalars().first()
 
-        if candidate and candidate.password_hash and verify_password(
-            login_data.password, candidate.password_hash
-        ):
-            return (candidate, True)
+        if candidate:
+            logger.debug(f"Found candidate in candidates table. Verifying password...")
+            if candidate.password_hash and verify_password(
+                login_data.password, candidate.password_hash
+            ):
+                logger.info(f"Candidate authentication successful: {login_data.email}")
+                return (candidate, True)
+            else:
+                logger.warning(f"Candidate authentication failed (password mismatch or no hash): {login_data.email}")
+        else:
+            logger.debug(f"Candidate not found in candidates table: {login_data.email}")
 
         return None
 

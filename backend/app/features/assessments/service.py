@@ -1,5 +1,6 @@
 """Assessment service: start, submit, evaluate."""
 
+import logging
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -11,7 +12,9 @@ from app.core.enums import AssessmentRound, AssessmentStatus, CandidateStatus
 from app.features.assessments.models import Assessment, Submission, Score
 from app.features.assessments.schemas import AssessmentStart, SubmissionCreate
 from app.features.candidates.models import Candidate
-from app.features.proctoring.models import ProctoringRecord
+from app.features.proctoring.models import ProctoringSession
+
+logger = logging.getLogger(__name__)
 
 
 class AssessmentService:
@@ -19,12 +22,38 @@ class AssessmentService:
         self.db = db
 
     async def start_assessment(self, candidate_id: str, req: AssessmentStart) -> Assessment:
-        # Validate candidate exists and has correct pipeline status
+        logger.info("start_assessment called | candidate_id=%s | round=%s", candidate_id, req.round)
+
+        # Validate candidate exists
         c_stmt = select(Candidate).where(Candidate.id == str(candidate_id))
         c_res = await self.db.execute(c_stmt)
         candidate = c_res.scalar_one_or_none()
         if not candidate:
+            logger.error("Candidate not found | candidate_id=%s", candidate_id)
             raise ValueError("Candidate not found")
+        logger.debug("Candidate found | id=%s | status=%s", candidate.id, candidate.status)
+
+        # ═══ CHECK EXISTING ASSESSMENT FIRST ═══
+        # Moved before status validation so re-entrant calls (e.g. from
+        # Portal creating then Assessment page re-fetching) succeed even
+        # after the candidate status has been advanced by the first call.
+        existing_stmt = (
+            select(Assessment)
+            .where(
+                Assessment.candidate_id == str(candidate_id),
+                Assessment.round == req.round,
+                Assessment.status.in_([AssessmentStatus.IN_PROGRESS]),
+            )
+        )
+        existing_result = await self.db.execute(existing_stmt)
+        existing = existing_result.scalar_one_or_none()
+
+        if existing:
+            logger.info(
+                "Returning existing active assessment | id=%s | round=%s",
+                existing.id, existing.round,
+            )
+            return existing
 
         # Round-to-status mapping: required current status → target status on start
         round_status_map = {
@@ -36,28 +65,19 @@ class AssessmentService:
             required_status, next_status = status_mapping
             current = CandidateStatus(candidate.status) if isinstance(candidate.status, str) else candidate.status
             if current != required_status:
+                logger.warning(
+                    "Status mismatch | candidate_id=%s | current=%s | required=%s | round=%s",
+                    candidate_id, current, required_status, req.round,
+                )
                 raise ValueError(
                     f"Candidate must be in {required_status.value} to start {req.round.value} assessment"
                 )
+            logger.debug("Advancing candidate status | from=%s → to=%s", current, next_status)
             candidate.status = next_status
-
-        # Check if candidate already has an active/in-progress assessment for this round
-        stmt = (
-            select(Assessment)
-            .where(
-                Assessment.candidate_id == str(candidate_id),
-                Assessment.round == req.round,
-                Assessment.status.in_([AssessmentStatus.IN_PROGRESS]),
-            )
-        )
-        result = await self.db.execute(stmt)
-        existing = result.scalar_one_or_none()
-
-        if existing:
-            return existing
 
         # Pre-generate assessment ID so it's available before flush
         assessment_id = str(uuid.uuid4())
+        logger.debug("Generated assessment_id=%s", assessment_id)
 
         # Create new assessment
         assessment = Assessment(
@@ -72,15 +92,15 @@ class AssessmentService:
         )
         self.db.add(assessment)
 
-        # Create proctoring record
-        proctoring = ProctoringRecord(
-            assessment_id=assessment_id,
-            candidate_id=candidate_id,
-            retention_expiry=datetime.now(timezone.utc).date() + timedelta(days=20),
+        # Create proctoring session (normalized model; ProctoringRecord no longer exists)
+        proctoring_session = ProctoringSession(
+            assessment_attempt_id=assessment_id,
+            user_id=candidate_id,
         )
-        self.db.add(proctoring)
+        self.db.add(proctoring_session)
 
         await self.db.flush()
+        logger.info("Assessment created successfully | id=%s | round=%s", assessment.id, assessment.round)
         return assessment
 
     async def submit_section(self, candidate_id: str, data: SubmissionCreate) -> dict[str, Any]:

@@ -29,7 +29,7 @@ from app.config import settings
 
 # ── Portable UUID type (works on SQLite + PostgreSQL) ───────────────
 class PortableUUID(TypeDecorator):
-    """UUID stored as String(36) on all dialects, returned as Python uuid.UUID."""
+    """UUID stored as String(36) on all dialects, returned as python uuid.UUID."""
     impl = String(36)
     cache_ok = True
 
@@ -46,13 +46,36 @@ def portable_uuid_col(**kwargs):
 
 
 # ── Engine ─────────────────────────────────────────────────────────
-# The engine is created once at module import time using settings from
-# config.py. asyncpg is the driver (fast, pure-Python async PostgreSQL).
+# Supports both SQLite (local development) and PostgreSQL (production)
+# SQLite connection pooling is minimal; PostgreSQL uses full pooling
+# 
+# SQLite: sqlite+aiosqlite:///./knowledge_factory.db
+# PostgreSQL: postgresql+asyncpg://user:pass@host:5432/db
 
+_engine_kwargs = {
+    "echo": settings.DB_ECHO,
+}
+
+# SQLite-specific optimizations
+if "sqlite" in settings.DATABASE_URL:
+    _engine_kwargs.update({
+        "connect_args": {
+            "timeout": 30,  # Connection timeout
+            "check_same_thread": False,  # Allow multiple threads
+        },
+        "pool_pre_ping": True,  # Test connection before use
+    })
+else:
+    # PostgreSQL connection pooling
+    _engine_kwargs.update({
+        "pool_size": settings.DB_POOL_SIZE,
+        "max_overflow": settings.DB_MAX_OVERFLOW,
+        "pool_pre_ping": True,
+    })
 
 engine = create_async_engine(
     settings.DATABASE_URL,
-    echo=settings.DB_ECHO,
+    **_engine_kwargs
 )
 
 # ── Session Factory ────────────────────────────────────────────────
@@ -91,7 +114,7 @@ def create_test_database() -> AsyncGenerator[AsyncSession, None]:
         from app.features.candidates.models import Candidate
         from app.features.hiring_cycles.models import HiringCycle
         from app.features.assessments.models import Assessment, Submission, Score
-        from app.features.proctoring.models import ProctoringRecord
+        from app.features.proctoring.models import ProctoringSession, ProctoringEvent, ProctoringEvidence, RiskSnapshot
         from app.features.interviews.models import InterviewFeedback
         from app.features.audit.models import AuditLog
         from app.features.analytics.models import AIGenerationLog
