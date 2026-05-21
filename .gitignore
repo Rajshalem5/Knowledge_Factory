@@ -9,6 +9,23 @@ failures/
 dep_audit.json
 perf_baseline.json
 
+# Virtual environments
+backend/venv2/
+backend/venv/
+
+# Logs
+backend/logs/
+*.log
+
+# Python cache
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# OS files
+.DS_Store
+Thumbs.db
+
 # Backend deprecated core files
 backend/app/core/auth.py
 backend/app/core/database.py
