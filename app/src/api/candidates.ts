@@ -4,7 +4,7 @@
  */
 
 import { api } from './client';
-import type { Candidate, PaginatedResponse } from '../types';
+import type { Candidate, PaginatedResponse, BulkUploadPreview } from '../types';
 
 export const candidatesApi = {
   /**
@@ -76,7 +76,7 @@ export const candidatesApi = {
   bulkUpload: (file: File) => {
     const formData = new FormData();
     formData.append('file', file);
-    return api.post<unknown>('/api/candidates/bulk-upload', formData) as Promise<unknown>;
+    return api.post<{ batch_id: string; total_records: number; saved: number; errors: any[] }>('/api/candidates/bulk-upload', formData);
   },
 
   /**
@@ -86,6 +86,6 @@ export const candidatesApi = {
   previewBulkUpload: (file: File) => {
     const formData = new FormData();
     formData.append('file', file);
-    return api.post<unknown>('/api/candidates/bulk-upload/preview', formData) as Promise<unknown>;
+    return api.post<BulkUploadPreview>('/api/candidates/bulk-upload/preview', formData);
   },
 };

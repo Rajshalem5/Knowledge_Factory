@@ -9,6 +9,9 @@ Source: Knowledge_Factory_Technical_Architecture.docx, Section 5 & Table 21.
 """
 
 import enum
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 # ── User / Staff ───────────────────────────────────────────────────
@@ -18,10 +21,41 @@ class Role(str, enum.Enum):
     User roles for non-candidate humans (staff).
     Candidates do NOT use this enum — they have their own auth model.
     """
-    SUPERADMIN = "SUPERADMIN"
+    SUPER_ADMIN = "SUPER_ADMIN"
     ADMIN = "ADMIN"
     HR = "HR"
     INTERVIEWER = "INTERVIEWER"
+
+    @classmethod
+    def normalize(cls, raw: str | None) -> str:
+        """
+        Normalize any role string to its canonical uppercase form.
+        Handles legacy/dirty formats (e.g. SUPERADMIN → SUPER_ADMIN).
+        Unknown roles fall back to HR with a warning.
+        """
+        if not raw:
+            logger.warning("[Role.normalize] Empty role, falling back to HR")
+            return cls.HR.value
+
+        cleaned = raw.strip().upper().replace(" ", "_")
+
+        role_map = {
+            "SUPERADMIN": cls.SUPER_ADMIN.value,
+            "SUPER_ADMIN": cls.SUPER_ADMIN.value,
+            "ADMIN": cls.ADMIN.value,
+            "HR": cls.HR.value,
+            "INTERVIEWER": cls.INTERVIEWER.value,
+            "CANDIDATE": "CANDIDATE",
+        }
+
+        if cleaned in role_map:
+            return role_map[cleaned]
+
+        logger.warning(
+            "[Role.normalize] Unknown role '%s' (cleaned: '%s'). Falling back to HR.",
+            raw, cleaned,
+        )
+        return cls.HR.value
 
 
 class UserStatus(str, enum.Enum):

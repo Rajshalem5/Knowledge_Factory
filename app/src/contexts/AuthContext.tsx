@@ -8,6 +8,7 @@ import { createContext, useContext, useState, useCallback, useEffect, type React
 import type { User } from '../types';
 import { authApi } from '../api/auth';
 import { tokenStore } from '../api/token';
+import { normalizeRole } from '../utils/roles';
 
 interface AuthContextValue {
   user: User | null;
@@ -36,7 +37,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(() => tokenStore.getAccessToken());
-  const [isVerifying, setIsVerifying] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(true);
 
   // On mount: try cookie-based refresh for session persistence across reloads
   useEffect(() => {
@@ -66,11 +67,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Have an in-memory token — verify current session
     authApi.getMe()
       .then((userData) => {
+        const role = normalizeRole(userData.role);
+        console.log(`[AuthContext] getMe success: id=${userData.id}, email=${userData.email}, rawRole=${userData.role}, normalizedRole=${role}`);
         setUser({
           id: userData.id,
           email: userData.email,
           name: userData.name,
-          role: userData.role.toLowerCase() as User['role'],
+          role,
         });
       })
       .catch(() => {
@@ -108,6 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     tokenStore.setAccessToken(response.token);
     setToken(response.token);
     setUser(response.user);
+    console.log(`[AuthContext] login: User set with role=${response.user.role}`);
     return response.user;
   }, []);
 
@@ -122,11 +126,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!token) return;
     try {
       const userData = await authApi.getMe();
+      const role = normalizeRole(userData.role);
+      console.log(`[AuthContext] refreshUser: rawRole=${userData.role}, normalizedRole=${role}`);
       setUser({
         id: userData.id,
         email: userData.email,
         name: userData.name,
-        role: userData.role.toLowerCase() as User['role'],
+        role,
       });
     } catch {
       handleLogout();
@@ -140,8 +146,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const hasRole = useCallback((roles: string[]): boolean => {
     if (!user) return false;
-    const userRole = user.role.toLowerCase().replace('_', '');
-    return roles.some(r => r.toLowerCase().replace('_', '') === userRole);
+    const userRole = normalizeRole(user.role);
+    const normalizedAllowed = roles.map(r => normalizeRole(r));
+    const hasMatch = normalizedAllowed.includes(userRole);
+    console.log(`[Auth] hasRole: UserRole=${userRole} (raw: ${user.role}), Allowed=[${normalizedAllowed.join(', ')}] (raw: [${roles.join(', ')}]). Result=${hasMatch}`);
+    return hasMatch;
   }, [user]);
 
   const value: AuthContextValue = {

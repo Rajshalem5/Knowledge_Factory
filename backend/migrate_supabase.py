@@ -23,7 +23,7 @@ create table if not exists users (
     password_hash text not null,
     full_name     varchar(150) not null,
     role          varchar(30)  not null
-                      check (role in ('SUPERADMIN','ADMIN','HR','CANDIDATE')),
+                      check (role in ('SUPER_ADMIN','ADMIN','HR','INTERVIEWER','CANDIDATE')),
     status        varchar(20)  not null default 'ACTIVE'
                       check (status in ('ACTIVE','INACTIVE')),
     resume_url    text,
@@ -38,7 +38,7 @@ create table if not exists users (
 );
 
 create unique index if not exists only_one_superadmin
-    on users(role) where role = 'SUPERADMIN';
+    on users(role) where role = 'SUPER_ADMIN';
 create index if not exists idx_users_email      on users(email);
 create index if not exists idx_users_role       on users(role);
 create index if not exists idx_users_created_by on users(created_by);

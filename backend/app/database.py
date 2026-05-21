@@ -130,7 +130,7 @@ def create_test_database() -> AsyncGenerator[AsyncSession, None]:
                 email="admin@knowledgefactory.io",
                 password_hash=hash_password(settings.SEED_ADMIN_PASSWORD or "Admin@12345"),
                 name="Admin User",
-                role="SUPERADMIN",
+                role=Role.SUPER_ADMIN,
                 status="ACTIVE",
             )
             session.add(admin_user)

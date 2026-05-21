@@ -15,7 +15,7 @@ router = APIRouter()
 
 
 @router.get("/")
-async def list_cycles(db: AsyncSession = Depends(get_db), current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN]))):
+async def list_cycles(db: AsyncSession = Depends(get_db), current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPER_ADMIN]))):
     stmt = select(HiringCycle).order_by(HiringCycle.created_at.desc())
     res = await db.execute(stmt)
     cycles = res.scalars().all()
@@ -34,7 +34,7 @@ async def list_cycles(db: AsyncSession = Depends(get_db), current_user = Depends
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
-async def create_cycle(body: dict, db: AsyncSession = Depends(get_db), current_user = Depends(require_role([Role.ADMIN, Role.SUPERADMIN]))):
+async def create_cycle(body: dict, db: AsyncSession = Depends(get_db), current_user = Depends(require_role([Role.ADMIN, Role.SUPER_ADMIN]))):
     from datetime import date
 
     cycle = HiringCycle(
@@ -53,7 +53,7 @@ async def create_cycle(body: dict, db: AsyncSession = Depends(get_db), current_u
 
 
 @router.patch("/{cycle_id}")
-async def update_cycle(cycle_id: UUID, body: dict, db: AsyncSession = Depends(get_db), current_user = Depends(require_role([Role.ADMIN, Role.SUPERADMIN]))):
+async def update_cycle(cycle_id: UUID, body: dict, db: AsyncSession = Depends(get_db), current_user = Depends(require_role([Role.ADMIN, Role.SUPER_ADMIN]))):
     stmt = select(HiringCycle).where(HiringCycle.id == str(cycle_id))
     res = await db.execute(stmt)
     cycle = res.scalar_one_or_none()

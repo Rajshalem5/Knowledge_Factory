@@ -45,7 +45,7 @@ async def get_hiring_funnel(
     min_score: float | None = Query(None, ge=0.0, le=100.0, description="Filter candidates whose assessment score is >= this value"),
     max_score: float | None = Query(None, ge=0.0, le=100.0, description="Filter candidates whose assessment score is <= this value"),
     db: AsyncSession = Depends(get_db),
-    current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN])),
+    current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPER_ADMIN])),
 ):
     service = AnalyticsService(db)
     result = await service.get_hiring_funnel(
@@ -79,6 +79,6 @@ async def get_hiring_funnel(
 
 
 @router.get("/dashboard", response_model=DashboardResponse)
-async def get_dashboard(db: AsyncSession = Depends(get_db), current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN]))):
+async def get_dashboard(db: AsyncSession = Depends(get_db), current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPER_ADMIN]))):
     service = AnalyticsService(db)
     return await service.get_dashboard()

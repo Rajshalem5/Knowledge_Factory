@@ -5,6 +5,7 @@
  */
 
 import { api } from './client';
+import { normalizeRole } from '../utils/roles';
 import type { User } from '../types';
 
 interface LoginData {
@@ -40,8 +41,10 @@ export interface NormalizedAuthResponse {
   user: User;
 }
 
-// Normalize role to lowercase for frontend
+// Normalize role to lowercase for frontend, strip ALL underscores
 function normalizeResponse(res: AuthResponse): NormalizedAuthResponse {
+  const normalizedRole = normalizeRole(res.user.role);
+  console.log(`[authApi] normalizeResponse: RawRole=${res.user.role}, NormalizedRole=${normalizedRole}`);
   return {
     token: res.access_token,
     refresh_token: res.refresh_token || '', // cookie handles refresh
@@ -49,7 +52,7 @@ function normalizeResponse(res: AuthResponse): NormalizedAuthResponse {
       id: String(res.user.id),
       email: res.user.email,
       name: res.user.name,
-      role: res.user.role.toLowerCase() as User['role'],
+      role: normalizedRole,
     },
   };
 }

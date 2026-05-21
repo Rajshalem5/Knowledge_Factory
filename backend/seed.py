@@ -36,7 +36,7 @@ def seed():
     with Session(engine) as session:
         # ── Staff Users ─────────────────────────────────────────────
         staff_users = [
-            {"email": "superadmin@knowledgefactory.io", "password": "Super@12345", "name": "Super Admin", "role": Role.SUPERADMIN},
+            {"email": "superadmin@knowledgefactory.io", "password": "Super@12345", "name": "Super Admin", "role": Role.SUPER_ADMIN},
             {"email": "admin@knowledgefactory.io", "password": "admin123", "name": "Admin User", "role": Role.ADMIN},
             {"email": "hr@knowledgefactory.io", "password": "Hr@12345", "name": "HR Manager", "role": Role.HR},
             {"email": "interviewer@knowledgefactory.io", "password": "Interview@12345", "name": "Interviewer", "role": Role.INTERVIEWER},

@@ -28,22 +28,22 @@ class AuthService:
 
     async def authenticate(self, login_data: LoginRequest) -> tuple[Any, bool] | None:
         """Authenticate user or candidate. Returns (entity, is_candidate) or None."""
-        logger.debug(f"Attempting authentication for email: {login_data.email}")
-        
+        logger.debug("Attempting authentication for email: %s", login_data.email)
+
         # Check users table first
         stmt = select(User).where(User.email == login_data.email)
         result = await self.db.execute(stmt)
         user = result.scalars().first()
 
         if user:
-            logger.debug(f"Found user in users table. Verifying password...")
+            logger.debug("Found user in users table. Verifying password...")
             if verify_password(login_data.password, user.password_hash):
-                logger.info(f"User authentication successful: {login_data.email}")
+                logger.info("User authentication successful: %s", login_data.email)
                 return (user, False)
             else:
-                logger.warning(f"User authentication failed (password mismatch): {login_data.email}")
+                logger.warning("User authentication failed (password mismatch): %s", login_data.email)
         else:
-            logger.debug(f"User not found in users table: {login_data.email}")
+            logger.debug("User not found in users table: %s", login_data.email)
 
         # Check candidates table
         stmt = select(Candidate).where(Candidate.email == login_data.email)
@@ -51,16 +51,16 @@ class AuthService:
         candidate = result.scalars().first()
 
         if candidate:
-            logger.debug(f"Found candidate in candidates table. Verifying password...")
+            logger.debug("Found candidate in candidates table. Verifying password...")
             if candidate.password_hash and verify_password(
                 login_data.password, candidate.password_hash
             ):
-                logger.info(f"Candidate authentication successful: {login_data.email}")
+                logger.info("Candidate authentication successful: %s", login_data.email)
                 return (candidate, True)
             else:
-                logger.warning(f"Candidate authentication failed (password mismatch or no hash): {login_data.email}")
+                logger.warning("Candidate authentication failed (password mismatch or no hash): %s", login_data.email)
         else:
-            logger.debug(f"Candidate not found in candidates table: {login_data.email}")
+            logger.debug("Candidate not found in candidates table: %s", login_data.email)
 
         return None
 
@@ -94,14 +94,22 @@ class AuthService:
 
     @staticmethod
     def generate_token_response(user_or_candidate: Any) -> dict:
-        """Generate token response with user info."""
+        """Generate token response with user info.
+        Role is always normalized to canonical uppercase form before embedding in JWT.
+        """
         from app.features.candidates.models import Candidate
-        
+
         is_candidate = isinstance(user_or_candidate, Candidate)
 
         subject = str(user_or_candidate.id)
         email = user_or_candidate.email
-        role = "CANDIDATE" if is_candidate else (user_or_candidate.role.value if hasattr(user_or_candidate.role, 'value') else str(user_or_candidate.role))
+
+        if is_candidate:
+            role = "CANDIDATE"
+        else:
+            raw_role = user_or_candidate.role.value if hasattr(user_or_candidate.role, 'value') else str(user_or_candidate.role)
+            role = Role.normalize(raw_role)
+            logger.debug("generate_token_response: role %s → %s for %s", raw_role, role, email)
 
         access_token = create_access_token(subject=subject, email=email, role=role)
         refresh_tok = create_refresh_token(subject=subject)

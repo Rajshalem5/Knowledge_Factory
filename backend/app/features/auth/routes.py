@@ -18,6 +18,7 @@ from app.features.auth.schemas import (
 from app.features.auth.service import AuthService
 from app.features.candidates.models import Candidate
 from app.features.auth.models import User
+from app.core.enums import Role
 
 router = APIRouter()
 
@@ -58,10 +59,10 @@ async def login(login_data: LoginRequest, db: AsyncSession = Depends(get_db), re
 
     user_or_candidate, _is_candidate = result
     token_data = auth_service.generate_token_response(user_or_candidate)
-    
+
     # Set refresh token as httpOnly cookie
     set_refresh_cookie(response, token_data["refresh_token"])
-    
+
     # Return access token only (refresh token is in cookie)
     return {
         "access_token": token_data["access_token"],
@@ -112,14 +113,20 @@ async def register_candidate(
 
 @router.get("/me", response_model=UserResponse)
 async def get_me(current_user=Depends(get_current_user)):
-    """Get current user profile."""
+    """Get current user profile. Role is normalized to canonical form."""
     is_candidate = isinstance(current_user, Candidate)
-    
+
+    if is_candidate:
+        role = "CANDIDATE"
+    else:
+        raw = current_user.role.value if hasattr(current_user.role, 'value') else str(current_user.role)
+        role = Role.normalize(raw)
+
     return UserResponse(
         id=current_user.id,
         email=current_user.email,
         name=current_user.name,
-        role="CANDIDATE" if is_candidate else current_user.role,
+        role=role,
     )
 
 
@@ -185,7 +192,7 @@ async def logout(response: Response):
 async def verify_otp(data: OtpVerifyRequest, db: AsyncSession = Depends(get_db)):
     """Verify OTP and issue tokens (dev mode accepts any 6-digit code)."""
     from app.core.security import create_access_token, create_refresh_token
-    
+
     stmt = select(User).where(User.email == data.email)
     res = await db.execute(stmt)
     user = res.scalar_one_or_none()
@@ -195,9 +202,11 @@ async def verify_otp(data: OtpVerifyRequest, db: AsyncSession = Depends(get_db))
 
     # Dev-mode: auto-accept any 6-digit OTP
     if user.password_hash and len(data.otp) == 6:
-        access_token = create_access_token(subject=str(user.id), email=user.email, role=user.role)
+        raw_role = user.role.value if hasattr(user.role, 'value') else str(user.role)
+        role = Role.normalize(raw_role)
+        access_token = create_access_token(subject=str(user.id), email=user.email, role=role)
         refresh_tok = create_refresh_token(subject=str(user.id))
-        
+
         return TokenResponse(
             access_token=access_token,
             refresh_token=refresh_tok,
@@ -206,7 +215,7 @@ async def verify_otp(data: OtpVerifyRequest, db: AsyncSession = Depends(get_db))
                 id=user.id,
                 email=user.email,
                 name=user.name,
-                role=user.role,
+                role=role,
             ),
         )
 
@@ -224,16 +233,18 @@ async def forgot_password(data: ForgotPasswordRequest, db: AsyncSession = Depend
         from app.core.security import create_access_token
         from app.integrations.email import send_password_reset_email
         # Generate password reset token (would normally send via email)
+        raw_role = user.role.value if hasattr(user.role, 'value') else str(user.role)
+        role = Role.normalize(raw_role)
         reset_token = create_access_token(
             subject=str(user.id),
             email=user.email,
-            role=user.role + "_RESET",
+            role=role + "_RESET",
             token_type="password_reset",
         )
         # Send reset token via email
         await send_password_reset_email(to=user.email, reset_token=reset_token)
         return {"message": "If email exists, a reset link has been sent."}
-    
+
     # Don't reveal if email exists
     return {"message": "If email exists, a reset link has been sent."}
 
@@ -242,34 +253,34 @@ async def forgot_password(data: ForgotPasswordRequest, db: AsyncSession = Depend
 async def reset_password(data: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
     """Reset password using valid reset token."""
     from app.core.security import decode_token, hash_password
-    
+
     try:
         payload = decode_token(data.token)
         if not payload:
             raise HTTPException(status_code=400, detail="Invalid or expired token")
-        
+
         token_type = payload.get("type")
         email = payload.get("email")
-        
+
         if token_type != "password_reset":
             raise HTTPException(status_code=400, detail="Invalid token type")
-        
+
         if not email:
             raise HTTPException(status_code=400, detail="Invalid token - missing email")
-        
+
         # Find user by email
         stmt = select(User).where(User.email == email)
         res = await db.execute(stmt)
         user = res.scalar_one_or_none()
-        
+
         if not user:
             raise HTTPException(status_code=400, detail="User not found")
-        
+
         # Update password
         user.password_hash = hash_password(data.new_password)
         await db.flush()
-        
+
         return {"message": "Password has been reset successfully."}
-        
+
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to reset password: {str(e)}")

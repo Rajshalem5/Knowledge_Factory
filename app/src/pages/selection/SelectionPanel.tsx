@@ -19,7 +19,9 @@ export default function SelectionPanel() {
 
   const handleConfirmAll = () => {
     Object.entries(selections).forEach(([id, selected]) => {
-      updateStatus.mutate({ id, status: selected ? 'selected' : 'rejected' });
+      const status = selected ? 'SELECTED' : 'FINAL_REJECTED';
+      console.log(`[SelectionPanel] Updating status: candidateId=${id}, status=${status}`);
+      updateStatus.mutate({ id, status });
     });
   };
 

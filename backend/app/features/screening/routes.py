@@ -46,7 +46,7 @@ async def run_screening(
     assessment_status: str | None = Query(None, description="Filter candidates whose assessment has this status (e.g. IN_PROGRESS, COMPLETED)"),
     min_score: float | None = Query(None, ge=0.0, le=100.0, description="Filter candidates whose assessment score is >= this value"),
     max_score: float | None = Query(None, ge=0.0, le=100.0, description="Filter candidates whose assessment score is <= this value"),
-    db: AsyncSession = Depends(get_db), current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN]))):
+    db: AsyncSession = Depends(get_db), current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPER_ADMIN]))):
     """
     Auto-screen candidates based on hiring cycle config.
     Candidates meeting CGPA/branch criteria transition to ROUND1_PASSED.
@@ -169,7 +169,7 @@ async def pipeline_stats(
     min_score: float | None = Query(None, ge=0.0, le=100.0, description="Filter candidates whose assessment score is >= this value"),
     max_score: float | None = Query(None, ge=0.0, le=100.0, description="Filter candidates whose assessment score is <= this value"),
     db: AsyncSession = Depends(get_db),
-    current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN])),
+    current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPER_ADMIN])),
 ):
     """Get aggregated candidate counts per pipeline stage with optional extra filters.
 

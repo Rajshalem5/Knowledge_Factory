@@ -4,7 +4,7 @@ Candidate schemas: Lists, Details, Updates.
 
 from datetime import datetime
 from typing import Any, Optional
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
 from app.core.enums import CandidateStatus
 
 
@@ -111,6 +111,24 @@ class CandidateListResponse(BaseModel):
 
 class CandidateStatusUpdate(BaseModel):
     status: CandidateStatus
+
+    @field_validator("status", mode="before")
+    @classmethod
+    def coerce_status(cls, v: object) -> CandidateStatus:
+        """Accept both canonical enum values (SELECTED, ROUND1_PASSED) and display statuses (selected, round1)."""
+        if isinstance(v, CandidateStatus):
+            return v
+        raw = str(v)
+        # Try canonical enum value first (case-insensitive)
+        try:
+            return CandidateStatus(raw.upper())
+        except ValueError:
+            pass
+        # Try display status mapping
+        mapped = CandidateStatus.from_display_status(raw)
+        if mapped is not None:
+            return mapped
+        raise ValueError(f"Invalid status: {raw}")
 
 
 class BulkUploadPreview(BaseModel):

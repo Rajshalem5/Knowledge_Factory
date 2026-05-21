@@ -1,6 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
-import { ROLE_HOME_ROUTES } from './utils/roles';
+import { getSafeHomeRoute } from './utils/roles';
 import { ProtectedRoute } from './routes/ProtectedRoute';
 
 import Landing from './pages/Landing';
@@ -15,13 +15,15 @@ import CandidateDetail from './pages/hr/CandidateDetail';
 import InterviewPanel from './pages/interviewer/InterviewPanel';
 import SelectionPanel from './pages/selection/SelectionPanel';
 import AnalyticsDashboard from './pages/analytics/AnalyticsDashboard';
-import SuperAdminPanel from './pages/superadmin/SuperAdminPanel';
+import SuperAdminPanel from './pages/super_admin/SuperAdminPanel';
 
 function AuthRedirect() {
   const { user } = useAuth();
   const role = user?.role;
   if (!role) return <Navigate to="/login" replace />;
-  return <Navigate to={ROLE_HOME_ROUTES[role]} replace />;
+  const target = getSafeHomeRoute(role);
+  console.log(`[AuthRedirect] UserRole=${role}, Redirecting to: ${target}`);
+  return <Navigate to={target} replace />;
 }
 
 export default function App() {
@@ -46,7 +48,7 @@ export default function App() {
         </ProtectedRoute>
       } />
 
-      {/* HR / Admin routes */}
+      {/* HR / Admin / SuperAdmin routes */}
       <Route path="/dashboard" element={
         <ProtectedRoute allowedRoles={['hr', 'admin', 'superadmin']}>
           <Dashboard />
@@ -60,7 +62,7 @@ export default function App() {
 
       {/* Interviewer routes */}
       <Route path="/interview" element={
-        <ProtectedRoute allowedRoles={['interviewer', 'admin']}>
+        <ProtectedRoute allowedRoles={['interviewer', 'admin', 'superadmin']}>
           <InterviewPanel />
         </ProtectedRoute>
       } />
@@ -79,7 +81,12 @@ export default function App() {
         </ProtectedRoute>
       } />
 
-      {/* Super Admin routes */}
+      {/* Super Admin route */}
+      <Route path="/admin/dashboard" element={
+        <ProtectedRoute allowedRoles={['superadmin', 'admin']}>
+          <SuperAdminPanel />
+        </ProtectedRoute>
+      } />
       <Route path="/superadmin" element={
         <ProtectedRoute allowedRoles={['superadmin']}>
           <SuperAdminPanel />

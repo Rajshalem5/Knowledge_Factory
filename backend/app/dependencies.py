@@ -49,15 +49,38 @@ async def get_current_user(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    # Normalize role to canonical form (handles SUPERADMIN→SUPER_ADMIN etc.)
+    normalized_role = Role.normalize(user.role.value if hasattr(user.role, 'value') else str(user.role))
+    if normalized_role != user.role:
+        import logging
+        logging.getLogger(__name__).warning(
+            "[get_current_user] Role normalized: %s → %s for user %s",
+            user.role, normalized_role, user.email,
+        )
+        user.role = normalized_role
+
     return user
 
 
 def require_role(allowed_roles: list[str]):
-    """Decorator to require specific roles for endpoint access."""
+    """Decorator to require specific roles for endpoint access.
+    Roles are normalized before comparison to handle legacy/dirty formats.
+    """
     async def role_checker(current_user: User | Candidate = Depends(get_current_user)):
-        role = "CANDIDATE" if isinstance(current_user, Candidate) else current_user.role
-        
-        if role not in allowed_roles:
+        if isinstance(current_user, Candidate):
+            role = "CANDIDATE"
+        else:
+            raw = current_user.role.value if hasattr(current_user.role, 'value') else str(current_user.role)
+            role = Role.normalize(raw)
+
+        normalized_allowed = [Role.normalize(r) for r in allowed_roles]
+
+        if role not in normalized_allowed:
+            import logging
+            logging.warning(
+                "[require_role] Permission denial: User %s with role %s tried to access resource requiring %s",
+                current_user.email, role, normalized_allowed,
+            )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Insufficient permissions"

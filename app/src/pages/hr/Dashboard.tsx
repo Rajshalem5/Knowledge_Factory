@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, Upload, Search, Play, Filter, X, Download, FileText, FileX, Phone, PhoneOff } from 'lucide-react';
+import { Users, Upload, Search, Play, Filter, X, Download, FileText, FileX, Phone, PhoneOff, UserCog } from 'lucide-react';
 import { AppShell } from '../../components/layout/AppShell';
 import { Card, CardHeader, CardTitle, Button, Select, Badge, LoadingState, ErrorState } from '../../components/ui';
 import { DataTable, type Column } from '../../components/ui/DataTable';
@@ -11,6 +11,9 @@ import { useRunScreening, usePipelineStats } from '../../hooks/useScreening';
 import { STATUS_LABELS } from '../../utils/roles';
 import { exportToCsv } from '../../utils/csv';
 import type { Candidate, CandidateStatus } from '../../types';
+import { useAuth } from '../../contexts/AuthContext';
+import { UserManagement } from '../../components/admin/UserManagement';
+import { BulkUploadModal } from '../../components/admin/BulkUploadModal';
 
 const STATUS_OPTIONS = [
   { value: '', label: 'All Statuses' },
@@ -25,7 +28,10 @@ const STATUS_OPTIONS = [
 ];
 
 export default function Dashboard() {
+  console.log('[Dashboard] Rendering');
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState<'candidates' | 'users'>('candidates');
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -59,6 +65,7 @@ export default function Dashboard() {
   const [showFilters, setShowFilters] = useState(false);
   const [sortBy, setSortBy] = useState('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [isBulkUploadModalOpen, setIsBulkUploadModalOpen] = useState(false);
 
   const { data: candidatesData, isLoading, error } = useCandidates({
     page,
@@ -326,7 +333,35 @@ export default function Dashboard() {
   return (
     <AppShell title="Dashboard">
       <div className="space-y-6">
-        {/* Pipeline Stats + Screening */}
+        {/* Tab Switcher for Admin/SuperAdmin */}
+        {(user?.role === 'admin' || user?.role === 'superadmin') && (
+          <div className="flex gap-1 bg-[var(--bg-layer1)] rounded-md p-1 w-fit">
+            <button
+              onClick={() => setActiveTab('candidates')}
+              className={`px-4 py-1.5 text-sm font-medium rounded-sm transition-colors flex items-center gap-2 ${
+                activeTab === 'candidates' ? 'bg-[var(--bg-base)] text-on-surface ghost-shadow' : 'text-tertiary'
+              }`}
+            >
+              <Users size={14} />
+              Candidate Pipeline
+            </button>
+            <button
+              onClick={() => setActiveTab('users')}
+              className={`px-4 py-1.5 text-sm font-medium rounded-sm transition-colors flex items-center gap-2 ${
+                activeTab === 'users' ? 'bg-[var(--bg-base)] text-on-surface ghost-shadow' : 'text-tertiary'
+              }`}
+            >
+              <UserCog size={14} />
+              User Management
+            </button>
+          </div>
+        )}
+
+        {activeTab === 'users' ? (
+          <UserManagement manageAdmins={false} />
+        ) : (
+          <>
+            {/* Pipeline Stats + Screening */}
         {candidatesData ? (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -813,7 +848,11 @@ export default function Dashboard() {
                     <Download size={14} />
                     CSV
                   </Button>
-                  <Button variant="secondary" size="sm">
+                  <Button 
+                    variant="secondary" 
+                    size="sm" 
+                    onClick={() => setIsBulkUploadModalOpen(true)}
+                  >
                     <Upload size={14} />
                     Bulk Upload
                   </Button>
@@ -858,7 +897,13 @@ export default function Dashboard() {
             ) : null}
           </Card>
         </div>
+      </>)}
       </div>
+
+      <BulkUploadModal 
+        open={isBulkUploadModalOpen} 
+        onClose={() => setIsBulkUploadModalOpen(false)} 
+      />
     </AppShell>
   );
 }

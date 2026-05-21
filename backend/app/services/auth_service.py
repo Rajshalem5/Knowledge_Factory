@@ -20,9 +20,9 @@ def create_user(db: Session, data, role: str):
             detail="Email already exists"
         )
 
-    if role == "SUPERADMIN":
+    if role == "SUPER_ADMIN":
         existing_superadmin = db.query(User).filter(
-            User.role == "SUPERADMIN"
+            User.role == "SUPER_ADMIN"
         ).first()
 
         if existing_superadmin:

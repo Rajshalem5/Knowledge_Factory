@@ -58,7 +58,7 @@ async def setup_database():
             email="admin@knowledgefactory.io",
             password_hash=hash_password("Admin@12345"),
             name="Admin User",
-            role="SUPERADMIN",
+            role="SUPER_ADMIN",
             status="ACTIVE",
         )
         session.add(admin)

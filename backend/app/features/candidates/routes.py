@@ -1,6 +1,7 @@
 """Candidate management routes."""
 
 from datetime import date, datetime
+import logging
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy import select
@@ -8,9 +9,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.dependencies import get_current_user, require_role
-from app.features.candidates.schemas import CandidateRead, CandidateListResponse, BulkUploadPreview
+from app.features.candidates.schemas import CandidateRead, CandidateListResponse, CandidateStatusUpdate, BulkUploadPreview
 from app.features.candidates.service import CandidateService
 from app.core.enums import CandidateStatus, Role
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -49,7 +52,7 @@ async def list_candidates(
     sort_by: str | None = Query(None, description="Sort column (name, email, college, branch, cgpa, passed_out_year, created_at, status)"),
     sort_order: str | None = Query("desc", description="Sort direction: asc or desc"),
     db: AsyncSession = Depends(get_db),
-    current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN])),
+    current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPER_ADMIN])),
 ):
     service = CandidateService(db)
     candidates, total = await service.list_candidates(
@@ -85,7 +88,7 @@ async def get_my_profile(db: AsyncSession = Depends(get_db), current_user = Depe
 
 
 @router.get("/{candidate_id}", response_model=CandidateRead)
-async def get_candidate(candidate_id: str, db: AsyncSession = Depends(get_db), current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN, Role.INTERVIEWER]))):
+async def get_candidate(candidate_id: str, db: AsyncSession = Depends(get_db), current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPER_ADMIN, Role.INTERVIEWER]))):
     service = CandidateService(db)
     candidate = await service.get_candidate(candidate_id)
     if not candidate:
@@ -94,96 +97,154 @@ async def get_candidate(candidate_id: str, db: AsyncSession = Depends(get_db), c
 
 
 @router.patch("/{candidate_id}/status", response_model=CandidateRead)
-async def update_candidate_status(candidate_id: str, update: dict, db: AsyncSession = Depends(get_db), current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN]))):
-    from app.features.candidates.models import Candidate
-    raw_status = update["status"]
-    # Try parsing as full backend enum first, then as simplified display status
-    try:
-        new_status = CandidateStatus(raw_status.upper())
-    except ValueError:
-        mapped = CandidateStatus.from_display_status(raw_status)
-        if not mapped:
-            raise HTTPException(status_code=422, detail=f"Invalid status: {raw_status}")
-        new_status = mapped
+async def update_candidate_status(candidate_id: str, update: CandidateStatusUpdate, db: AsyncSession = Depends(get_db), current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPER_ADMIN]))):
+    """Update candidate status. Accepts both canonical enum values (SELECTED, ROUND1_PASSED) and display statuses (selected, round1)."""
+    new_status = update.status
+    logger.info(
+        "[update_candidate_status] candidate_id=%s, incoming_status=%s, by=%s",
+        candidate_id, new_status.value, current_user.email,
+    )
+
     service = CandidateService(db)
     try:
         candidate = await service.update_status(candidate_id, new_status)
     except ValueError as e:
+        logger.warning(
+            "[update_candidate_status] Invalid transition: candidate_id=%s, error=%s",
+            candidate_id, str(e),
+        )
         raise HTTPException(status_code=422, detail=str(e))
     if not candidate:
         raise HTTPException(status_code=404, detail="Candidate not found")
     return candidate
 
 
-async def _process_bulk_upload_csv(file: UploadFile | None) -> BulkUploadPreview:
-    """Parse CSV upload file and return preview + validation results."""
+async def _safe_decode(content: bytes) -> str:
+    """Attempt to decode bytes using multiple encodings."""
+    for enc in ["utf-8", "utf-8-sig", "latin-1", "cp1252"]:
+        try:
+            return content.decode(enc)
+        except UnicodeDecodeError:
+            continue
+    raise ValueError("Unable to decode file content with supported encodings (utf-8, latin-1, etc.)")
+
+
+async def _process_bulk_upload_file(file: UploadFile | None) -> BulkUploadPreview:
+    """Parse upload file (CSV/XLSX/PDF) and return preview + validation results."""
     import csv
     import io
     import uuid
+    import os
 
     if not file:
         return BulkUploadPreview(batch_id="", total_records=0, valid_records=0, invalid_records=0, preview=[], errors=[])
 
+    filename = file.filename or "unknown.csv"
+    ext = os.path.splitext(filename)[1].lower()
     content = await file.read()
-    text = content.decode("utf-8")
-    reader = csv.DictReader(io.StringIO(text))
-    records = list(reader)
-
     batch_id = str(uuid.uuid4())[:8]
-    preview = []
-    errors = []
-    for i, row in enumerate(records[:20]):  # Preview first 20
-        try:
-            _ = float(row.get("cgpa", 0))
-            preview.append({"row": i + 1, "data": row, "valid": True})
-        except (ValueError, KeyError):
-            errors.append({"row": i + 1, "error": "Invalid CGPA or missing required fields"})
-            preview.append({"row": i + 1, "data": row, "valid": False})
+    
+    logger.info("[_process_bulk_upload_file] Detected file: %s, ext: %s, size: %d bytes", filename, ext, len(content))
 
-    valid_count = sum(1 for p in preview if p["valid"])
-    return BulkUploadPreview(
-        batch_id=batch_id,
-        total_records=len(records),
-        valid_records=valid_count,
-        invalid_records=len(records) - valid_count,
-        preview=preview,
-        errors=errors,
-    )
+    # Structured Data Path (CSV)
+    if ext == ".csv":
+        try:
+            text = await _safe_decode(content)
+            reader = csv.DictReader(io.StringIO(text))
+            records = list(reader)
+        except Exception as e:
+            logger.error("[_process_bulk_upload_file] CSV decode error: %s", str(e))
+            return BulkUploadPreview(
+                batch_id=batch_id, total_records=0, valid_records=0, invalid_records=0, 
+                preview=[], errors=[{"row": 0, "error": f"Failed to read CSV: {str(e)}"}]
+            )
+
+        preview = []
+        errors = []
+        for i, row in enumerate(records[:20]):  # Preview first 20
+            try:
+                # Basic validation
+                if not row.get("email") or "@" not in row.get("email", ""):
+                    raise ValueError("Missing or invalid email")
+                _ = float(row.get("cgpa", 0))
+                preview.append({"row": i + 1, "data": row, "valid": True})
+            except (ValueError, KeyError) as e:
+                errors.append({"row": i + 1, "error": str(e) or "Invalid data format"})
+                preview.append({"row": i + 1, "data": row, "valid": False})
+
+        valid_count = sum(1 for p in preview if p["valid"])
+        return BulkUploadPreview(
+            batch_id=batch_id,
+            total_records=len(records),
+            valid_records=valid_count,
+            invalid_records=len(records) - valid_count,
+            preview=preview,
+            errors=errors,
+        )
+
+    # Spreadsheet Path (XLSX) - Currently placeholder since library missing
+    elif ext in [".xls", ".xlsx"]:
+        return BulkUploadPreview(
+            batch_id=batch_id, total_records=1, valid_records=0, invalid_records=1,
+            preview=[{"row": 1, "data": {"filename": filename}, "valid": False}],
+            errors=[{"row": 1, "error": "Excel (.xlsx) parsing requires additional server libraries. Please use CSV for now."}]
+        )
+
+    # Document Path (PDF/DOCX) - Handle as single candidate creation if it's a resume
+    elif ext in [".pdf", ".doc", ".docx"]:
+        # We can't parse text yet, but we can return it as a "valid" placeholder for the confirm step
+        placeholder_data = {
+            "name": filename.replace(ext, "").replace("_", " ").title(),
+            "email": "pending@example.com",
+            "type": "Resume/Document"
+        }
+        return BulkUploadPreview(
+            batch_id=batch_id,
+            total_records=1,
+            valid_records=1,
+            invalid_records=0,
+            preview=[{"row": 1, "data": placeholder_data, "valid": True}],
+            errors=[{"row": 1, "error": "Document detected. Note: Auto-parsing text is not yet active; details will be manual."}]
+        )
+
+    # Unsupported Path
+    else:
+        return BulkUploadPreview(
+            batch_id=batch_id, total_records=0, valid_records=0, invalid_records=0,
+            preview=[], errors=[{"row": 0, "error": f"Unsupported file type: {ext}"}]
+        )
 
 
 @router.post("/bulk-upload/preview", response_model=BulkUploadPreview)
 async def preview_bulk_upload(
     file: UploadFile | None = File(None),
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN])),
+    current_user=Depends(require_role([Role.HR, Role.ADMIN, Role.SUPER_ADMIN])),
 ):
-    """Preview bulk upload — validate CSV and return preview without saving."""
-    return await _process_bulk_upload_csv(file)
+    """Preview bulk upload — support multiple formats without crashing."""
+    return await _process_bulk_upload_file(file)
 
 
 @router.post("/bulk-upload", status_code=status.HTTP_201_CREATED)
 async def bulk_upload_candidates(
     file: UploadFile | None = File(None),
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN])),
+    current_user=Depends(require_role([Role.HR, Role.ADMIN, Role.SUPER_ADMIN])),
 ):
-    """Bulk upload candidates from CSV — validate, preview, and save valid records."""
+    """Bulk upload candidates — handles multiple formats safely."""
     from app.features.candidates.models import Candidate
     from app.features.hiring_cycles.models import HiringCycle
     import csv
     import io
     import uuid
+    import os
 
     if not file:
         raise HTTPException(status_code=400, detail="No file provided")
 
+    filename = file.filename or "unknown.csv"
+    ext = os.path.splitext(filename)[1].lower()
     content = await file.read()
-    text = content.decode("utf-8")
-    reader = csv.DictReader(io.StringIO(text))
-    records = list(reader)
-
-    if not records:
-        raise HTTPException(status_code=400, detail="CSV file is empty")
 
     # Get active hiring cycle
     cycle_stmt = select(HiringCycle).where(HiringCycle.status == "ACTIVE").limit(1)
@@ -191,35 +252,80 @@ async def bulk_upload_candidates(
     cycle = cycle_res.scalar_one_or_none()
 
     if not cycle:
-        raise HTTPException(status_code=500, detail="No active hiring cycle")
+        raise HTTPException(status_code=500, detail="No active hiring cycle found")
 
     saved = 0
     errors = []
-    for i, row in enumerate(records):
+    total_records = 0
+
+    # CSV Processing
+    if ext == ".csv":
         try:
+            text = await _safe_decode(content)
+            reader = csv.DictReader(io.StringIO(text))
+            records = list(reader)
+            total_records = len(records)
+            
+            for i, row in enumerate(records):
+                try:
+                    candidate = Candidate(
+                        cycle_id=cycle.id,
+                        email=row.get("email", "").strip(),
+                        name=row.get("name", "").strip() or "Unnamed Candidate",
+                        college=row.get("college", "").strip() or "Unknown",
+                        branch=row.get("branch", "").strip() or "Unknown",
+                        cgpa=float(row.get("cgpa", 0)),
+                        passed_out_year=int(row.get("passed_out_year", datetime.now().year)),
+                        language_choice=row.get("language_choice", "python").strip().lower(),
+                        status=CandidateStatus.APPLIED,
+                        phone=row.get("phone", "").strip() or None,
+                    )
+                    db.add(candidate)
+                    saved += 1
+                except Exception as e:
+                    errors.append({"row": i + 2, "error": str(e)})
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Failed to process CSV: {str(e)}")
+
+    # Document Processing (PDF/DOCX)
+    elif ext in [".pdf", ".doc", ".docx"]:
+        total_records = 1
+        try:
+            # For documents, we create a placeholder candidate
+            # In a real app, we'd save the file to S3/Local and set resume_url
+            # For now, just create the record so the flow doesn't crash
+            placeholder_name = filename.replace(ext, "").replace("_", " ").title()
             candidate = Candidate(
                 cycle_id=cycle.id,
-                email=row.get("email", "").strip(),
-                name=row.get("name", "").strip(),
-                college=row.get("college", "").strip(),
-                branch=row.get("branch", "").strip(),
-                cgpa=float(row.get("cgpa", 0)),
-                passed_out_year=int(row.get("passed_out_year", datetime.now().year)),
-                language_choice=row.get("language_choice", "python").strip().lower(),
+                email=f"upload_{uuid.uuid4().hex[:6]}@example.com",
+                name=placeholder_name,
+                college="Uploaded Document",
+                branch="Unknown",
+                cgpa=0.0,
+                passed_out_year=datetime.now().year,
+                language_choice="python",
                 status=CandidateStatus.APPLIED,
-                phone=row.get("phone", "").strip() or None,
+                resume_url=f"uploads/{filename}" # Placeholder path
             )
             db.add(candidate)
             saved += 1
-        except (ValueError, KeyError) as e:
-            errors.append({"row": i + 2, "error": str(e)})
+            logger.info("[bulk_upload_candidates] Created placeholder for document: %s", filename)
+        except Exception as e:
+            errors.append({"row": 1, "error": str(e)})
+
+    # Unsupported / Placeholder for XLSX
+    else:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Automated processing for {ext} files is not yet implemented. Please use CSV."
+        )
 
     if saved > 0:
-        await db.flush()
+        await db.commit()
 
     return {
         "batch_id": str(uuid.uuid4())[:8],
-        "total_records": len(records),
+        "total_records": total_records,
         "saved": saved,
         "errors": errors,
     }

@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Factory } from 'lucide-react';
 import { Button, Input, Card } from '../../components/ui';
 import { useAuth } from '../../contexts/AuthContext';
-import { ROLE_HOME_ROUTES } from '../../utils/roles';
+import { getSafeHomeRoute } from '../../utils/roles';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -17,8 +17,11 @@ export default function Login() {
     setError('');
     try {
       const userData = await login(email, password);
-      const role = (userData.role || 'candidate') as keyof typeof ROLE_HOME_ROUTES;
-      navigate(ROLE_HOME_ROUTES[role] || '/portal');
+      const rawRole = userData.role || 'candidate';
+      const normalizedRole = rawRole.toLowerCase().replace(/_/g, '');
+      const target = getSafeHomeRoute(normalizedRole);
+      console.log(`[Login] Success. User: ${userData.email}, RawRole: ${rawRole}, NormalizedRole: ${normalizedRole}, Redirecting to: ${target}`);
+      navigate(target);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     }

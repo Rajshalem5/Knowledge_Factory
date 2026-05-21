@@ -12,6 +12,8 @@ export interface User {
   email: string;
   name: string;
   role: Role;
+  status?: 'ACTIVE' | 'INACTIVE';
+  created_at?: string;
 }
 
 export type CandidateStatus = 
@@ -140,4 +142,20 @@ export interface PaginatedResponse<T> {
     total: number;
     total_pages: number;
   };
+}
+
+export interface BulkUploadPreview {
+  batch_id: string;
+  total_records: number;
+  valid_records: number;
+  invalid_records: number;
+  preview: Array<{
+    row: number;
+    data: Record<string, string>;
+    valid: boolean;
+  }>;
+  errors: Array<{
+    row: number;
+    error: string;
+  }>;
 }

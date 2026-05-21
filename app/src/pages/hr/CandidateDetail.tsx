@@ -16,8 +16,13 @@ export default function CandidateDetail() {
   if (error || !candidate) return <AppShell title="Candidate"><ErrorState message="Candidate not found" /></AppShell>;
 
   const handleStatusChange = (status: string) => {
-    if (id) updateStatus.mutate({ id, status });
+    if (id) {
+      console.log(`[CandidateDetail] Updating status: candidateId=${id}, status=${status}`);
+      updateStatus.mutate({ id, status });
+    }
   };
+
+  const canFinalSelect = candidate.display_status === 'interviewed';
 
   return (
     <AppShell title={candidate.name}>
@@ -52,12 +57,16 @@ export default function CandidateDetail() {
               <Badge variant={candidate.display_status === 'selected' ? 'success' : candidate.display_status === 'rejected' ? 'danger' : 'warning'}>
                 {STATUS_LABELS[candidate.display_status as CandidateStatus] || candidate.status}
               </Badge>
-              <Button variant="danger" size="sm" onClick={() => handleStatusChange('rejected')}>
-                Reject
-              </Button>
-              <Button size="sm" onClick={() => handleStatusChange('selected')}>
-                Select
-              </Button>
+              {canFinalSelect && (
+                <>
+                  <Button variant="danger" size="sm" onClick={() => handleStatusChange('FINAL_REJECTED')}>
+                    Reject
+                  </Button>
+                  <Button size="sm" onClick={() => handleStatusChange('SELECTED')}>
+                    Select
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </Card>

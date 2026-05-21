@@ -12,9 +12,48 @@ export const ROLE_HOME_ROUTES: Record<Role, string> = {
   candidate: '/portal',
   hr: '/dashboard',
   interviewer: '/interview',
-  admin: '/dashboard',
+  admin: '/admin/dashboard',
   superadmin: '/superadmin',
 };
+
+/**
+ * Normalize a role string from any format (SUPER_ADMIN, SuperAdmin, etc.)
+ * to the canonical lowercase-no-underscore form.
+ */
+export function normalizeRole(role: string): Role {
+  if (!role) return 'candidate';
+  const cleaned = role.toLowerCase().replace(/_/g, '');
+  
+  // Handle common variations
+  if (cleaned === 'superadmin' || cleaned === 'super_admin') return 'superadmin';
+  if (cleaned === 'admin') return 'admin';
+  if (cleaned === 'hr') return 'hr';
+  if (cleaned === 'interviewer') return 'interviewer';
+  if (cleaned === 'candidate') return 'candidate';
+
+  const validRoles: Role[] = ['candidate', 'hr', 'admin', 'superadmin', 'interviewer'];
+  if (validRoles.includes(cleaned as Role)) {
+    return cleaned as Role;
+  }
+  console.warn(`[normalizeRole] Unknown role "${role}", falling back to "candidate"`);
+  return 'candidate';
+}
+
+/**
+ * Safely map a role string to its home route.
+ * @returns The home route for the role, or "/" as fallback.
+ * NEVER returns undefined.
+ */
+export function getSafeHomeRoute(rawRole: string): string {
+  const role = normalizeRole(rawRole);
+  const route = ROLE_HOME_ROUTES[role];
+  if (!route) {
+    console.warn(`[getSafeHomeRoute] No home route for normalized role "${role}" (raw: "${rawRole}"). Falling back to "/".`);
+    return '/';
+  }
+  console.log(`[getSafeHomeRoute] Role=${role}, Route=${route}`);
+  return route;
+}
 
 /**
  * Prefer using getStatusLabel(candidate) over STATUS_LABELS directly,
@@ -55,12 +94,24 @@ export function getStatusLabel(candidate: { display_status?: string; status?: st
 }
 
 export function canAccessRoute(role: Role, route: string): boolean {
+  const normalizedRole = normalizeRole(role);
+
   const routes: Record<Role, string[]> = {
     candidate: ['/portal', '/assessment'],
     hr: ['/dashboard', '/candidates', '/selection', '/analytics'],
     interviewer: ['/interview', '/candidates'],
-    admin: ['/dashboard', '/candidates', '/selection', '/analytics', '/interview'],
-    superadmin: ['/superadmin', '/dashboard', '/candidates', '/selection', '/analytics'],
+    admin: ['/admin', '/dashboard', '/candidates', '/selection', '/analytics', '/interview'],
+    superadmin: ['/superadmin', '/admin', '/dashboard', '/candidates', '/selection', '/analytics', '/interview'],
   };
-  return routes[role]?.some(r => route.startsWith(r)) ?? false;
+
+  const allowedPaths = routes[normalizedRole] || [];
+  const hasAccess = allowedPaths.some(r => route.startsWith(r));
+
+  if (!hasAccess) {
+    console.warn(`[canAccessRoute] Access denied: Role=${normalizedRole}, Route=${route}. Allowed: [${allowedPaths.join(', ')}]`);
+  } else {
+    console.log(`[canAccessRoute] Access granted: Role=${normalizedRole}, Route=${route}. Allowed: [${allowedPaths.join(', ')}]`);
+  }
+
+  return hasAccess;
 }

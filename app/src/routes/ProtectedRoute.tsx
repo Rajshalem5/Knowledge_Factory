@@ -1,6 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { canAccessRoute } from '../utils/roles';
+import { canAccessRoute, normalizeRole } from '../utils/roles';
 import type { Role } from '../types';
 
 interface ProtectedRouteProps {
@@ -12,16 +12,23 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
   const { user } = useAuth();
   const location = useLocation();
   const role = user?.role;
+  const normalizedRole = role ? normalizeRole(role) : null;
 
   if (!user) {
+    console.log(`[ProtectedRoute] No user, redirecting to /login. From: ${location.pathname}`);
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (allowedRoles && role && !allowedRoles.includes(role)) {
-    return <Navigate to="/" replace />;
+  if (allowedRoles && normalizedRole) {
+    const normalizedAllowed = allowedRoles.map(r => normalizeRole(r));
+    if (!normalizedAllowed.includes(normalizedRole)) {
+      console.warn(`[ProtectedRoute] Permission denied: Role=${normalizedRole} (raw: ${role}), Allowed=[${normalizedAllowed.join(', ')}] (raw: [${allowedRoles.join(', ')}]), Path=${location.pathname}. Redirecting to /`);
+      return <Navigate to="/" replace />;
+    }
   }
 
-  if (role && !canAccessRoute(role, location.pathname)) {
+  if (normalizedRole && !canAccessRoute(normalizedRole, location.pathname)) {
+    console.warn(`[ProtectedRoute] Route access denied: Role=${normalizedRole}, Path=${location.pathname}. Redirecting to /`);
     return <Navigate to="/" replace />;
   }
 

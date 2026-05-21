@@ -20,7 +20,7 @@ USERS = [
         "email": "superadmin@test.com",
         "password": "Test@1234",
         "full_name": "Super Admin",
-        "role": "SUPERADMIN",
+        "role": "SUPER_ADMIN",
     },
     {
         "email": "admin@test.com",
@@ -51,7 +51,7 @@ def create_user(user: dict) -> str | None:
         json={
             "email": user["email"],
             "password": user["password"],
-            "email_confirm": True,   # skip email verification
+            "email_confirm": True,  
             "user_metadata": {
                 "full_name": user["full_name"],
                 "role": user["role"],

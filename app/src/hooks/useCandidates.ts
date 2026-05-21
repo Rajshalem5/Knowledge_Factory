@@ -35,3 +35,21 @@ export function useUpdateCandidateStatus() {
     },
   });
 }
+
+export function useBulkUpload() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => candidatesApi.bulkUpload(file),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['candidates'] });
+      queryClient.invalidateQueries({ queryKey: ['pipeline-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['funnel'] });
+    },
+  });
+}
+
+export function usePreviewBulkUpload() {
+  return useMutation({
+    mutationFn: (file: File) => candidatesApi.previewBulkUpload(file),
+  });
+}
