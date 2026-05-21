@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Factory, Upload } from 'lucide-react';
+import { Factory, Upload, Eye, EyeOff } from 'lucide-react';
 import { Button, Input, Card } from '../../components/ui';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -10,13 +10,24 @@ export default function Register() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [resume, setResume] = useState<File | null>(null);
   const [error, setError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const isPasswordMatch = password === confirmPassword;
+  const canSubmit = name && email && password && confirmPassword && isPasswordMatch;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (!isPasswordMatch) {
+      setError('Passwords do not match');
+      return;
+    }
 
     try {
       await register({
@@ -24,7 +35,8 @@ export default function Register() {
         email,
         password,
       });
-      navigate('/verify-otp');
+      // Email verification is disabled for now, auto-login and go to portal
+      navigate('/portal');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed');
     }
@@ -61,14 +73,43 @@ export default function Register() {
               placeholder="you@example.com"
               required
             />
-            <Input
-              label="Password"
-              type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              placeholder="Create a password"
-              required
-            />
+            <div className="relative">
+              <Input
+                label="Password"
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="Create a password"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-8.5 text-tertiary hover:text-on-surface transition-colors"
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            <div className="relative">
+              <Input
+                label="Confirm Password"
+                type={showConfirmPassword ? 'text' : 'password'}
+                value={confirmPassword}
+                onChange={e => setConfirmPassword(e.target.value)}
+                placeholder="Confirm your password"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-3 top-8.5 text-tertiary hover:text-on-surface transition-colors"
+              >
+                {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            {!isPasswordMatch && confirmPassword && (
+              <p className="text-[10px] text-danger mt-1">Passwords do not match</p>
+            )}
             <div className="space-y-1.5">
               <label className="block text-sm font-medium text-on-surface-variant">Resume (optional)</label>
               <input
@@ -87,7 +128,7 @@ export default function Register() {
                 {resume ? resume.name : 'Upload resume (PDF, DOC)'}
               </button>
             </div>
-            <Button type="submit" className="w-full" isLoading={isLoading}>
+            <Button type="submit" className="w-full" isLoading={isLoading} disabled={!canSubmit}>
               Create Account
             </Button>
           </form>

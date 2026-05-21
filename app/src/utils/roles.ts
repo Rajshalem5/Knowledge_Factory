@@ -12,7 +12,7 @@ export const ROLE_HOME_ROUTES: Record<Role, string> = {
   candidate: '/portal',
   hr: '/dashboard',
   interviewer: '/interview',
-  admin: '/admin/dashboard',
+  admin: '/dashboard',
   superadmin: '/superadmin',
 };
 

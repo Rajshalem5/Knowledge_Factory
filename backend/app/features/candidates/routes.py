@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.dependencies import get_current_user, require_role
+from app.features.auth.models import User
 from app.features.candidates.schemas import CandidateRead, CandidateListResponse, CandidateStatusUpdate, BulkUploadPreview
 from app.features.candidates.service import CandidateService
 from app.core.enums import CandidateStatus, Role
@@ -54,30 +55,47 @@ async def list_candidates(
     db: AsyncSession = Depends(get_db),
     current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPER_ADMIN])),
 ):
+    """List all candidates with extensive filtering and pagination."""
+    logger.info(f"list_candidates called by {current_user.email} | page={page}, limit={limit}, search={search}")
     service = CandidateService(db)
-    candidates, total = await service.list_candidates(
-        page=page, limit=limit, status=status, search=search,
-        name=name,
-        branch=branch, college=college, cgpa_min=cgpa_min, cgpa_max=cgpa_max,
-        passed_out_year=passed_out_year, language_choice=language_choice,
-        has_resume=has_resume, has_govt_id=has_govt_id,
-        created_after=created_after, created_before=created_before,
-        passed_out_year_min=passed_out_year_min, passed_out_year_max=passed_out_year_max,
-        email_verified=email_verified,
-        phone=phone,
-        email=email,
-        cycle_id=cycle_id,
-        has_phone=has_phone,
-        has_assessment=has_assessment,
-        has_interview_feedback=has_interview_feedback,
-        updated_after=updated_after,
-        updated_before=updated_before,
-        assessment_status=assessment_status,
-        min_score=min_score,
-        max_score=max_score,
-        sort_by=sort_by, sort_order=sort_order,
-    )
-    return {"data": candidates, "pagination": {"page": page, "limit": limit, "total": total, "total_pages": (total + limit - 1) // limit if limit else 1}}
+    try:
+        candidates, total = await service.list_candidates(
+            page=page, limit=limit, status=status, search=search,
+            name=name,
+            branch=branch, college=college, cgpa_min=cgpa_min, cgpa_max=cgpa_max,
+            passed_out_year=passed_out_year, language_choice=language_choice,
+            has_resume=has_resume, has_govt_id=has_govt_id,
+            created_after=created_after, created_before=created_before,
+            passed_out_year_min=passed_out_year_min, passed_out_year_max=passed_out_year_max,
+            email_verified=email_verified,
+            phone=phone,
+            email=email,
+            cycle_id=cycle_id,
+            has_phone=has_phone,
+            has_assessment=has_assessment,
+            has_interview_feedback=has_interview_feedback,
+            updated_after=updated_after,
+            updated_before=updated_before,
+            assessment_status=assessment_status,
+            min_score=min_score,
+            max_score=max_score,
+            sort_by=sort_by, sort_order=sort_order,
+        )
+        logger.info(f"Returning {len(candidates)} candidates out of {total} total")
+        return {
+            "data": candidates,
+            "pagination": {
+                "page": page,
+                "limit": limit,
+                "total": total,
+                "total_pages": (total + limit - 1) // limit if limit else 1
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error in list_candidates: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/me", response_model=CandidateRead)

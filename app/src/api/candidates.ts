@@ -11,7 +11,7 @@ export const candidatesApi = {
    * Get all candidates with pagination and filters
    * GET /api/candidates
    */
-  getAll: (params?: { 
+  getAll: async (params?: { 
     page?: number; 
     limit?: number; 
     status?: string; 
@@ -43,10 +43,28 @@ export const candidatesApi = {
     max_score?: number;
     sort_by?: string;
     sort_order?: string;
-  }) =>
-    api.get<PaginatedResponse<Candidate>>('/api/candidates/', { 
+  }) => {
+    console.log('[candidatesApi] Fetching candidates with params:', params);
+    const response = await api.get<any>('/api/candidates/', { 
       params: params as Record<string, string | number | boolean | undefined> 
-    }),
+    });
+    console.log('[candidatesApi] Received response:', response);
+    
+    // Normalize response structure
+    if (Array.isArray(response)) {
+      return {
+        data: response,
+        pagination: {
+          page: params?.page || 1,
+          limit: params?.limit || response.length,
+          total: response.length,
+          total_pages: 1
+        }
+      };
+    }
+    
+    return response as PaginatedResponse<Candidate>;
+  },
 
   /**
    * Get candidate by ID

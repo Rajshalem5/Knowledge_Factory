@@ -68,6 +68,8 @@ class AuthService:
         self, register_data: CandidateRegisterRequest, cycle_id: str
     ) -> Candidate:
         """Register a new candidate."""
+        from app.config import settings
+        
         # Check for duplicate email
         stmt = select(Candidate).where(Candidate.email == register_data.email)
         result = await self.db.execute(stmt)
@@ -87,6 +89,7 @@ class AuthService:
             cgpa=register_data.cgpa,
             passed_out_year=register_data.passed_out_year,
             language_choice=register_data.language_choice,
+            email_verified=not settings.ENABLE_EMAIL_VERIFICATION, # auto-verify if disabled
         )
         self.db.add(new_candidate)
         await self.db.flush()

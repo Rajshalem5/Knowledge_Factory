@@ -4,8 +4,11 @@ import json
 import re
 import uuid
 import httpx
+import logging
 from app.config import settings
 from app.features.questions.schemas import Question, TestCase
+
+logger = logging.getLogger(__name__)
 
 # Ask AI ONLY for problem metadata + test cases — we generate boilerplate ourselves
 SYSTEM_PROMPT = """\
@@ -294,3 +297,94 @@ async def generate_question(
         public_test_cases=public_cases,
         private_test_cases=private_cases,
     )
+
+
+MCQ_SYSTEM_PROMPT = """\
+You are an expert technical interviewer.
+Generate multiple-choice questions (MCQs) for a software engineering role.
+Output ONLY a single valid JSON object. No markdown, no code fences, no explanation.
+
+The JSON must have EXACTLY this key:
+{
+  "questions": [
+    {
+      "id": "unique_string_id",
+      "question": "The question text. Can include code snippets.",
+      "options": ["Option A", "Option B", "Option C", "Option D"],
+      "correct_answer": "Option A",
+      "explanation": "Why this answer is correct",
+      "difficulty": "easy|medium|hard",
+      "topic": "OS"
+    }
+  ]
+}
+
+RULES:
+1. correct_answer must be the EXACT string match of one of the options.
+2. Provide exactly 4 options per question.
+3. difficulty must be exactly: easy, medium, or hard.
+4. topic must be the specific subject being tested.
+5. Output ONLY the JSON object."""
+
+
+async def generate_mcq_questions(
+    topic: str = "CS Fundamentals",
+    difficulty: str = "medium",
+    count: int = 5,
+) -> list[dict]:
+    user_prompt = (
+        f"Generate {count} {difficulty} level MCQ questions about: {topic}. "
+        f"Output ONLY JSON."
+    )
+
+    payload = {
+        "model": settings.AI_MODEL,
+        "messages": [
+            {"role": "system", "content": MCQ_SYSTEM_PROMPT},
+            {"role": "user",   "content": user_prompt},
+        ],
+        "max_tokens": 2000,
+        "temperature": 0.5,
+    }
+
+    async with httpx.AsyncClient(timeout=45.0) as client:
+        try:
+            resp = await client.post(
+                settings.AI_API_URL,
+                headers={
+                    "Authorization": f"Bearer {settings.AI_API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json=payload,
+            )
+            resp.raise_for_status()
+        except Exception as e:
+            logger.error(f"AI API call failed: {e}")
+            return []
+
+    raw = resp.json()["choices"][0]["message"]["content"].strip()
+    
+    # Clean and parse JSON
+    raw = re.sub(r"^```[a-z]*\n?", "", raw, flags=re.MULTILINE)
+    raw = re.sub(r"```$", "", raw, flags=re.MULTILINE)
+    raw = raw.strip()
+
+    match = re.search(r"\{.*\}", raw, re.DOTALL)
+    if not match:
+        logger.error(f"No JSON in AI response: {raw[:300]}")
+        return []
+
+    try:
+        parsed = json.loads(match.group(0))
+        questions = parsed.get("questions", [])
+        for q in questions:
+            if not q.get("id"):
+                q["id"] = f"mcq_{uuid.uuid4().hex[:8]}"
+            # Ensure correct_answer is an index if the user wants to keep the evaluation simple,
+            # but user said "correct_answer": "..." in their format example.
+            # I will store both for safety or just follow the example.
+            # Let's check which evaluation is easier. String match is fine.
+        return questions
+    except Exception as e:
+        logger.error(f"Failed to parse AI response: {e}")
+        return []

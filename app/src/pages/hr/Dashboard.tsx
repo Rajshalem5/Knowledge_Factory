@@ -101,6 +101,20 @@ export default function Dashboard() {
     sort_order: sortOrder,
   });
 
+  useEffect(() => {
+    if (candidatesData) {
+      console.log('[Dashboard] candidatesData response:', candidatesData);
+    }
+    if (error) {
+      console.error('[Dashboard] candidatesData error:', error);
+    }
+  }, [candidatesData, error]);
+
+  // Defensive normalization
+  const candidates = Array.isArray(candidatesData?.data) ? candidatesData.data : [];
+  const totalItems = candidatesData?.pagination?.total ?? 0;
+  const totalPages = candidatesData?.pagination?.total_pages ?? 1;
+
   const { data: funnelData, isLoading: funnelLoading } = useFunnelData(
     search || branchFilter || collegeFilter || languageChoiceFilter || cgpaMinFilter ||
     cgpaMaxFilter || hasResumeFilter || hasGovtIdFilter || createdAfterFilter ||
@@ -372,7 +386,7 @@ export default function Dashboard() {
                   </div>
                   <div>
                     <p className="text-xs text-tertiary uppercase tracking-architectural">Total Candidates</p>
-                    <p className="text-xl font-bold text-on-surface">{candidatesData.pagination.total}</p>
+                    <p className="text-xl font-bold text-on-surface">{totalItems}</p>
                   </div>
                 </div>
               </Card>
@@ -884,10 +898,10 @@ export default function Dashboard() {
             ) : candidatesData ? (
               <DataTable
                 columns={columns}
-                data={candidatesData.data}
+                data={candidates}
                 keyExtractor={c => c.id}
                 page={page}
-                total_pages={candidatesData.pagination.total_pages}
+                total_pages={totalPages}
                 onPageChange={setPage}
                 onRowClick={c => navigate(`/candidates/${c.id}`)}
                 sortBy={sortBy}

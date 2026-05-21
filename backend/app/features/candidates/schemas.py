@@ -46,7 +46,7 @@ class CandidateRead(CandidateBase):
             for s in candidate.scores:
                 scores.append({
                     "round": s.round.value if hasattr(s.round, 'value') else str(s.round),
-                    "score": float(s.weighted_total),
+                    "score": float(s.weighted_total) if s.weighted_total is not None else 0.0,
                     "maxScore": 100,
                     "completedAt": s.evaluated_at.isoformat() if s.evaluated_at else None,
                 })

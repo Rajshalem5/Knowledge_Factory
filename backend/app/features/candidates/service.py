@@ -96,7 +96,20 @@ class CandidateService:
         result = await self.db.execute(query)
         candidates = result.scalars().all()
 
-        return [CandidateRead.from_orm_compat(c) for c in candidates], total
+        # Map to Read schemas
+        candidate_data = []
+        for c in candidates:
+            try:
+                candidate_data.append(CandidateRead.from_orm_compat(c))
+            except Exception as e:
+                logger.error(f"Failed to map candidate {c.id} ({c.email}): {e}")
+                # Log traceback for debugging
+                import traceback
+                logger.error(traceback.format_exc())
+                # Re-raise to trigger 500 so we see it in logs
+                raise
+
+        return candidate_data, total
 
     async def get_candidate(self, candidate_id: str) -> CandidateRead | None:
         stmt = select(Candidate).where(Candidate.id == candidate_id)
