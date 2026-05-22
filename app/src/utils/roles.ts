@@ -98,10 +98,10 @@ export function canAccessRoute(role: Role, route: string): boolean {
 
   const routes: Record<Role, string[]> = {
     candidate: ['/portal', '/assessment'],
-    hr: ['/dashboard', '/candidates', '/selection', '/analytics'],
+    hr: ['/dashboard', '/candidates', '/selection', '/analytics', '/uploads', '/resumes'],
     interviewer: ['/interview', '/candidates'],
-    admin: ['/admin', '/dashboard', '/candidates', '/selection', '/analytics', '/interview'],
-    superadmin: ['/superadmin', '/admin', '/dashboard', '/candidates', '/selection', '/analytics', '/interview'],
+    admin: ['/admin', '/dashboard', '/candidates', '/selection', '/analytics', '/interview', '/uploads', '/resumes'],
+    superadmin: ['/superadmin', '/admin', '/dashboard', '/candidates', '/selection', '/analytics', '/interview', '/uploads', '/resumes'],
   };
 
   const allowedPaths = routes[normalizedRole] || [];

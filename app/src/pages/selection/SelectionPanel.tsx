@@ -70,7 +70,7 @@ export default function SelectionPanel() {
 
                 {candidate.scores.length > 0 && (
                   <div className="flex gap-2 mb-3">
-                    {candidate.scores.map(s => (
+                    {candidate.scores.map((s: any) => (
                       <span key={s.round} className="text-[10px] px-2 py-0.5 rounded bg-[var(--bg-layer1)] font-mono text-on-surface-variant">
                         R{s.round}: {s.score}/{s.maxScore}
                       </span>

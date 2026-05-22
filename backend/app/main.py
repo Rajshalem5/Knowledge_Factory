@@ -58,6 +58,14 @@ async def lifespan(app: FastAPI):
             logger.warning("Alembic version not stamped (fresh DB)")
 
     logger.info("Database initialized.")
+
+    # Startup: Run diagnostics
+    try:
+        from assessment_diagnostic import run_assessment_diagnostic
+        await run_assessment_diagnostic()
+    except Exception as e:
+        logger.error(f"Diagnostic failed: {e}")
+        
     yield
 
 

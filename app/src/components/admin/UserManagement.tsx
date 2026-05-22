@@ -5,7 +5,7 @@ import { Card, CardTitle, Badge, Button, Input, Select, Modal, LoadingState, Err
 import { DataTable, type Column } from '../ui/DataTable';
 import { useAuth } from '../../contexts/AuthContext';
 import { ROLE_LABELS } from '../../utils/roles';
-import { UserPlus, Key, Trash2, Edit2, UserCheck, UserX } from 'lucide-react';
+import { UserPlus, Trash2, Edit2, UserCheck, UserX } from 'lucide-react';
 import type { User, Role } from '../../types';
 
 interface UserManagementProps {

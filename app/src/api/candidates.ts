@@ -81,6 +81,16 @@ export const candidatesApi = {
     api.get<Candidate>('/api/candidates/me'),
 
   /**
+   * Upload resume
+   * POST /api/candidates/me/resume
+   */
+  uploadResume: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post<{ message: string; resume_url: string }>('/api/candidates/me/resume', formData);
+  },
+
+  /**
    * Update candidate status
    * PATCH /api/candidates/:id/status
    */
@@ -91,9 +101,12 @@ export const candidatesApi = {
    * Bulk upload candidates from CSV
    * POST /api/candidates/bulk-upload
    */
-  bulkUpload: (file: File) => {
+  bulkUpload: (params: { file: File, data?: any }) => {
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', params.file);
+    if (params.data) {
+      formData.append('data', JSON.stringify(params.data));
+    }
     return api.post<{ batch_id: string; total_records: number; saved: number; errors: any[] }>('/api/candidates/bulk-upload', formData);
   },
 

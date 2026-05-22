@@ -1,7 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
-import { CandidateNav } from './CandidateNav';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface AppShellProps {
@@ -10,22 +9,12 @@ interface AppShellProps {
 }
 
 /* Design.md: Admin/HR gets high-density navy sidebar.
-   Candidate gets centered "Glass" top-nav for a simpler, focused journey. */
+   Candidate gets the same professional navigation for a modern ATS feel. */
 export function AppShell({ children, title }: AppShellProps) {
   const { user } = useAuth();
-  const role = user?.role;
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-  if (role === 'candidate') {
-    return (
-      <div className="flex flex-col h-screen overflow-hidden">
-        <CandidateNav />
-        <main className="flex-1 overflow-y-auto p-6 bg-[var(--bg-base)]">
-          {children}
-        </main>
-      </div>
-    );
-  }
+  if (!user) return <>{children}</>;
 
   return (
     <div className="flex h-screen overflow-hidden">

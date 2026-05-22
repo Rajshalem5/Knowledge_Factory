@@ -9,7 +9,7 @@ import { useQuestion } from '../../hooks/useQuestion';
 import { useActiveAssessments, useCompleteAssessment, useSubmitSection, useStartAssessment } from '../../hooks/useAssessment';
 import { useMyCandidateProfile } from '../../hooks/useCandidates';
 import { useProctoring } from '../../hooks/useProctoring';
-import { Play, Send, ChevronDown, RefreshCw, CheckCircle, XCircle, Lock, CheckSquare, Monitor, Camera, AlertTriangle, Loader2 } from 'lucide-react';
+import { Play, Send, ChevronDown, RefreshCw, CheckCircle, XCircle, CheckSquare, Monitor, Camera, AlertTriangle, Loader2 } from 'lucide-react';
 import { api } from '../../api/client';
 import type { EvaluationResponse } from '../../api/code-execution';
 
@@ -337,7 +337,7 @@ export default function Assessment() {
       <div className="flex-1 overflow-hidden">
         {isMcqRound ? (
           <McqPanel 
-            questions={activeAssessment.questions_json?.questions || []} 
+            questions={(activeAssessment.questions_json as any)?.questions || []} 
             onAnswersChange={setMcqAnswers}
             savedAnswers={mcqAnswers}
           />

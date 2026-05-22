@@ -18,7 +18,7 @@ export default function SuperAdminPanel() {
   if (error) return <AppShell title="Super Admin"><ErrorState message="Failed to load admin data" /></AppShell>;
 
   const userList = users ?? [];
-  const activeUsers = userList.filter(u => u.status === 'ACTIVE').length;
+  const activeUsers = userList.filter((u: any) => u.status === 'ACTIVE').length;
 
   return (
     <AppShell title="Super Admin">
@@ -54,7 +54,7 @@ export default function SuperAdminPanel() {
               </div>
               <div>
                 <p className="text-xs text-tertiary uppercase tracking-architectural">Roles</p>
-                <p className="text-xl font-bold text-on-surface">{new Set(userList.map(u => u.role)).size}</p>
+                <p className="text-xl font-bold text-on-surface">{new Set(userList.map((u: any) => u.role)).size}</p>
               </div>
             </div>
           </Card>

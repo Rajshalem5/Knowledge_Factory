@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
-import { Card, CardHeader, CardTitle, Button, Badge } from '../ui';
-import { CheckCircle, Circle, AlertCircle } from 'lucide-react';
+import { Button, Badge } from '../ui';
+import { CheckCircle, AlertCircle } from 'lucide-react';
 
 interface McqQuestion {
   id: string;

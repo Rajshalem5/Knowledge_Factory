@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, String, Text, Index
 from sqlalchemy import JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -33,6 +33,17 @@ class Assessment(Base):
 
     candidate: Mapped["Candidate"] = relationship(back_populates="assessments", lazy="selectin")
     submissions: Mapped[list["Submission"]] = relationship(back_populates="assessment", lazy="selectin")
+
+    # Enforcement: Only one active assessment per candidate and round
+    __table_args__ = (
+        Index(
+            "idx_one_active_assessment",
+            candidate_id,
+            round,
+            unique=True,
+            sqlite_where=(status == AssessmentStatus.IN_PROGRESS),
+        ),
+    )
 
 
 class Submission(Base):

@@ -30,8 +30,19 @@ export function useUpdateCandidateStatus() {
       candidatesApi.updateStatus(id, status),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['candidates'] });
+      queryClient.invalidateQueries({ queryKey: ['candidate-me'] });
       queryClient.invalidateQueries({ queryKey: ['pipeline-stats'] });
       queryClient.invalidateQueries({ queryKey: ['funnel'] });
+    },
+  });
+}
+
+export function useUploadResume() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => candidatesApi.uploadResume(file),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['candidate-me'] });
     },
   });
 }
@@ -39,7 +50,7 @@ export function useUpdateCandidateStatus() {
 export function useBulkUpload() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (file: File) => candidatesApi.bulkUpload(file),
+    mutationFn: (params: { file: File, data?: any }) => candidatesApi.bulkUpload(params),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['candidates'] });
       queryClient.invalidateQueries({ queryKey: ['pipeline-stats'] });

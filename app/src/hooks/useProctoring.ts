@@ -39,6 +39,7 @@ export function useProctoring({ assessmentAttemptId, onViolation, onTerminated }
   const [isWebcamActive, setIsWebcamActive] = useState(false);
   const [isMicActive, setIsMicActive] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
+  const [stream, setStream] = useState<MediaStream | null>(null);
 
   const wsRef = useRef<WebSocket | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -73,6 +74,7 @@ export function useProctoring({ assessmentAttemptId, onViolation, onTerminated }
       // ignore
     }
     streamRef.current = null;
+    setStream(null);
 
     try {
       mediaRecorderRef.current?.stop();
@@ -246,6 +248,7 @@ export function useProctoring({ assessmentAttemptId, onViolation, onTerminated }
     );
 
     streamRef.current = stream;
+    setStream(stream);
     setIsWebcamActive(stream.getVideoTracks().length > 0);
     setIsMicActive(stream.getAudioTracks().length > 0);
     return stream;
@@ -322,7 +325,7 @@ export function useProctoring({ assessmentAttemptId, onViolation, onTerminated }
     isWebcamActive,
     isMicActive,
     connectionStatus,
-    stream: streamRef.current,
+    stream,
     start,
     sendViolation,
   };

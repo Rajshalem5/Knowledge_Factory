@@ -45,6 +45,8 @@ def apply_candidate_filters(
     email: str | None = None,
     cycle_id: str | None = None,
     status: str | None = None,
+    degree: str | None = None,
+    skills: str | None = None,
     updated_after: date | None = None,
     updated_before: date | None = None,
     assessment_status: str | None = None,
@@ -67,6 +69,21 @@ def apply_candidate_filters(
         else:
             query = query.where(
                 or_(Candidate.branch.ilike(f"%{b}%") for b in branches)
+            )
+    if degree:
+        degrees = [d.strip() for d in degree.split(",") if d.strip()]
+        if len(degrees) == 1:
+            query = query.where(Candidate.degree.ilike(f"%{degrees[0]}%"))
+        else:
+            query = query.where(
+                or_(Candidate.degree.ilike(f"%{d}%") for d in degrees)
+            )
+    if skills:
+        # Search for individual skills or the whole string
+        skill_parts = [s.strip() for s in skills.split(",") if s.strip()]
+        if skill_parts:
+            query = query.where(
+                or_(Candidate.skills.ilike(f"%{s}%") for s in skill_parts)
             )
     if college:
         query = query.where(Candidate.college.ilike(f"%{college}%"))

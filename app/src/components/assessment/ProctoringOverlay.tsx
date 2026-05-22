@@ -36,10 +36,13 @@ export const ProctoringOverlay: React.FC<ProctoringOverlayProps> = ({
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
-    if (videoRef.current && stream) {
+    if (videoRef.current && stream && status === 'ready') {
       videoRef.current.srcObject = stream;
+      videoRef.current.play().catch(err => {
+        console.warn('[ProctoringOverlay] Video play failed:', err);
+      });
     }
-  }, [stream]);
+  }, [stream, status]);
 
   // Don't render anything when idle (before start)
   if (status === 'idle') {

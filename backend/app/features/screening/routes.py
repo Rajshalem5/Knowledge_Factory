@@ -124,9 +124,19 @@ async def run_screening(
 
     for c in candidates:
         cgpa_val = float(c.cgpa)
+        
+        # 1. Branch check
         branch_ok = not allowed_branches or c.branch.lower() in [b.lower() for b in allowed_branches]
+        
+        # 2. Degree check
+        allowed_degrees = cfg.get("allowed_degrees", [])
+        degree_ok = not allowed_degrees or (c.degree and c.degree.lower() in [d.lower() for d in allowed_degrees])
+        
+        # 3. Batch check
+        allowed_years = cfg.get("passed_out_years", [])
+        year_ok = not allowed_years or c.passed_out_year in allowed_years
 
-        if cgpa_val >= min_cgpa and branch_ok:
+        if cgpa_val >= min_cgpa and branch_ok and degree_ok and year_ok:
             c.status = CandidateStatus.ROUND1_PASSED
             passed += 1
         else:

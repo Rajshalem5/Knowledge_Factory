@@ -3,6 +3,8 @@ import { useAuth } from './contexts/AuthContext';
 import { getSafeHomeRoute } from './utils/roles';
 import { ProtectedRoute } from './routes/ProtectedRoute';
 
+console.log('[App.tsx] Initializing routing module...');
+
 import Landing from './pages/Landing';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
@@ -17,6 +19,10 @@ import SelectionPanel from './pages/selection/SelectionPanel';
 import AnalyticsDashboard from './pages/analytics/AnalyticsDashboard';
 import SuperAdminPanel from './pages/super_admin/SuperAdminPanel';
 
+import CandidatesList from './pages/hr/CandidatesList';
+import UploadCenter from './pages/hr/UploadCenter';
+import ResumeRepository from './pages/hr/ResumeRepository';
+
 function AuthRedirect() {
   const { user } = useAuth();
   const role = user?.role;
@@ -27,6 +33,8 @@ function AuthRedirect() {
 }
 
 export default function App() {
+  console.log('[App] Routes rendering');
+  console.log('[App] Path:', window.location.pathname);
   return (
     <Routes>
       {/* Public routes */}
@@ -40,6 +48,31 @@ export default function App() {
       <Route path="/portal" element={
         <ProtectedRoute allowedRoles={['candidate']}>
           <Portal />
+        </ProtectedRoute>
+      } />
+      <Route path="/portal/assessments" element={
+        <ProtectedRoute allowedRoles={['candidate']}>
+          <Portal tab="assessments" />
+        </ProtectedRoute>
+      } />
+      <Route path="/portal/results" element={
+        <ProtectedRoute allowedRoles={['candidate']}>
+          <Portal tab="results" />
+        </ProtectedRoute>
+      } />
+      <Route path="/portal/documents" element={
+        <ProtectedRoute allowedRoles={['candidate']}>
+          <Portal tab="documents" />
+        </ProtectedRoute>
+      } />
+      <Route path="/portal/notifications" element={
+        <ProtectedRoute allowedRoles={['candidate']}>
+          <Portal tab="notifications" />
+        </ProtectedRoute>
+      } />
+      <Route path="/portal/profile" element={
+        <ProtectedRoute allowedRoles={['candidate']}>
+          <Portal tab="profile" />
         </ProtectedRoute>
       } />
       <Route path="/assessment" element={
@@ -56,7 +89,17 @@ export default function App() {
       } />
       <Route path="/candidates" element={
         <ProtectedRoute allowedRoles={['hr', 'admin', 'superadmin']}>
-          <Dashboard />
+          <CandidatesList />
+        </ProtectedRoute>
+      } />
+      <Route path="/uploads" element={
+        <ProtectedRoute allowedRoles={['hr', 'admin', 'superadmin']}>
+          <UploadCenter />
+        </ProtectedRoute>
+      } />
+      <Route path="/resumes" element={
+        <ProtectedRoute allowedRoles={['hr', 'admin', 'superadmin']}>
+          <ResumeRepository />
         </ProtectedRoute>
       } />
       <Route path="/candidates/:id" element={

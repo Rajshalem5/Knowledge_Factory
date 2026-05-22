@@ -14,6 +14,7 @@ interface AuthContextValue {
   user: User | null;
   token: string | null;
   isLoading: boolean;
+  isVerifying: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<User>;
   register: (data: RegisterData | FormData) => Promise<void>;
@@ -41,6 +42,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // On mount: try cookie-based refresh for session persistence across reloads
   useEffect(() => {
+    let timeoutId: ReturnType<typeof setTimeout>;
+    let settled = false;
+
+    const forceUnverified = () => {
+      if (!settled) {
+        settled = true;
+        console.log('[AuthContext] Session verification timed out after 5s — treating as unauthenticated');
+        setIsVerifying(false);
+      }
+    };
+
+    // 5-second safety timeout: if backend is unreachable, unblock the UI
+    timeoutId = setTimeout(forceUnverified, 5000);
+
     const accessToken = tokenStore.getAccessToken();
 
     if (!accessToken) {
@@ -60,7 +75,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .catch(() => {
           // No cookie either — user needs to log in
         })
-        .finally(() => setIsVerifying(false));
+        .finally(() => {
+          clearTimeout(timeoutId);
+          if (!settled) {
+            settled = true;
+            setIsVerifying(false);
+          }
+        });
       return;
     }
 
@@ -97,7 +118,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setToken(null);
         setUser(null);
       })
-      .finally(() => setIsVerifying(false));
+      .finally(() => {
+        clearTimeout(timeoutId);
+        if (!settled) {
+          settled = true;
+          setIsVerifying(false);
+        }
+      });
   }, []);
 
   const handleLogout = useCallback(() => {
@@ -157,6 +184,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user,
     token,
     isLoading: isVerifying,
+    isVerifying,
     isAuthenticated: !!token && !!user,
     login,
     register,
@@ -165,10 +193,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     hasRole,
   };
 
-  if (isVerifying) {
-    return null; // Block render until session is verified
-  }
+  // Diagnostic: log auth state changes
+  console.log(`[AuthContext] isVerifying=${isVerifying}, user=${user?.email}, loading=${isVerifying}`);
 
+  // Always render children — public routes must not be blocked during verification.
+  // ProtectedRoute handles the loading gate for protected pages.
   return (
     <AuthContext.Provider value={value}>
       {children}

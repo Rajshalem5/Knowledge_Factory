@@ -32,6 +32,8 @@ export interface Candidate {
   name: string;
   college: string;
   branch: string;
+  degree?: string;
+  skills?: string;
   cgpa: number;
   status: string;
   display_status: string;
@@ -151,7 +153,7 @@ export interface BulkUploadPreview {
   invalid_records: number;
   preview: Array<{
     row: number;
-    data: Record<string, string>;
+    data: Record<string, any>;
     valid: boolean;
   }>;
   errors: Array<{

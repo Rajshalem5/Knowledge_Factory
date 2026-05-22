@@ -3,7 +3,7 @@
 from datetime import date, datetime
 import logging
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -98,6 +98,33 @@ async def list_candidates(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/me/resume")
+async def upload_my_resume(
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Allow candidate to upload/update their own resume."""
+    from app.features.candidates.models import Candidate
+    import uuid
+    import os
+
+    # Resolve candidate
+    stmt = select(Candidate).where(Candidate.id == current_user.id)
+    res = await db.execute(stmt)
+    candidate = res.scalar_one_or_none()
+
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+
+    # In a real app, save to S3. For local, we just update the URL.
+    filename = f"resume_{uuid.uuid4().hex[:8]}{os.path.splitext(file.filename)[1]}"
+    candidate.resume_url = f"uploads/resumes/{filename}"
+    
+    await db.commit()
+    return {"message": "Resume uploaded successfully", "resume_url": candidate.resume_url}
+
+
 @router.get("/me", response_model=CandidateRead)
 async def get_my_profile(db: AsyncSession = Depends(get_db), current_user = Depends(get_current_user)):
     """Get the authenticated candidate's own profile."""
@@ -153,6 +180,8 @@ async def _process_bulk_upload_file(file: UploadFile | None) -> BulkUploadPrevie
     import io
     import uuid
     import os
+    from app.services.parser import extract_text_from_file
+    from app.services.extractor import extract_candidate_info
 
     if not file:
         return BulkUploadPreview(batch_id="", total_records=0, valid_records=0, invalid_records=0, preview=[], errors=[])
@@ -162,7 +191,10 @@ async def _process_bulk_upload_file(file: UploadFile | None) -> BulkUploadPrevie
     content = await file.read()
     batch_id = str(uuid.uuid4())[:8]
     
-    logger.info("[_process_bulk_upload_file] Detected file: %s, ext: %s, size: %d bytes", filename, ext, len(content))
+    logger.info(
+        "[_process_bulk_upload_file] Incoming file | name=%s | ext=%s | type=%s | size=%d bytes", 
+        filename, ext, file.content_type, len(content)
+    )
 
     # Structured Data Path (CSV)
     if ext == ".csv":
@@ -182,9 +214,9 @@ async def _process_bulk_upload_file(file: UploadFile | None) -> BulkUploadPrevie
         for i, row in enumerate(records[:20]):  # Preview first 20
             try:
                 # Basic validation
-                if not row.get("email") or "@" not in row.get("email", ""):
+                email = row.get("email", "").strip()
+                if not email or "@" not in email:
                     raise ValueError("Missing or invalid email")
-                _ = float(row.get("cgpa", 0))
                 preview.append({"row": i + 1, "data": row, "valid": True})
             except (ValueError, KeyError) as e:
                 errors.append({"row": i + 1, "error": str(e) or "Invalid data format"})
@@ -200,36 +232,71 @@ async def _process_bulk_upload_file(file: UploadFile | None) -> BulkUploadPrevie
             errors=errors,
         )
 
-    # Spreadsheet Path (XLSX) - Currently placeholder since library missing
-    elif ext in [".xls", ".xlsx"]:
-        return BulkUploadPreview(
-            batch_id=batch_id, total_records=1, valid_records=0, invalid_records=1,
-            preview=[{"row": 1, "data": {"filename": filename}, "valid": False}],
-            errors=[{"row": 1, "error": "Excel (.xlsx) parsing requires additional server libraries. Please use CSV for now."}]
-        )
-
-    # Document Path (PDF/DOCX) - Handle as single candidate creation if it's a resume
+    # Document Path (PDF/DOCX) - Use AI Extraction
     elif ext in [".pdf", ".doc", ".docx"]:
-        # We can't parse text yet, but we can return it as a "valid" placeholder for the confirm step
-        placeholder_data = {
-            "name": filename.replace(ext, "").replace("_", " ").title(),
-            "email": "pending@example.com",
-            "type": "Resume/Document"
-        }
-        return BulkUploadPreview(
-            batch_id=batch_id,
-            total_records=1,
-            valid_records=1,
-            invalid_records=0,
-            preview=[{"row": 1, "data": placeholder_data, "valid": True}],
-            errors=[{"row": 1, "error": "Document detected. Note: Auto-parsing text is not yet active; details will be manual."}]
-        )
+        try:
+            logger.info("[_process_bulk_upload_file] Extracting text from document...")
+            raw_text = await extract_text_from_file(content, filename)
+            
+            logger.info("[_process_bulk_upload_file] Extracting entities via LLM...")
+            extracted = await extract_candidate_info(raw_text)
+            
+            # Map extracted data to unified row format
+            preview_data = {
+                "name": extracted.get("name") or filename.replace(ext, "").title(),
+                "email": extracted.get("email") or "",
+                "phone": extracted.get("phone") or "",
+                "degree": extracted.get("degree") or "Unknown",
+                "branch": extracted.get("branch") or "Unknown",
+                "college": extracted.get("college") or "Unknown",
+                "cgpa": extracted.get("cgpa") or 0.0,
+                "percentage": extracted.get("percentage"),
+                "passed_out_year": extracted.get("graduation_year") or datetime.now().year,
+                "academic_status": extracted.get("academic_status"),
+                "skills": extracted.get("skills", []) if isinstance(extracted.get("skills"), list) else [],
+                "experience_summary": extracted.get("experience_summary"),
+                "type": "AI Extracted Resume",
+                "is_ai_parsed": True
+            }
+            
+            # Convert skills back to string if it was a list
+            if isinstance(preview_data["skills"], list):
+                preview_data["skills"] = ", ".join(preview_data["skills"])
+
+            valid = bool(preview_data["email"] and "@" in preview_data["email"])
+            
+            return BulkUploadPreview(
+                batch_id=batch_id,
+                total_records=1,
+                valid_records=1 if valid else 0,
+                invalid_records=0 if valid else 1,
+                preview=[{"row": 1, "data": preview_data, "valid": valid}],
+                errors=[] if valid else [{"row": 1, "error": "Resume uploaded. AI could not reliably extract an email. Please enter manually."}],
+            )
+        except Exception as e:
+            logger.warning(f"[_process_bulk_upload_file] Text extraction failed, falling back to manual entry: {e}")
+            # Even if parsing fails, we want to allow them to create a placeholder
+            placeholder_data = {
+                "name": filename.replace(ext, "").title(),
+                "email": "",
+                "type": "Manual Entry (Parsing Failed)",
+                "is_ai_parsed": True # keep it true so frontend shows the edit form
+            }
+            return BulkUploadPreview(
+                batch_id=batch_id,
+                total_records=1,
+                valid_records=0,
+                invalid_records=1,
+                preview=[{"row": 1, "data": placeholder_data, "valid": False}],
+                errors=[{"row": 1, "error": f"Extraction failed: {str(e)}. Document stored, please fill details manually."}]
+            )
 
     # Unsupported Path
     else:
+        logger.warning("[_process_bulk_upload_file] Unsupported file type: %s", ext)
         return BulkUploadPreview(
             batch_id=batch_id, total_records=0, valid_records=0, invalid_records=0,
-            preview=[], errors=[{"row": 0, "error": f"Unsupported file type: {ext}"}]
+            preview=[], errors=[{"row": 0, "error": f"Unsupported file type: {ext}. Please use CSV, PDF, or DOCX."}]
         )
 
 
@@ -246,8 +313,9 @@ async def preview_bulk_upload(
 @router.post("/bulk-upload", status_code=status.HTTP_201_CREATED)
 async def bulk_upload_candidates(
     file: UploadFile | None = File(None),
+    data: str | None = Form(None), # Optional JSON from frontend
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(require_role([Role.HR, Role.ADMIN, Role.SUPER_ADMIN])),
+    current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPER_ADMIN])),
 ):
     """Bulk upload candidates — handles multiple formats safely."""
     from app.features.candidates.models import Candidate
@@ -256,6 +324,7 @@ async def bulk_upload_candidates(
     import io
     import uuid
     import os
+    import json
 
     if not file:
         raise HTTPException(status_code=400, detail="No file provided")
@@ -309,26 +378,55 @@ async def bulk_upload_candidates(
     elif ext in [".pdf", ".doc", ".docx"]:
         total_records = 1
         try:
-            # For documents, we create a placeholder candidate
-            # In a real app, we'd save the file to S3/Local and set resume_url
-            # For now, just create the record so the flow doesn't crash
-            placeholder_name = filename.replace(ext, "").replace("_", " ").title()
+            from app.services.parser import extract_text_from_file
+            from app.services.extractor import extract_candidate_info
+
+            logger.info("[bulk_upload_candidates] Processing document: %s", filename)
+            
+            extracted = {}
+            if data:
+                try:
+                    extracted = json.loads(data)
+                    logger.info("[bulk_upload_candidates] Using provided data for candidate creation")
+                except Exception:
+                    logger.warning("[bulk_upload_candidates] Failed to parse provided data JSON, falling back to AI")
+
+            if not extracted:
+                raw_text = await extract_text_from_file(content, filename)
+                extracted = await extract_candidate_info(raw_text)
+
             candidate = Candidate(
                 cycle_id=cycle.id,
-                email=f"upload_{uuid.uuid4().hex[:6]}@example.com",
-                name=placeholder_name,
-                college="Uploaded Document",
-                branch="Unknown",
-                cgpa=0.0,
-                passed_out_year=datetime.now().year,
+                email=extracted.get("email") or f"upload_{uuid.uuid4().hex[:6]}@example.com",
+                name=extracted.get("name") or filename.replace(ext, "").title(),
+                degree=extracted.get("degree") or "Unknown",
+                branch=extracted.get("branch") or "Unknown",
+                college=extracted.get("college") or "Unknown",
+                cgpa=float(extracted.get("cgpa") or 0.0),
+                passed_out_year=int(extracted.get("passed_out_year") or datetime.now().year),
+                skills=extracted.get("skills") if isinstance(extracted.get("skills"), str) else ", ".join(extracted.get("skills", [])),
                 language_choice="python",
                 status=CandidateStatus.APPLIED,
-                resume_url=f"uploads/{filename}" # Placeholder path
+                phone=extracted.get("phone"),
+                resume_url=f"uploads/resumes/{filename}",
+                custom_fields={
+                    "percentage": extracted.get("percentage"),
+                    "academic_status": extracted.get("academic_status"),
+                    "experience_summary": extracted.get("experience_summary"),
+                }
             )
             db.add(candidate)
             saved += 1
-            logger.info("[bulk_upload_candidates] Created placeholder for document: %s", filename)
+            
+            # Save file to disk
+            upload_dir = "uploads/resumes"
+            os.makedirs(upload_dir, exist_ok=True)
+            with open(os.path.join(upload_dir, filename), "wb") as f:
+                f.write(content)
+
+            logger.info("[bulk_upload_candidates] Successfully created candidate from document: %s", filename)
         except Exception as e:
+            logger.error("[bulk_upload_candidates] Document processing error: %s", e)
             errors.append({"row": 1, "error": str(e)})
 
     # Unsupported / Placeholder for XLSX

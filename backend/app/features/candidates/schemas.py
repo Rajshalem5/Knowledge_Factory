@@ -16,6 +16,8 @@ class CandidateBase(BaseModel):
     cgpa: float
     passed_out_year: int
     language_choice: str
+    degree: Optional[str] = None
+    skills: Optional[str] = None
 
 
 class CandidateRead(CandidateBase):
@@ -29,6 +31,7 @@ class CandidateRead(CandidateBase):
     phone: Optional[str] = None
     resume_url: Optional[str] = None
     govt_id_url: Optional[str] = None
+    custom_fields: dict = {}
     scores: list = []
     proctoring_flags: list = []
     interview_feedback: Optional[dict] = None
@@ -89,10 +92,13 @@ class CandidateRead(CandidateBase):
             cgpa=candidate.cgpa,
             passed_out_year=candidate.passed_out_year,
             language_choice=candidate.language_choice,
+            degree=getattr(candidate, 'degree', None),
+            skills=getattr(candidate, 'skills', None),
             email_verified=getattr(candidate, 'email_verified', False),
             phone=getattr(candidate, 'phone', None),
             resume_url=getattr(candidate, 'resume_url', None),
             govt_id_url=getattr(candidate, 'govt_id_url', None),
+            custom_fields=getattr(candidate, 'custom_fields', {}),
             status=status_val,
             display_status=status_val.display_status,
             created_at=candidate.created_at,

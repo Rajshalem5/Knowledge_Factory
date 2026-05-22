@@ -5,8 +5,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Numeric, String
-from sqlalchemy import JSON
+from sqlalchemy import Boolean, DateTime, ForeignKey, Numeric, String, Text, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.enums import CandidateStatus
@@ -30,6 +29,8 @@ class Candidate(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     college: Mapped[str] = mapped_column(String(255), nullable=False)
     branch: Mapped[str] = mapped_column(String(50), nullable=False)
+    degree: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    skills: Mapped[str | None] = mapped_column(Text, nullable=True)
     cgpa: Mapped[Decimal] = mapped_column(Numeric(4, 2), nullable=False)
     passed_out_year: Mapped[int] = mapped_column(nullable=False)
     resume_url: Mapped[str | None] = mapped_column(String(500), nullable=True)

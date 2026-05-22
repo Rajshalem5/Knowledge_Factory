@@ -27,71 +27,92 @@ class AssessmentService:
     async def start_assessment(self, candidate_id: str, req: AssessmentStart) -> Assessment:
         logger.info("start_assessment called | candidate_id=%s | round=%s", candidate_id, req.round)
 
-        # Validate candidate exists
-        c_stmt = select(Candidate).where(Candidate.id == str(candidate_id))
-        c_res = await self.db.execute(c_stmt)
-        candidate = c_res.scalar_one_or_none()
-        if not candidate:
-            logger.error("Candidate not found | candidate_id=%s", candidate_id)
-            raise ValueError("Candidate not found")
-        
-        # ═══ CHECK EXISTING ASSESSMENT FIRST ═══
-        existing_stmt = (
-            select(Assessment)
-            .where(
-                Assessment.candidate_id == str(candidate_id),
-                Assessment.round == req.round,
-                Assessment.status.in_([AssessmentStatus.IN_PROGRESS]),
+        # ═══ TRANSACTIONAL BLOCK ═══
+        # Using separate block to ensure consistent state before starting heavy AI generation
+        async with self.db.begin_nested():
+            # 1. Validate candidate exists
+            c_stmt = select(Candidate).where(Candidate.id == str(candidate_id))
+            c_res = await self.db.execute(c_stmt)
+            candidate = c_res.scalar_one_or_none()
+            if not candidate:
+                logger.error("Candidate not found | candidate_id=%s", candidate_id)
+                raise ValueError("Candidate not found")
+            
+            # 2. ═══ CHECK EXISTING ASSESSMENT FIRST (Atomic Check) ═══
+            existing_stmt = (
+                select(Assessment)
+                .where(
+                    Assessment.candidate_id == str(candidate_id),
+                    Assessment.round == req.round,
+                    Assessment.status.in_([AssessmentStatus.IN_PROGRESS]),
+                )
+                .order_by(Assessment.started_at.desc())
             )
-        )
-        existing_result = await self.db.execute(existing_stmt)
-        existing = existing_result.scalar_one_or_none()
+            existing_result = await self.db.execute(existing_stmt)
+            existing = existing_result.scalars().first()
 
-        if existing:
-            return existing
+            if existing:
+                logger.info(
+                    "[Audit] Reusing existing assessment | candidate_id=%s | assessment_id=%s | round=%s",
+                    candidate_id, existing.id, req.round
+                )
+                return existing
 
-        # Round-to-status mapping
-        round_status_map = {
-            AssessmentRound.ROUND_2: (CandidateStatus.ROUND1_PASSED, CandidateStatus.ROUND2_IN_PROGRESS),
-            AssessmentRound.ROUND_3: (CandidateStatus.ROUND2_PASSED, CandidateStatus.ROUND3_IN_PROGRESS),
-        }
-        status_mapping = round_status_map.get(req.round)
-        if status_mapping:
-            required_status, next_status = status_mapping
-            current = CandidateStatus(candidate.status) if isinstance(candidate.status, str) else candidate.status
-            
-            if current != required_status:
-                 raise ValueError(f"Candidate not eligible for {req.round.value}")
-            
-            candidate.status = next_status
+            # 3. Round-to-status mapping
+            round_status_map = {
+                AssessmentRound.ROUND_2: (CandidateStatus.ROUND1_PASSED, CandidateStatus.ROUND2_IN_PROGRESS),
+                AssessmentRound.ROUND_3: (CandidateStatus.ROUND2_PASSED, CandidateStatus.ROUND3_IN_PROGRESS),
+            }
+            status_mapping = round_status_map.get(req.round)
+            if status_mapping:
+                required_status, next_status = status_mapping
+                current = CandidateStatus(candidate.status) if isinstance(candidate.status, str) else candidate.status
+                
+                if current != required_status:
+                     raise ValueError(f"Candidate not eligible for {req.round.value}")
+                
+                candidate.status = next_status
 
-        assessment_id = str(uuid.uuid4())
-        
-        # ═══ GENERATE QUESTIONS VIA AI ═══
+        # ═══ AI GENERATION (Outside the tight nested transaction to avoid blocking DB) ═══
         logger.info(f"Starting AI question generation for round {req.round}...")
         questions_data = await self._generate_questions(req.round, candidate)
 
-        assessment = Assessment(
-            id=assessment_id,
-            candidate_id=candidate_id,
-            round=req.round,
-            questions_json=questions_data,
-            link_token=uuid.uuid4().hex,
-            link_expiry=datetime.now(timezone.utc) + timedelta(days=5),
-            started_at=datetime.now(timezone.utc),
-            status=AssessmentStatus.IN_PROGRESS,
-            time_limit=30 if req.round == AssessmentRound.ROUND_2 else 60 # 30m for MCQ, 60m for Coding
-        )
-        self.db.add(assessment)
+        # ═══ PERSIST NEW ASSESSMENT ═══
+        try:
+            assessment_id = str(uuid.uuid4())
+            assessment = Assessment(
+                id=assessment_id,
+                candidate_id=candidate_id,
+                round=req.round,
+                questions_json=questions_data,
+                link_token=uuid.uuid4().hex,
+                link_expiry=datetime.now(timezone.utc) + timedelta(days=5),
+                started_at=datetime.now(timezone.utc),
+                status=AssessmentStatus.IN_PROGRESS,
+                time_limit=30 if req.round == AssessmentRound.ROUND_2 else 60
+            )
+            self.db.add(assessment)
 
-        proctoring_session = ProctoringSession(
-            assessment_attempt_id=assessment_id,
-            user_id=candidate_id,
-        )
-        self.db.add(proctoring_session)
+            proctoring_session = ProctoringSession(
+                assessment_attempt_id=assessment_id,
+                user_id=candidate_id,
+            )
+            self.db.add(proctoring_session)
 
-        await self.db.flush()
-        return assessment
+            await self.db.flush()
+            logger.info(
+                "[Audit] Created new assessment | candidate_id=%s | assessment_id=%s | round=%s",
+                candidate_id, assessment_id, req.round
+            )
+            return assessment
+        except Exception as e:
+            # Check for race condition (Duplicate error from unique index)
+            if "UNIQUE" in str(e) or "idx_one_active_assessment" in str(e):
+                logger.warning("[Audit] Concurrent creation race detected. Retrying lookup...")
+                # Re-fetch the one that was just created by another request
+                await self.db.rollback()
+                return await self.start_assessment(candidate_id, req)
+            raise
 
     async def _generate_questions(self, round_type: AssessmentRound, candidate: Candidate) -> dict:
         """Call AI service to generate questions based on round type."""
