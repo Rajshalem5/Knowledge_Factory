@@ -22,6 +22,9 @@ export const assessmentApi = {
   getAssessment: (assessmentId: string) =>
     api.get<Assessment>(`/api/assessment/${assessmentId}`),
 
+  getAssessmentAdmin: (assessmentId: string) =>
+    api.get<any>(`/api/assessment/${assessmentId}/admin`),
+
   getActiveAssessments: () =>
     api.get<Assessment[]>('/api/assessment/active'),
 

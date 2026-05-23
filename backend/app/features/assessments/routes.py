@@ -7,13 +7,27 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.dependencies import get_current_user
-from app.features.assessments.schemas import AssessmentStart, AssessmentRead, SubmissionCreate
+from app.features.assessments.schemas import AssessmentStart, AssessmentRead, SubmissionCreate, AssessmentResult, AssessmentAdminRead
 from app.features.assessments.service import AssessmentService
 from app.core.enums import Role, AssessmentStatus
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+@router.get("/{assessment_id}/admin", response_model=AssessmentAdminRead)
+async def get_assessment_admin(assessment_id: str, db: AsyncSession = Depends(get_db), current_user=Depends(get_current_user)):
+    """Get full assessment details including submissions for admin review."""
+    from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
+    from app.features.assessments.models import Assessment
+    
+    stmt = select(Assessment).options(selectinload(Assessment.submissions)).where(Assessment.id == assessment_id)
+    res = await db.execute(stmt)
+    assessment = res.scalar_one_or_none()
+    if not assessment:
+        raise HTTPException(status_code=404, detail="Assessment not found")
+    return assessment
 
 
 @router.post("/start", response_model=AssessmentRead)
@@ -52,9 +66,24 @@ async def complete_assessment(assessment_id: str, db: AsyncSession = Depends(get
     """Mark an assessment as completed and advance the candidate to the next pipeline stage."""
     service = AssessmentService(db)
     try:
-        return await service.complete_assessment(current_user.id, assessment_id)
+        assessment = await service.complete_assessment(current_user.id, assessment_id)
+        # Convert to Pydantic and then to dict to be absolutely safe
+        return AssessmentRead.model_validate(assessment).model_dump()
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Complete assessment error: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.get("/{assessment_id}/result", response_model=AssessmentResult)
+async def get_assessment_result(assessment_id: str, db: AsyncSession = Depends(get_db), current_user=Depends(get_current_user)):
+    """Fetch the result summary for a completed assessment."""
+    service = AssessmentService(db)
+    try:
+        return await service.get_assessment_result(current_user.id, assessment_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @router.get("/{assessment_id}", response_model=AssessmentRead)

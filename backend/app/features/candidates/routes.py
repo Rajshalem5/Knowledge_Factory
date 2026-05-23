@@ -1,18 +1,22 @@
+from sqlalchemy.exc import IntegrityError
 """Candidate management routes."""
 
 from datetime import date, datetime
 import logging
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi.responses import FileResponse
+import os
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.dependencies import get_current_user, require_role
 from app.features.auth.models import User
-from app.features.candidates.schemas import CandidateRead, CandidateListResponse, CandidateStatusUpdate, BulkUploadPreview
+from app.features.candidates.schemas import CandidateRead, CandidateListResponse, CandidateStatusUpdate, BulkUploadPreview, BulkUploadResponse
 from app.features.candidates.service import CandidateService
 from app.core.enums import CandidateStatus, Role
+from app.core.security import hash_password
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +26,7 @@ router = APIRouter()
 @router.get("/", response_model=CandidateListResponse)
 async def list_candidates(
     page: int = Query(1, ge=1),
-    limit: int = Query(50, ge=1, le=100),
+    limit: int = Query(50, ge=1, le=500),
     status: str | None = None,
     search: str | None = None,
     name: str | None = None,
@@ -50,7 +54,7 @@ async def list_candidates(
     assessment_status: str | None = Query(None, description="Filter candidates whose assessment has this status (e.g. IN_PROGRESS, COMPLETED)"),
     min_score: float | None = Query(None, ge=0.0, le=100.0, description="Filter candidates whose assessment score is >= this value"),
     max_score: float | None = Query(None, ge=0.0, le=100.0, description="Filter candidates whose assessment score is <= this value"),
-    sort_by: str | None = Query(None, description="Sort column (name, email, college, branch, cgpa, passed_out_year, created_at, status)"),
+    sort_by: str | None = Query(None, description="Sort column (name, email, college, branch, cgpa, passed_out_year, created_at, status, adjusted_final_score, composite_score, screening_score)"),
     sort_order: str | None = Query("desc", description="Sort direction: asc or desc"),
     db: AsyncSession = Depends(get_db),
     current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPER_ADMIN])),
@@ -310,14 +314,15 @@ async def preview_bulk_upload(
     return await _process_bulk_upload_file(file)
 
 
-@router.post("/bulk-upload", status_code=status.HTTP_201_CREATED)
+@router.post("/bulk-upload", status_code=status.HTTP_201_CREATED, response_model=BulkUploadResponse)
 async def bulk_upload_candidates(
     file: UploadFile | None = File(None),
     data: str | None = Form(None), # Optional JSON from frontend
+    on_duplicate: str = Query("skip", regex="^(skip|update)$"),
     db: AsyncSession = Depends(get_db),
     current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPER_ADMIN])),
 ):
-    """Bulk upload candidates — handles multiple formats safely."""
+    """Bulk upload candidates â€” handles multiple formats safely and gracefully handles duplicates."""
     from app.features.candidates.models import Candidate
     from app.features.hiring_cycles.models import HiringCycle
     import csv
@@ -341,9 +346,74 @@ async def bulk_upload_candidates(
     if not cycle:
         raise HTTPException(status_code=500, detail="No active hiring cycle found")
 
-    saved = 0
+    created = 0
+    updated = 0
+    skipped_count = 0
     errors = []
+    duplicates = []
     total_records = 0
+
+    # Helper to process a single candidate data dict
+    async def process_candidate_data(c_data, row_idx):
+        nonlocal created, updated, skipped_count
+        email = c_data.get("email", "").strip().lower()
+        if not email:
+            errors.append({"row": row_idx, "error": "Missing email"})
+            return
+
+        try:
+            # Check for existing
+            stmt = select(Candidate).where(Candidate.email == email)
+            res = await db.execute(stmt)
+            existing = res.scalar_one_or_none()
+
+            if existing:
+                if on_duplicate == "skip":
+                    duplicates.append({"email": email, "reason": "Candidate already exists"})
+                    skipped_count += 1
+                    logger.info(f"[BulkUpload] Duplicate candidate skipped: {email}")
+                    return
+                else:
+                    # Update mode
+                    existing.name = c_data.get("name", "").strip() or existing.name
+                    existing.college = c_data.get("college", "").strip() or existing.college
+                    existing.branch = c_data.get("branch", "").strip() or existing.branch
+                    existing.degree = c_data.get("degree", "").strip() or existing.degree
+                    existing.cgpa = float(c_data.get("cgpa", existing.cgpa) or 0)
+                    existing.passed_out_year = int(c_data.get("graduation_year") or c_data.get("passed_out_year") or existing.passed_out_year)
+                    existing.skills = c_data.get("skills", "").strip() or existing.skills
+                    updated += 1
+                    logger.info(f"[BulkUpload] Updated existing candidate: {email}")
+                    return
+
+            candidate = Candidate(
+                cycle_id=cycle.id,
+                email=email,
+                name=c_data.get("name", "").strip() or "Unnamed Candidate",
+                college=c_data.get("college", "").strip() or "Unknown",
+                degree=c_data.get("degree", "").strip() or None,
+                branch=c_data.get("branch", "").strip() or "Unknown",
+                cgpa=float(c_data.get("cgpa", 0) or 0),
+                passed_out_year=int(c_data.get("graduation_year") or c_data.get("passed_out_year") or datetime.now().year),
+                skills=c_data.get("skills", "").strip() or None if isinstance(c_data.get("skills"), str) else ", ".join(c_data.get("skills", [])),
+                language_choice=c_data.get("language_choice", "python").strip().lower(),
+                status=CandidateStatus.APPLIED,
+                phone=c_data.get("phone", "").strip() or None,
+                password_hash=hash_password("Welcome@123"),
+                resume_url=c_data.get("resume_url"),
+                custom_fields=c_data.get("custom_fields", {})
+            )
+            db.add(candidate)
+            await db.flush() # Ensure unique constraint check happens
+            created += 1
+        except IntegrityError:
+            await db.rollback()
+            duplicates.append({"email": email, "reason": "Database unique constraint violation"})
+            skipped_count += 1
+            logger.info(f"[BulkUpload] IntegrityError (duplicate) for: {email}")
+        except Exception as e:
+            errors.append({"row": row_idx, "error": str(e)})
+            logger.error(f"[BulkUpload] Row {row_idx} failed: {e}")
 
     # CSV Processing
     if ext == ".csv":
@@ -352,25 +422,9 @@ async def bulk_upload_candidates(
             reader = csv.DictReader(io.StringIO(text))
             records = list(reader)
             total_records = len(records)
-            
+
             for i, row in enumerate(records):
-                try:
-                    candidate = Candidate(
-                        cycle_id=cycle.id,
-                        email=row.get("email", "").strip(),
-                        name=row.get("name", "").strip() or "Unnamed Candidate",
-                        college=row.get("college", "").strip() or "Unknown",
-                        branch=row.get("branch", "").strip() or "Unknown",
-                        cgpa=float(row.get("cgpa", 0)),
-                        passed_out_year=int(row.get("passed_out_year", datetime.now().year)),
-                        language_choice=row.get("language_choice", "python").strip().lower(),
-                        status=CandidateStatus.APPLIED,
-                        phone=row.get("phone", "").strip() or None,
-                    )
-                    db.add(candidate)
-                    saved += 1
-                except Exception as e:
-                    errors.append({"row": i + 2, "error": str(e)})
+                await process_candidate_data(row, i + 2) # i+2 for 1-based row with header
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"Failed to process CSV: {str(e)}")
 
@@ -382,66 +436,79 @@ async def bulk_upload_candidates(
             from app.services.extractor import extract_candidate_info
 
             logger.info("[bulk_upload_candidates] Processing document: %s", filename)
-            
+
             extracted = {}
             if data:
                 try:
                     extracted = json.loads(data)
-                    logger.info("[bulk_upload_candidates] Using provided data for candidate creation")
                 except Exception:
-                    logger.warning("[bulk_upload_candidates] Failed to parse provided data JSON, falling back to AI")
+                    logger.warning("[bulk_upload_candidates] Failed to parse provided data JSON") 
 
             if not extracted:
                 raw_text = await extract_text_from_file(content, filename)
                 extracted = await extract_candidate_info(raw_text)
-
-            candidate = Candidate(
-                cycle_id=cycle.id,
-                email=extracted.get("email") or f"upload_{uuid.uuid4().hex[:6]}@example.com",
-                name=extracted.get("name") or filename.replace(ext, "").title(),
-                degree=extracted.get("degree") or "Unknown",
-                branch=extracted.get("branch") or "Unknown",
-                college=extracted.get("college") or "Unknown",
-                cgpa=float(extracted.get("cgpa") or 0.0),
-                passed_out_year=int(extracted.get("passed_out_year") or datetime.now().year),
-                skills=extracted.get("skills") if isinstance(extracted.get("skills"), str) else ", ".join(extracted.get("skills", [])),
-                language_choice="python",
-                status=CandidateStatus.APPLIED,
-                phone=extracted.get("phone"),
-                resume_url=f"uploads/resumes/{filename}",
-                custom_fields={
-                    "percentage": extracted.get("percentage"),
-                    "academic_status": extracted.get("academic_status"),
-                    "experience_summary": extracted.get("experience_summary"),
-                }
-            )
-            db.add(candidate)
-            saved += 1
             
+            extracted["resume_url"] = f"uploads/resumes/{filename}"
+            extracted["custom_fields"] = {
+                "percentage": extracted.get("percentage"),
+                "academic_status": extracted.get("academic_status"),
+                "experience_summary": extracted.get("experience_summary"),
+                "specialization": extracted.get("specialization"),
+                "university": extracted.get("university"),
+            }
+
+            await process_candidate_data(extracted, 1)
+
             # Save file to disk
             upload_dir = "uploads/resumes"
             os.makedirs(upload_dir, exist_ok=True)
             with open(os.path.join(upload_dir, filename), "wb") as f:
                 f.write(content)
 
-            logger.info("[bulk_upload_candidates] Successfully created candidate from document: %s", filename)
         except Exception as e:
             logger.error("[bulk_upload_candidates] Document processing error: %s", e)
             errors.append({"row": 1, "error": str(e)})
 
-    # Unsupported / Placeholder for XLSX
+    # Unsupported
     else:
-        raise HTTPException(
-            status_code=400, 
-            detail=f"Automated processing for {ext} files is not yet implemented. Please use CSV."
-        )
+        raise HTTPException(status_code=400, detail=f"Unsupported file type: {ext}")
 
-    if saved > 0:
-        await db.commit()
+    await db.commit()
 
     return {
         "batch_id": str(uuid.uuid4())[:8],
         "total_records": total_records,
-        "saved": saved,
+        "created": created,
+        "updated": updated,
+        "skipped": skipped_count,
         "errors": errors,
+        "duplicates": duplicates
     }
+
+
+@router.get("/{candidate_id}/resume")
+async def get_candidate_resume(
+    candidate_id: str, 
+    db: AsyncSession = Depends(get_db), 
+    current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPER_ADMIN, Role.INTERVIEWER]))
+):
+    """Fetch and serve the candidate's resume file with authentication."""
+    service = CandidateService(db)
+    candidate = await service.get_candidate(candidate_id)
+    if not candidate or not candidate.resume_url:
+        raise HTTPException(status_code=404, detail="Resume not found")
+    
+    file_path = candidate.resume_url
+    if not os.path.isabs(file_path):
+        file_path = os.path.join(os.getcwd(), file_path)
+        
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Resume file not found on server")
+    
+    media_type = "application/pdf"
+    if file_path.lower().endswith(".docx"):
+        media_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    elif file_path.lower().endswith(".doc"):
+        media_type = "application/msword"
+        
+    return FileResponse(file_path, media_type=media_type, filename=os.path.basename(file_path))

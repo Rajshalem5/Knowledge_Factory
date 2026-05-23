@@ -221,3 +221,11 @@ class ProblemDifficulty(str, enum.Enum):
     EASY = "easy"
     MEDIUM = "medium"
     HARD = "hard"
+
+
+class EvaluationRecommendation(str, enum.Enum):
+    """AI/System recommendation based on composite score."""
+    STRONGLY_RECOMMENDED = "STRONGLY_RECOMMENDED"
+    RECOMMENDED = "RECOMMENDED"
+    BORDERLINE = "BORDERLINE"
+    NOT_RECOMMENDED = "NOT_RECOMMENDED"

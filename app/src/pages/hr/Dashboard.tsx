@@ -99,24 +99,19 @@ export default function Dashboard() {
                    </CardTitle>
                 </CardHeader>
                 <div className="space-y-4">
-                   <div className="flex items-start gap-3">
-                      <div className="p-1.5 rounded bg-secondary/10 text-secondary mt-0.5">
-                         <Upload size={12} />
+                   {pipelineStats?.stats?.APPLIED ? (
+                      <div className="flex items-start gap-3">
+                         <div className="p-1.5 rounded bg-secondary/10 text-secondary mt-0.5">
+                            <Upload size={12} />
+                         </div>
+                         <div>
+                            <p className="text-xs font-medium text-on-surface truncate">Database Records</p>
+                            <p className="text-[10px] text-tertiary">{pipelineStats.stats.APPLIED} total candidates in pipeline</p>
+                         </div>
                       </div>
-                      <div>
-                         <p className="text-xs font-medium text-on-surface truncate">campus_referrals.csv</p>
-                         <p className="text-[10px] text-tertiary">124 records · 2 hours ago</p>
-                      </div>
-                   </div>
-                   <div className="flex items-start gap-3">
-                      <div className="p-1.5 rounded bg-secondary/10 text-secondary mt-0.5">
-                         <Upload size={12} />
-                      </div>
-                      <div>
-                         <p className="text-xs font-medium text-on-surface truncate">off_campus_drive.xlsx</p>
-                         <p className="text-[10px] text-tertiary">450 records · 1 day ago</p>
-                      </div>
-                   </div>
+                   ) : (
+                      <p className="text-[10px] text-tertiary italic text-center py-2">No recent activity</p>
+                   )}
                    <Button variant="ghost" size="sm" className="w-full justify-center" onClick={() => navigate('/uploads')}>
                       View History
                    </Button>

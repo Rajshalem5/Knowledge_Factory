@@ -2,27 +2,29 @@ import { useEffect, useRef } from 'react';
 import { cn } from '../../utils/cn';
 
 interface CodeEditorProps {
-  initialValue: string;
+  value: string;
   onChange: (value: string) => void;
+  language?: string;
   className?: string;
 }
 
-export function CodeEditor({ initialValue, onChange, className }: CodeEditorProps) {
+export function CodeEditor({ value = '', onChange, language, className }: CodeEditorProps) {
   const ref = useRef<HTMLTextAreaElement>(null);
 
   // Sync external value changes (language switch, question load)
   useEffect(() => {
-    if (ref.current && ref.current.value !== initialValue) {
-      ref.current.value = initialValue;
+    if (ref.current && ref.current.value !== value) {
+      ref.current.value = value;
     }
-  }, [initialValue]);
+  }, [value]);
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     onChange(e.target.value);
   };
 
-  // Count lines from the textarea's current value
-  const lineCount = (ref.current?.value ?? initialValue).split('\n').length;
+  // Count lines from the textarea's current value (robust check)
+  const currentContent = ref.current?.value ?? value ?? "";
+  const lineCount = currentContent.split('\n').length;
 
   return (
     <div className={cn('flex h-full bg-primary font-mono text-sm', className)}>
@@ -35,7 +37,7 @@ export function CodeEditor({ initialValue, onChange, className }: CodeEditorProp
       </div>
       <textarea
         ref={ref}
-        defaultValue={initialValue}
+        defaultValue={value}
         onChange={handleChange}
         spellCheck={false}
         className={cn(
@@ -43,7 +45,7 @@ export function CodeEditor({ initialValue, onChange, className }: CodeEditorProp
           'focus:outline-none caret-secondary',
           'placeholder:text-on-primary-container/30',
         )}
-        placeholder="Write your code here..."
+        placeholder={`Write your ${language || 'code'} here...`}
       />
     </div>
   );

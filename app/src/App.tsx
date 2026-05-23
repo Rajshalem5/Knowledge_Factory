@@ -14,10 +14,13 @@ import Portal from './pages/candidate/Portal';
 import Assessment from './pages/candidate/Assessment';
 import Dashboard from './pages/hr/Dashboard';
 import CandidateDetail from './pages/hr/CandidateDetail';
+import AssessmentReview from './pages/hr/AssessmentReview';
+import ProctoringAudit from './pages/hr/ProctoringAudit';
 import InterviewPanel from './pages/interviewer/InterviewPanel';
 import SelectionPanel from './pages/selection/SelectionPanel';
 import AnalyticsDashboard from './pages/analytics/AnalyticsDashboard';
 import SuperAdminPanel from './pages/super_admin/SuperAdminPanel';
+import CycleConfig from './pages/admin/CycleConfig';
 
 import CandidatesList from './pages/hr/CandidatesList';
 import UploadCenter from './pages/hr/UploadCenter';
@@ -107,6 +110,16 @@ export default function App() {
           <CandidateDetail />
         </ProtectedRoute>
       } />
+      <Route path="/candidates/:id/assessments/:assessmentId" element={
+        <ProtectedRoute allowedRoles={['hr', 'admin', 'interviewer', 'superadmin']}>
+          <AssessmentReview />
+        </ProtectedRoute>
+      } />
+      <Route path="/candidates/:id/proctoring" element={
+        <ProtectedRoute allowedRoles={['hr', 'admin', 'interviewer', 'superadmin']}>
+          <ProctoringAudit />
+        </ProtectedRoute>
+      } />
 
       {/* Interviewer routes */}
       <Route path="/interview" element={
@@ -133,6 +146,11 @@ export default function App() {
       <Route path="/admin/dashboard" element={
         <ProtectedRoute allowedRoles={['superadmin', 'admin']}>
           <SuperAdminPanel />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/cycle-config" element={
+        <ProtectedRoute allowedRoles={['superadmin', 'admin', 'hr']}>
+          <CycleConfig />
         </ProtectedRoute>
       } />
       <Route path="/superadmin" element={

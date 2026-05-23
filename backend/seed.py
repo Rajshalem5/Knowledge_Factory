@@ -17,6 +17,9 @@ from app.features.assessments.models import Assessment, Submission, Score
 from app.features.interviews.models import InterviewFeedback
 from app.features.audit.models import AuditLog
 from app.features.analytics.models import AIGenerationLog
+from app.features.proctoring.models import ProctoringSession, ProctoringEvent, ProctoringEvidence, RiskSnapshot
+from app.features.notifications.models import EmailLog
+
 
 
 def seed():
@@ -34,6 +37,26 @@ def seed():
     Base.metadata.create_all(bind=engine)
     
     with Session(engine) as session:
+        # Clear Existing Data
+        # Clear All Existing Data
+        print('Clearing all existing data...')
+        session.query(RiskSnapshot).delete()
+        session.query(ProctoringEvidence).delete()
+        session.query(ProctoringEvent).delete()
+        session.query(ProctoringSession).delete()
+        session.query(EmailLog).delete()
+        session.query(Score).delete()
+        session.query(Submission).delete()
+        session.query(Assessment).delete()
+        session.query(InterviewFeedback).delete()
+        session.query(Candidate).delete()
+        session.query(HiringCycle).delete()
+        session.query(AuditLog).delete()
+        session.query(AIGenerationLog).delete()
+        session.query(User).delete()
+        session.flush()
+        print('All existing data cleared.')
+
         # ── Staff Users ─────────────────────────────────────────────
         staff_users = [
             {"email": "superadmin@knowledgefactory.io", "password": "Super@12345", "name": "Super Admin", "role": Role.SUPER_ADMIN},
@@ -104,9 +127,9 @@ def seed():
         
         # Seed test candidates
         candidates_data = [
-            {"name": "Alice Sharma", "email": "alice@test.com", "password": "Candidate@123", "college": "IIT Bombay", "branch": "CSE", "cgpa": 8.7, "passed_out_year": 2026, "language_choice": "python"},
-            {"name": "Bob Patel", "email": "bob@test.com", "password": "Candidate@123", "college": "NIT Trichy", "branch": "ECE", "cgpa": 7.2, "passed_out_year": 2026, "language_choice": "java"},
-            {"name": "Test Candidate", "email": "candidate@test.com", "password": "Candidate@123", "college": "Test University", "branch": "CSE", "cgpa": 8.5, "passed_out_year": 2026, "language_choice": "python"},
+            {"name": "Alice Sharma", "email": "alice@test.com", "password": "Welcome@123", "college": "IIT Bombay", "branch": "CSE", "cgpa": 8.7, "passed_out_year": 2026, "language_choice": "python"},
+            {"name": "Bob Patel", "email": "bob@test.com", "password": "Welcome@123", "college": "NIT Trichy", "branch": "ECE", "cgpa": 7.2, "passed_out_year": 2026, "language_choice": "java"},
+            {"name": "Test Candidate", "email": "candidate@test.com", "password": "Welcome@123", "college": "Test University", "branch": "CSE", "cgpa": 8.5, "passed_out_year": 2026, "language_choice": "python"},
         ]
         
         for cd in candidates_data:
@@ -145,7 +168,7 @@ def seed():
         # Verify candidate@test.com
         test_c = session.query(Candidate).filter(Candidate.email == "candidate@test.com").first()
         if test_c:
-            ok = verify_password_test("Candidate@123", test_c.password_hash)
+            ok = verify_password_test("Welcome@123", test_c.password_hash)
             print(f"  Verify candidate@test.com: {'PASS' if ok else 'FAIL'}")
         
         print("\nSeed complete!")

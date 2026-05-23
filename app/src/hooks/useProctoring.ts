@@ -330,3 +330,38 @@ export function useProctoring({ assessmentAttemptId, onViolation, onTerminated }
     sendViolation,
   };
 }
+
+import { useQuery } from '@tanstack/react-query';
+
+export function useProctoringSession(assessmentId: string) {
+  return useQuery({
+    queryKey: ['proctoring-session', assessmentId],
+    queryFn: async () => {
+      const resp = await proctoringService.getSessionByAssessment(assessmentId);
+      return resp.data || resp;
+    },
+    enabled: !!assessmentId,
+  });
+}
+
+export function useProctoringEvents(sessionId: string) {
+  return useQuery({
+    queryKey: ['proctoring-events', sessionId],
+    queryFn: async () => {
+      const resp = await proctoringService.getEvents(sessionId);
+      return resp.data || resp;
+    },
+    enabled: !!sessionId,
+  });
+}
+
+export function useProctoringEvidence(sessionId: string) {
+  return useQuery({
+    queryKey: ['proctoring-evidence', sessionId],
+    queryFn: async () => {
+      const resp = await proctoringService.getEvidence(sessionId);
+      return resp.data || resp;
+    },
+    enabled: !!sessionId,
+  });
+}

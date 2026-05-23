@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
-import { Upload, X, AlertCircle, CheckCircle, FileText, Zap } from 'lucide-react';
+import { Upload, X, AlertCircle, CheckCircle, FileText, Zap, Info } from 'lucide-react';
 import { Modal, Button, Input, Badge } from '../ui';
 import { useBulkUpload, usePreviewBulkUpload } from '../../hooks/useCandidates';
-import type { BulkUploadPreview } from '../../types';
+import type { BulkUploadPreview, BulkUploadResponse } from '../../types';
 
 interface BulkUploadModalProps {
   open: boolean;
@@ -12,8 +12,8 @@ interface BulkUploadModalProps {
 export function BulkUploadModal({ open, onClose }: BulkUploadModalProps) {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<BulkUploadPreview | null>(null);
+  const [result, setResult] = useState<BulkUploadResponse | null>(null);
   const [editableData, setEditableData] = useState<any>(null);
-  const [isSuccess, setIsSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const previewMutation = usePreviewBulkUpload();
@@ -31,6 +31,7 @@ export function BulkUploadModal({ open, onClose }: BulkUploadModalProps) {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
       setFile(selectedFile);
+      setResult(null);
       try {
         const res = await previewMutation.mutateAsync(selectedFile);
         setPreview(res);
@@ -44,12 +45,8 @@ export function BulkUploadModal({ open, onClose }: BulkUploadModalProps) {
     if (file) {
       try {
         // If we have editableData (AI parsed), we send it to bypass re-parsing on server
-        await uploadMutation.mutateAsync({ file, data: editableData });
-        setIsSuccess(true);
-        setTimeout(() => {
-          onClose();
-          reset();
-        }, 2000);
+        const res = await uploadMutation.mutateAsync({ file, data: editableData });
+        setResult(res as unknown as BulkUploadResponse);
       } catch (err) {
         console.error('[BulkUploadModal] Upload failed:', err);
       }
@@ -60,7 +57,7 @@ export function BulkUploadModal({ open, onClose }: BulkUploadModalProps) {
     setFile(null);
     setPreview(null);
     setEditableData(null);
-    setIsSuccess(false);
+    setResult(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -97,13 +94,15 @@ export function BulkUploadModal({ open, onClose }: BulkUploadModalProps) {
                   <FileText size={18} className="text-secondary" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-on-surface">{file.name}</p>
+                  <p className="text-sm font-medium text-on-surface truncate max-w-[200px]">{file.name}</p>
                   <p className="text-xs text-tertiary">{(file.size / 1024).toFixed(1)} KB</p>
                 </div>
               </div>
-              <button onClick={reset} className="p-1 hover:text-danger transition-colors">
-                <X size={16} />
-              </button>
+              {!result && (
+                <button onClick={reset} className="p-1 hover:text-danger transition-colors">
+                  <X size={16} />
+                </button>
+              )}
             </div>
 
             {previewMutation.isPending && (
@@ -116,7 +115,7 @@ export function BulkUploadModal({ open, onClose }: BulkUploadModalProps) {
               </div>
             )}
 
-            {preview && !previewMutation.isPending && (
+            {preview && !previewMutation.isPending && !result && (
               <div className="space-y-4">
                 {isAiParsed && editableData ? (
                   /* AI Extraction View */
@@ -173,7 +172,7 @@ export function BulkUploadModal({ open, onClose }: BulkUploadModalProps) {
                      <div>
                         <label className="block text-[10px] font-bold uppercase tracking-widest text-tertiary mb-1.5 ml-1">Extracted Skills</label>
                         <div className="flex flex-wrap gap-1.5 p-3 rounded-md bg-[var(--bg-layer1)] border border-[var(--border-ghost)]">
-                           {editableData.skills.split(',').map((s: string, i: number) => (
+                           {editableData.skills?.split(',').map((s: string, i: number) => (
                              <Badge key={i} variant="info" className="text-[10px]">{s.trim()}</Badge>
                            ))}
                            {(!editableData.skills || editableData.skills.length < 2) && <span className="text-xs text-tertiary italic">No skills detected</span>}
@@ -225,17 +224,57 @@ export function BulkUploadModal({ open, onClose }: BulkUploadModalProps) {
               </div>
             )}
 
-            {isSuccess ? (
-              <div className="p-6 bg-success/10 border border-success/20 rounded-md flex flex-col items-center gap-2 text-success text-center">
-                <CheckCircle size={32} />
-                <div>
-                  <p className="text-sm font-bold">Ingestion Successful!</p>
-                  <p className="text-xs opacity-80 mt-1">
-                    {isAiParsed ? "Candidate profile has been created from resume." : "Candidate batch has been added to the pipeline."}
-                  </p>
-                </div>
+            {result && (
+              <div className="space-y-4">
+                 <div className="p-4 bg-secondary/5 border border-secondary/20 rounded-md flex flex-col items-center gap-2 text-center">
+                    <CheckCircle size={32} className="text-success" />
+                    <div>
+                       <p className="text-sm font-bold text-on-surface">Ingestion Processed</p>
+                       <p className="text-xs text-tertiary mt-1">Batch ID: {result.batch_id}</p>
+                    </div>
+                 </div>
+
+                 <div className="grid grid-cols-3 gap-3">
+                    <div className="p-3 bg-success/10 border border-success/20 rounded-md text-center">
+                       <p className="text-[10px] text-success-on-container uppercase font-bold tracking-widest mb-1">Created</p>
+                       <p className="text-xl font-black text-success">{result.created}</p>
+                    </div>
+                    <div className="p-3 bg-warning/10 border border-warning/20 rounded-md text-center">
+                       <p className="text-[10px] text-warning-on-container uppercase font-bold tracking-widest mb-1">Skipped</p>
+                       <p className="text-xl font-black text-warning">{result.skipped}</p>
+                    </div>
+                    <div className="p-3 bg-danger/10 border border-danger/20 rounded-md text-center">
+                       <p className="text-[10px] text-danger-on-container uppercase font-bold tracking-widest mb-1">Failed</p>
+                       <p className="text-xl font-black text-danger">{result.errors.length}</p>
+                    </div>
+                 </div>
+
+                 {(result.duplicates.length > 0 || result.errors.length > 0) && (
+                    <div className="space-y-2 max-h-40 overflow-y-auto pr-2">
+                       {result.duplicates.map((dup, i) => (
+                          <div key={`dup-${i}`} className="flex items-center gap-2 p-2 rounded bg-warning/5 border border-warning/10 text-[10px]">
+                             <Info size={12} className="text-warning" />
+                             <span className="font-bold text-warning-on-container">{dup.email}</span>
+                             <span className="text-tertiary ml-auto">{dup.reason}</span>
+                          </div>
+                       ))}
+                       {result.errors.map((err, i) => (
+                          <div key={`err-${i}`} className="flex items-center gap-2 p-2 rounded bg-danger/5 border border-danger/10 text-[10px]">
+                             <AlertCircle size={12} className="text-danger" />
+                             <span className="font-bold text-danger-on-container">Row {err.row}</span>
+                             <span className="text-tertiary ml-auto truncate">{err.error}</span>
+                          </div>
+                       ))}
+                    </div>
+                 )}
+
+                 <Button className="w-full" onClick={() => { onClose(); reset(); }}>
+                    Finish & Close
+                 </Button>
               </div>
-            ) : (
+            )}
+
+            {!result && (
               <div className="flex justify-end gap-3 pt-2 border-t border-[var(--border-ghost)]">
                 <Button variant="secondary" onClick={onClose}>Cancel</Button>
                 <Button 
@@ -253,3 +292,4 @@ export function BulkUploadModal({ open, onClose }: BulkUploadModalProps) {
     </Modal>
   );
 }
+

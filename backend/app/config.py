@@ -24,7 +24,6 @@ class Settings(BaseSettings):
     APP_VERSION: str = "0.1.0"
     DEBUG: bool = False
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
-    PROCTORING_SERVICE_WS_URL: str = "ws://localhost:8001"
 
     # ── Database ───────────────────────────────────────────────────
     # Local development: SQLite (single file, no server needed)
@@ -52,7 +51,7 @@ class Settings(BaseSettings):
     AI_MODEL: str = "qwen3-coder-30b"
 
     # ── Code Execution Sandbox ─────────────────────────────────────
-    SANDBOX_URL: str = "http://judge0:2358"
+    SANDBOX_URL: str = "https://emkc.org/api/v2/piston/execute"
     SANDBOX_API_KEY: str = ""
 
     # ── Object Storage (S3-compatible) ─────────────────────────────
@@ -67,7 +66,7 @@ class Settings(BaseSettings):
     # ── Proctoring ─────────────────────────────────────────────────
     PROCTORING_MAX_WARNINGS: int = 3
     PROCTORING_EVENT_INTERVAL_SECONDS: int = 5
-    PROCTORING_SERVICE_WS_URL: str = "ws://localhost:8001"
+    PROCTORING_SERVICE_WS_URL: str = "ws://localhost:8000"
     PROCTORING_JWT_SECRET: str = "dev-proctoring-secret-stable"
     
     # ── Proctoring Risk Weights ────────────────────────────────────

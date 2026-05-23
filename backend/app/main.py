@@ -12,8 +12,12 @@ from fastapi.responses import JSONResponse
 from app.config import settings
 from app.core.enums import Role, UserStatus, CycleStatus
 
+from fastapi.staticfiles import StaticFiles
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(name)s - %(message)s")
 logger = logging.getLogger(__name__)
+
+os.makedirs(settings.SCREENSHOT_STORAGE_PATH, exist_ok=True)
 
 
 # ── Lifespan Events ────────────────────────────────────────────
@@ -130,6 +134,7 @@ from app.features.screening.routes import router as screening_router
 from app.features.audit.routes import router as audit_router
 from app.features.code_execution.routes import router as code_execution_router
 from app.features.questions.routes import router as questions_router
+from app.websockets.proctoring import router as ws_proctoring_router
 
 app.include_router(auth_router, prefix="/api/auth", tags=["Auth"])
 app.include_router(candidates_router, prefix="/api/candidates", tags=["Candidates"])
@@ -144,7 +149,10 @@ app.include_router(admin_router, prefix="/api/admin", tags=["Admin"])
 app.include_router(hiring_cycles_router, prefix="/api/hiring-cycles", tags=["Hiring Cycles"])
 app.include_router(screening_router, prefix="/api/screening", tags=["Screening"])
 app.include_router(audit_router, prefix="/api/admin", tags=["Audit"])
+app.include_router(ws_proctoring_router, tags=["WebSockets"])
 
+
+app.mount("/api/proctoring/screenshots", StaticFiles(directory=settings.SCREENSHOT_STORAGE_PATH), name="screenshots")
 
 @app.get("/health")
 def health_check():

@@ -16,6 +16,8 @@ from app.features.assessments.schemas import AssessmentStart, SubmissionCreate
 from app.features.candidates.models import Candidate
 from app.features.proctoring.models import ProctoringSession
 from app.features.questions.ai_service import generate_question, generate_mcq_questions
+from app.features.code_execution.service import PistonExecutionService
+from app.features.code_execution.schemas import TestCase as ExecutionTestCase
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +91,7 @@ class AssessmentService:
                 link_expiry=datetime.now(timezone.utc) + timedelta(days=5),
                 started_at=datetime.now(timezone.utc),
                 status=AssessmentStatus.IN_PROGRESS,
-                time_limit=30 if req.round == AssessmentRound.ROUND_2 else 60
+                time_limit=45 if req.round == AssessmentRound.ROUND_2 else 60
             )
             self.db.add(assessment)
 
@@ -141,30 +143,90 @@ class AssessmentService:
                 
                 # Shuffle the combined list
                 random.shuffle(all_questions)
-                return {"questions": all_questions}
+                # Add Pattern Coding Section for Round 2 (Continuous)
+                pattern_topics = ["Pattern Printing", "Basic Loops"]
+                pattern_tasks = [generate_question(topic=random.choice(pattern_topics), difficulty="easy")]
+                pattern_results = await asyncio.gather(*pattern_tasks)
+                
+                problems = []
+                for q in pattern_results:
+                    problems.append({
+                        "id": q.id,
+                        "title": q.title,
+                        "description": q.description,
+                        "difficulty": "easy",
+                        "points": 20,
+                        "suggested_duration_mins": 10,
+                        "starter_code": q.boilerplate.get(candidate.language_choice, q.boilerplate.get("python", "")),
+                        "test_cases": [
+                            {"input": tc.input, "expectedOutput": tc.expected_output}
+                            for tc in q.public_test_cases
+                        ],
+                        "_private_cases": [
+                            {"input": tc.input, "expectedOutput": tc.expected_output}
+                            for tc in q.private_test_cases
+                        ]
+                    })
+                
+                return {"questions": all_questions, "problems": problems}
             else:
-                # Coding Round
-                topic = candidate.language_choice or "arrays"
-                q = await generate_question(topic=topic, difficulty="medium")
-                return {
-                    "problems": [
-                        {
-                            "id": q.id,
-                            "title": q.title,
-                            "description": q.description,
-                            "difficulty": q.difficulty,
-                            "starter_code": q.boilerplate.get(candidate.language_choice, q.boilerplate.get("python")),
-                            "test_cases": [
-                                {"input": tc.input, "expectedOutput": tc.expected_output}
-                                for tc in q.public_test_cases
-                            ],
-                            "_private_cases": [
-                                {"input": tc.input, "expectedOutput": tc.expected_output}
-                                for tc in q.private_test_cases
-                            ]
-                        }
-                    ]
-                }
+                # Coding Round - Redesigned format (3 questions)
+                available_coding_topics = [
+                    "Arrays", "Strings", "Hash Maps", "Searching", "Sorting", 
+                    "Recursion", "Stack", "Queue", "Linked Lists", "Trees", 
+                    "Binary Search", "Greedy", "Basic Dynamic Programming"
+                ]
+                # Pick 3 random topics
+                selected_topics = random.sample(available_coding_topics, 3)
+                
+                logger.info(f"Generating Coding Problems for topics: {selected_topics}")
+                
+                # Q1: Easy
+                # Q2: Medium
+                # Q3: 70% Medium, 30% Hard
+                q3_diff = "medium" if random.random() < 0.7 else "hard"
+                
+                tasks = [
+                    generate_question(topic=selected_topics[0], difficulty="easy"),
+                    generate_question(topic=selected_topics[1], difficulty="medium"),
+                    generate_question(topic=selected_topics[2], difficulty=q3_diff)
+                ]
+                
+                results = await asyncio.gather(*tasks)
+                
+                problems = []
+                for i, q in enumerate(results):
+                    # Assign points and suggested duration
+                    if i == 0:
+                        points = 20
+                        duration_mins = 15
+                    elif i == 1:
+                        points = 30
+                        duration_mins = 20
+                    else:
+                        points = 50
+                        duration_mins = 25
+                        
+                    problems.append({
+                        "id": q.id,
+                        "title": q.title,
+                        "description": q.description,
+                        "difficulty": q.difficulty,
+                        "points": points,
+                        "suggested_duration_mins": duration_mins,
+                        "starter_code": q.boilerplate.get(candidate.language_choice, q.boilerplate.get("python", "")),
+                        "test_cases": [
+                            {"input": tc.input, "expectedOutput": tc.expected_output}
+                            for tc in q.public_test_cases
+                        ],
+                        "_private_cases": [
+                            {"input": tc.input, "expectedOutput": tc.expected_output}
+                            for tc in q.private_test_cases
+                        ]
+                    })
+                    
+                return {"problems": problems}
+
         except Exception as e:
             logger.error(f"AI generation failed: {e}")
             return self._generate_sample_questions(round_type)
@@ -193,6 +255,19 @@ class AssessmentService:
                         "difficulty": "easy",
                         "topic": "OOPs"
                     }
+                ],
+                "problems": [
+                    {
+                        "id": "pattern_1",
+                        "title": "Star Pattern",
+                        "description": "Print a 3x3 grid of stars (*).",
+                        "difficulty": "easy",
+                        "points": 10,
+                        "suggested_duration_mins": 5,
+                        "starter_code": "print('***\n***\n***')",
+                        "test_cases": [{"input": "", "expectedOutput": "***\n***\n***"}],
+                        "_private_cases": [{"input": "", "expectedOutput": "***\n***\n***"}]
+                    }
                 ]
             }
         return {
@@ -202,8 +277,33 @@ class AssessmentService:
                     "title": "Hello World",
                     "description": "Print 'Hello, World!' to stdout.",
                     "difficulty": "easy",
+                    "points": 20,
+                    "suggested_duration_mins": 15,
                     "starter_code": "print('Hello, World!')",
-                    "test_cases": [{"input": "", "expectedOutput": "Hello, World!"}]
+                    "test_cases": [{"input": "", "expectedOutput": "Hello, World!"}],
+                    "_private_cases": [{"input": "", "expectedOutput": "Hello, World!"}]
+                },
+                {
+                    "id": "fallback_code_2",
+                    "title": "Reverse Array",
+                    "description": "Reverse given input.",
+                    "difficulty": "medium",
+                    "points": 30,
+                    "suggested_duration_mins": 20,
+                    "starter_code": "print('Reversed')",
+                    "test_cases": [{"input": "1 2 3", "expectedOutput": "Reversed"}],
+                    "_private_cases": [{"input": "4 5", "expectedOutput": "Reversed"}]
+                },
+                {
+                    "id": "fallback_code_3",
+                    "title": "Merge Intervals",
+                    "description": "Merge intervals.",
+                    "difficulty": "hard",
+                    "points": 50,
+                    "suggested_duration_mins": 25,
+                    "starter_code": "print('Merged')",
+                    "test_cases": [{"input": "1 3", "expectedOutput": "Merged"}],
+                    "_private_cases": [{"input": "1 4", "expectedOutput": "Merged"}]
                 }
             ]
         }
@@ -225,7 +325,7 @@ class AssessmentService:
 
         # Create submission
         section = data.section
-        json_payload = {"code" if data.section == "CODING" else "answers": data.content}
+        json_payload = data.content
         submission = Submission(
             assessment_id=data.assessment_id,
             section=section,
@@ -278,8 +378,13 @@ class AssessmentService:
             # Find the latest MCQ submission
             mcq_sub = next((s for s in reversed(submissions) if s.section == "MCQ"), None)
             if mcq_sub:
-                answers = mcq_sub.payload_json.get("answers", {})
+                answers = mcq_sub.payload_json.get("answers")
+                if answers is None:
+                    # Fallback if frontend sent answers directly at top level
+                    answers = mcq_sub.payload_json
+                    
                 for q in assessment.questions_json.get("questions", []):
+
                     q_id = q.get("id")
                     correct_ans = q.get("correct_answer")
                     user_ans = answers.get(q_id)
@@ -320,13 +425,150 @@ class AssessmentService:
                 candidate.status = CandidateStatus.ROUND2_REJECTED
 
         elif round_val == AssessmentRound.ROUND_3:
-            # Coding Evaluation (Placeholder for AI/Judge0)
-            candidate.status = CandidateStatus.ROUND3_PASSED
+            # Coding Evaluation (Automated) - Redesigned
+            from decimal import Decimal
+            
+            # 1. Get all coding submissions to find the latest code per problem
+            coding_submissions = [s for s in submissions if s.section == "CODING"]
+            
+            # Extract latest code for each problem
+            # The frontend can send either a full dictionary in 'answers' OR individual {problemId: code}
+            latest_codes = {}
+            for sub in coding_submissions:
+                payload = sub.payload_json
+                if "answers" in payload:
+                    for pid, pcode in payload["answers"].items():
+                        latest_codes[pid] = pcode
+                if "problemId" in payload and "code" in payload:
+                    latest_codes[payload["problemId"]] = payload["code"]
+                elif "code" in payload and not "problemId" in payload:
+                    # Fallback for single question or legacy
+                    problems = assessment.questions_json.get("problems", [])
+                    if problems:
+                        latest_codes[problems[0]["id"]] = payload["code"]
+
+            # 2. Get question metadata
+            problems = assessment.questions_json.get("problems", [])
+            if not problems:
+                raise ValueError("No coding problems found in assessment metadata")
+            
+            # 3. Execute evaluation using Piston
+            executor = PistonExecutionService()
+            language = candidate.language_choice or "python"
+            
+            total_weighted_score = 0.0
+            results_by_problem = {}
+            q1_passed_at_least_one = False
+            
+            total_possible_score = sum(p.get("points", 100) for p in problems)
+            
+            for i, problem in enumerate(problems):
+                pid = problem["id"]
+                points = problem.get("points", 100)
+                source_code = latest_codes.get(pid, "")
+                
+                logger.info(f"Evaluating problem {i+1}/{len(problems)}: {pid} (Points: {points})")
+                
+                public_cases = problem.get("test_cases", [])
+                private_cases = problem.get("_private_cases", [])
+                
+                all_test_cases = []
+                for tc in public_cases:
+                    all_test_cases.append(ExecutionTestCase(input=tc["input"], expected_output=tc["expectedOutput"]))
+                for tc in private_cases:
+                    all_test_cases.append(ExecutionTestCase(input=tc["input"], expected_output=tc["expectedOutput"]))
+                
+                logger.info(f"Problem {pid}: Found {len(all_test_cases)} test cases.")
+                
+                if not all_test_cases or not source_code.strip():
+                    logger.warning(f"Problem {pid}: No test cases or no source code. Skipping.")
+                    results_by_problem[pid] = {
+                        "score_percentage": 0.0,
+                        "points_earned": 0.0,
+                        "passed_tests": 0,
+                        "total_tests": len(all_test_cases),
+                        "code": source_code,
+                        "test_results": []
+                    }
+                    continue
+                    
+                eval_result = await executor.evaluate_code(
+                    language=language,
+                    code=source_code,
+                    test_cases=all_test_cases
+                )
+                
+                logger.info(f"Problem {pid}: Evaluation complete. Score: {eval_result.score_percentage}%")
+
+                
+                pct = eval_result.score_percentage
+                points_earned = (pct / 100.0) * points
+                total_weighted_score += points_earned
+                
+                results_by_problem[pid] = {
+                    "score_percentage": pct,
+                    "points_earned": points_earned,
+                    "passed_tests": eval_result.passed_tests,
+                    "total_tests": eval_result.total_tests,
+                    "code": source_code,
+                    "test_results": eval_result.test_results
+                }
+                
+                # Check Q1 specific rule (i == 0)
+                if i == 0 and eval_result.passed_tests > 0:
+                    q1_passed_at_least_one = True
+            
+            final_percentage = (total_weighted_score / total_possible_score) * 100.0 if total_possible_score > 0 else 0.0
+            
+            # Pass criteria: >= 70% AND Q1 >= 1 passing test case
+            verdict = "PASS" if (final_percentage >= 70.0 and q1_passed_at_least_one) else "FAIL"
+
+            # 4. Fetch proctoring risk if available
+            risk_stmt = select(ProctoringSession).where(ProctoringSession.assessment_attempt_id == assessment_id)
+            risk_res = await self.db.execute(risk_stmt)
+            proctoring = risk_res.scalar_one_or_none()
+            risk_score = proctoring.final_risk_score if proctoring else 0.0
+
+            # 5. Store Score
+            total_tests_across_all = sum(r["total_tests"] for r in results_by_problem.values())
+            passed_tests_across_all = sum(r["passed_tests"] for r in results_by_problem.values())
+
+            score = Score(
+                candidate_id=candidate_id,
+                round=round_val,
+                correctness=int(final_percentage),
+                quality=0, design=0, edge_cases=0, efficiency=0,
+                mcq_total=0,
+                weighted_total=Decimal(str(final_percentage)),
+                verdict=verdict,
+                feedback_json={
+                    "total_tests": total_tests_across_all,
+                    "passed_tests": passed_tests_across_all,
+                    "failed_tests": total_tests_across_all - passed_tests_across_all,
+                    "score_percentage": final_percentage,
+                    "results_by_problem": results_by_problem,
+                    "language": language,
+                    "proctoring_risk": float(risk_score)
+                }
+            )
+            self.db.add(score)
+
+            # 6. Transition candidate status
+            if score.verdict == "PASS":
+                candidate.status = CandidateStatus.ROUND3_PASSED
+            else:
+                candidate.status = CandidateStatus.ROUND3_REJECTED
 
         assessment.status = AssessmentStatus.COMPLETED
         assessment.ended_at = datetime.now(timezone.utc)
 
         await self.db.flush()
+        
+        # Trigger composite score and recommendation calculation
+        from app.features.selection.service import EvaluationService
+        eval_svc = EvaluationService(self.db)
+        await eval_svc.update_candidate_evaluation(candidate_id)
+
         return assessment
 
     async def get_assessment(self, candidate_id: str) -> list[Assessment]:
@@ -337,3 +579,31 @@ class AssessmentService:
         )
         result = await self.db.execute(stmt)
         return result.scalars().all()
+
+    async def get_assessment_result(self, candidate_id: str, assessment_id: str) -> dict:
+        """Fetch the final result for a completed assessment."""
+        # 1. Verify assessment exists and belongs to candidate
+        stmt = select(Assessment).where(Assessment.id == assessment_id, Assessment.candidate_id == str(candidate_id))
+        res = await self.db.execute(stmt)
+        assessment = res.scalar_one_or_none()
+        if not assessment:
+            raise ValueError("Assessment not found")
+        
+        # 2. Fetch the score
+        score_stmt = select(Score).where(Score.candidate_id == str(candidate_id), Score.round == assessment.round).order_by(Score.evaluated_at.desc())
+        score_res = await self.db.execute(score_stmt)
+        score = score_res.scalars().first()
+        
+        if not score:
+            raise ValueError("Score not found. Is the assessment completed?")
+            
+        return {
+            "assessment_id": assessment_id,
+            "round": assessment.round,
+            "score": float(score.weighted_total),
+            "passed_tests": score.feedback_json.get("passed_tests", score.mcq_total),
+            "total_tests": score.feedback_json.get("total_tests", score.feedback_json.get("total", 0)),
+            "verdict": score.verdict,
+            "status": "Passed" if score.verdict == "PASS" else "Failed",
+            "summary": f"Passed Test Cases: {score.feedback_json.get('passed_tests', score.mcq_total)}/{score.feedback_json.get('total_tests', score.feedback_json.get('total', 0))}"
+        }

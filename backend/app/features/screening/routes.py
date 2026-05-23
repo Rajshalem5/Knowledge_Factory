@@ -119,6 +119,9 @@ async def run_screening(
     res = await db.execute(q)
     candidates = res.scalars().all()
 
+    from app.features.selection.service import EvaluationService
+    eval_svc = EvaluationService(db)
+
     passed = 0
     rejected = 0
 
@@ -142,6 +145,9 @@ async def run_screening(
         else:
             c.status = CandidateStatus.ROUND1_REJECTED
             rejected += 1
+        
+        # Update screening score and evaluation metrics
+        await eval_svc.update_candidate_evaluation(c.id)
 
     await db.flush()
     return {"screened": len(candidates), "passed": passed, "rejected": rejected, "min_cgpa": min_cgpa, "allowed_branches": allowed_branches}

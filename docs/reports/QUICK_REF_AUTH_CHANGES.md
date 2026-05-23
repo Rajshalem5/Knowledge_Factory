@@ -47,7 +47,7 @@ uvicorn app.main:app --reload
 # Test login (candidate)
 curl -X POST http://localhost:8000/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"test@candidate.io","password":"Test@123"}'
+  -d '{"email":"test@candidate.io","password":"Welcome@123"}'
 
 # Test candidate registration
 curl -X POST http://localhost:8000/api/auth/register \
@@ -55,7 +55,7 @@ curl -X POST http://localhost:8000/api/auth/register \
   -d '{
     "name":"Test Candidate",
     "email":"new@candidate.io",
-    "password":"Test@123",
+    "password":"Welcome@123",
     "college":"ABC University",
     "branch":"CSE",
     "cgpa":8.5,

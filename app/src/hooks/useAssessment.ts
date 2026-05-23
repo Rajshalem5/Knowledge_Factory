@@ -11,6 +11,14 @@ export function useAssessment(id: string) {
   });
 }
 
+export function useAssessmentAdmin(id: string) {
+  return useQuery({
+    queryKey: ['assessment-admin', id],
+    queryFn: () => assessmentApi.getAssessmentAdmin(id),
+    enabled: !!id,
+  });
+}
+
 export function useActiveAssessments() {
   return useQuery({
     queryKey: ['assessments-active'],

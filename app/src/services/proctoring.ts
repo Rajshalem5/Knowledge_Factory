@@ -42,4 +42,13 @@ export const proctoringService = {
 
   terminateSession: (session_id: string, reason: string) =>
     api.post(`/api/proctoring/terminate/${session_id}`, { reason }),
+
+  getSessionByAssessment: (assessment_id: string) =>
+    api.get<any>(`/api/proctoring/assessment/${assessment_id}/session`),
+
+  getEvents: (session_id: string) =>
+    api.get<any[]>(`/api/proctoring/session/${session_id}/events`),
+
+  getEvidence: (session_id: string) =>
+    api.get<any[]>(`/api/proctoring/session/${session_id}/evidence`),
 };

@@ -102,6 +102,33 @@ async def terminate_proctoring_session(
     return {"status": "terminated"}
 
 
+@router.get("/assessment/{assessment_id}/session")
+async def get_session_by_assessment(
+    assessment_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Get the proctoring session for a specific assessment attempt."""
+    from sqlalchemy import select
+    from app.features.proctoring.models import ProctoringSession
+    
+    stmt = select(ProctoringSession).where(ProctoringSession.assessment_attempt_id == assessment_id)
+    res = await db.execute(stmt)
+    session = res.scalar_one_or_none()
+    
+    if not session:
+        raise HTTPException(status_code=404, detail="Proctoring session not found for this assessment")
+        
+    return {
+        "session_id": session.id,
+        "status": session.status,
+        "final_risk_score": session.final_risk_score,
+        "total_violations": session.total_violations,
+        "started_at": session.started_at,
+        "ended_at": session.ended_at,
+        "terminated_reason": session.terminated_reason
+    }
+
 @router.get("/session/{session_id}/status")
 async def get_session_status(
     session_id: str,

@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import Boolean, DateTime, ForeignKey, Numeric, String, Text, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.core.enums import CandidateStatus
+from app.core.enums import CandidateStatus, EvaluationRecommendation
 from app.database import Base
 
 if TYPE_CHECKING:
@@ -41,6 +41,20 @@ class Candidate(Base):
     custom_fields: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+    # ── Evaluation Results ──────────────────────────────────────────
+    screening_score: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False, default=0.0)
+    mcq_score: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False, default=0.0)
+    coding_score: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False, default=0.0)
+    risk_penalty: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False, default=0.0)
+    composite_score: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False, default=0.0)
+    adjusted_final_score: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False, default=0.0)
+    recommendation: Mapped[EvaluationRecommendation | None] = mapped_column(String(30), nullable=True)
+
+    # ── HR Decision Override ────────────────────────────────────────
+    decision_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    decision_by: Mapped[str | None] = mapped_column(String(36), nullable=True) # User ID
+    decision_timestamp: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     cycle: Mapped["HiringCycle"] = relationship(back_populates="candidates", lazy="selectin")
     assessments: Mapped[list["Assessment"]] = relationship(back_populates="candidate", lazy="selectin")

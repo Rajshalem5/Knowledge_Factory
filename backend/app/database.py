@@ -18,6 +18,7 @@ from typing import Any, AsyncGenerator
 from sqlalchemy import String
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.types import TypeDecorator
+from app.core.security import hash_password
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -163,7 +164,11 @@ def create_test_database() -> AsyncGenerator[AsyncSession, None]:
                 {"name": "Wrong Branch Candidate", "email": "wrongbranch@test.com", "college": "Other Uni", "branch": "CIVIL", "cgpa": 7.5, "passed_out_year": 2026, "language_choice": "python", "status": "APPLIED"},
             ]
             for cd in candidates_data:
-                c = Candidate(cycle_id=cycle.id, **cd)
+                c = Candidate(
+                    cycle_id=cycle.id, 
+                    password_hash=hash_password("Welcome@123"),
+                    **cd
+                )
                 session.add(c)
 
             await session.commit()

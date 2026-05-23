@@ -5,7 +5,7 @@ Candidate schemas: Lists, Details, Updates.
 from datetime import datetime
 from typing import Any, Optional
 from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
-from app.core.enums import CandidateStatus
+from app.core.enums import CandidateStatus, EvaluationRecommendation
 
 
 class CandidateBase(BaseModel):
@@ -35,6 +35,20 @@ class CandidateRead(CandidateBase):
     scores: list = []
     proctoring_flags: list = []
     interview_feedback: Optional[dict] = None
+
+    # Evaluation results
+    screening_score: float = 0.0
+    mcq_score: float = 0.0
+    coding_score: float = 0.0
+    risk_penalty: float = 0.0
+    composite_score: float = 0.0
+    adjusted_final_score: float = 0.0
+    recommendation: Optional[EvaluationRecommendation] = None
+
+    # Decision details
+    decision_reason: Optional[str] = None
+    decision_by: Optional[str] = None
+    decision_timestamp: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -107,6 +121,16 @@ class CandidateRead(CandidateBase):
             scores=scores,
             interview_feedback=interview_feedback,
             proctoring_flags=proctoring_flags,
+            screening_score=float(getattr(candidate, 'screening_score', 0.0)),
+            mcq_score=float(getattr(candidate, 'mcq_score', 0.0)),
+            coding_score=float(getattr(candidate, 'coding_score', 0.0)),
+            risk_penalty=float(getattr(candidate, 'risk_penalty', 0.0)),
+            composite_score=float(getattr(candidate, 'composite_score', 0.0)),
+            adjusted_final_score=float(getattr(candidate, 'adjusted_final_score', 0.0)),
+            recommendation=getattr(candidate, 'recommendation', None),
+            decision_reason=getattr(candidate, 'decision_reason', None),
+            decision_by=getattr(candidate, 'decision_by', None),
+            decision_timestamp=getattr(candidate, 'decision_timestamp', None),
         )
 
 
@@ -144,3 +168,16 @@ class BulkUploadPreview(BaseModel):
     invalid_records: int
     preview: list[dict]
     errors: list[dict]
+
+class DuplicateCandidate(BaseModel):
+    email: str
+    reason: str
+
+class BulkUploadResponse(BaseModel):
+    batch_id: str
+    total_records: int
+    created: int
+    updated: int
+    skipped: int
+    errors: list[dict]
+    duplicates: list[DuplicateCandidate]

@@ -1,14 +1,14 @@
-import { useNavigate } from 'react-router-dom';
-import { FileText, Search, Download, ExternalLink, User } from 'lucide-react';
+import { FileText, Search, Download, Loader2 } from 'lucide-react';
 import { AppShell } from '../../components/layout/AppShell';
 import { Card, Button, Badge, LoadingState, ErrorState } from '../../components/ui';
 import { useCandidates } from '../../hooks/useCandidates';
+import { candidatesApi } from '../../api/candidates';
 import { useState } from 'react';
 
 export default function ResumeRepository() {
-  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+  const [viewingId, setViewingId] = useState<string | null>(null);
 
   const { data: candidatesData, isLoading, error } = useCandidates({
     page,
@@ -19,6 +19,37 @@ export default function ResumeRepository() {
 
   const candidates = candidatesData?.data || [];
   const totalItems = candidatesData?.pagination?.total ?? 0;
+
+  const handleViewResume = async (id: string, name: string) => {
+    try {
+      setViewingId(id);
+      console.log(`[ResumeRepository] Fetching resume for candidate: ${id}`);
+      const blob = await candidatesApi.getResume(id);
+      
+      const url = URL.createObjectURL(blob);
+      const isPdf = blob.type === 'application/pdf';
+      
+      if (isPdf) {
+        window.open(url, '_blank');
+      } else {
+        // For DOCX/DOC, trigger download
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `Resume_${name.replace(/\s+/g, '_')}${blob.type.includes('word') ? '.docx' : '.pdf'}`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+      
+      // Clean up URL after a short delay
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (err) {
+      console.error('[ResumeRepository] Failed to view resume:', err);
+      alert('Failed to load resume. It might have been moved or deleted.');
+    } finally {
+      setViewingId(null);
+    }
+  };
 
   return (
     <AppShell title="Resume Repository">
@@ -66,21 +97,17 @@ export default function ResumeRepository() {
                 </h3>
                 <p className="text-xs text-tertiary truncate mb-4">{c.email}</p>
                 
-                <div className="mt-auto pt-4 border-t border-outline-variant flex items-center justify-between gap-2">
-                   <button 
-                     onClick={() => navigate(`/candidates/${c.id}`)}
-                     className="text-[11px] font-bold text-tertiary hover:text-on-surface flex items-center gap-1 uppercase tracking-architectural"
+                <div className="mt-auto pt-4 border-t border-outline-variant flex items-center justify-end">
+                   <Button 
+                     variant="secondary" 
+                     size="sm" 
+                     onClick={() => handleViewResume(c.id, c.name)} 
+                     isLoading={viewingId === c.id}
+                     className="h-8 px-4 text-[10px] uppercase font-bold tracking-widest"
                    >
-                     <User size={12} /> Profile
-                   </button>
-                   <div className="flex gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => window.open(`/${c.resume_url}`, '_blank')} className="h-8 w-8 p-0">
-                         <ExternalLink size={14} />
-                      </Button>
-                      <Button variant="secondary" size="sm" onClick={() => window.open(`/${c.resume_url}`, '_blank')} className="h-8 px-3 text-[10px] uppercase font-bold tracking-widest">
-                         <Download size={12} className="mr-1" /> View
-                      </Button>
-                   </div>
+                      {viewingId === c.id ? <Loader2 size={12} className="animate-spin mr-1" /> : <Download size={12} className="mr-1" />}
+                      View Resume
+                   </Button>
                 </div>
               </Card>
             ))}
@@ -88,8 +115,8 @@ export default function ResumeRepository() {
             {candidates.length === 0 && (
                <div className="col-span-full py-20 text-center">
                   <FileText size={48} className="mx-auto text-tertiary opacity-20 mb-4" />
-                  <p className="text-on-surface font-medium">No resumes found matching your search</p>
-                  <p className="text-sm text-tertiary mt-1">Try a different name or email</p>
+                  <p className="text-on-surface font-medium">No resumes uploaded yet</p>
+                  <p className="text-sm text-tertiary mt-1">Uploaded candidate resumes will appear here.</p>
                </div>
             )}
           </div>

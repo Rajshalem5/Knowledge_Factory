@@ -84,6 +84,9 @@ class CandidateService:
             "created_at": Candidate.created_at,
             "updated_at": Candidate.updated_at,
             "status": Candidate.status,
+            "adjusted_final_score": Candidate.adjusted_final_score,
+            "composite_score": Candidate.composite_score,
+            "screening_score": Candidate.screening_score,
         }
         if sort_by and sort_by in allowed_sort_columns:
             col = allowed_sort_columns[sort_by]

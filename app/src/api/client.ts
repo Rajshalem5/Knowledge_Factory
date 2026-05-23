@@ -100,6 +100,12 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
     return response.json();
   }
 
+  // Handle file downloads/blobs
+  const acceptHeader = (fetchOptions.headers as Record<string, string>)?.['Accept'] || '';
+  if (acceptHeader.includes('application/pdf') || contentType.includes('application/pdf') || contentType.includes('application/octet-stream')) {
+    return response.blob() as unknown as T;
+  }
+
   return {} as T;
 }
 

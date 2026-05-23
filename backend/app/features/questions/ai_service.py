@@ -221,9 +221,11 @@ async def generate_question(
     num_public: int = 2,
     num_private: int = 4,
 ) -> Question:
-
+    import secrets
+    salt = secrets.token_hex(4)
     user_prompt = (
-        f"Generate a {difficulty} coding problem about: {topic}. "
+        f"Generate a unique and creative {difficulty} coding problem about: {topic}. "
+        f"Ensure it is different from common standard problems. [Seed: {salt}] "
         f"Include {num_public} public test cases and {num_private} private test cases. "
         f"stdin/stdout only. Output ONLY JSON."
     )
@@ -235,7 +237,7 @@ async def generate_question(
             {"role": "user",   "content": user_prompt},
         ],
         "max_tokens": 2000,
-        "temperature": 0.3,
+        "temperature": 0.7,
     }
 
     async with httpx.AsyncClient(timeout=30.0) as client:
@@ -332,8 +334,11 @@ async def generate_mcq_questions(
     difficulty: str = "medium",
     count: int = 5,
 ) -> list[dict]:
+    import secrets
+    salt = secrets.token_hex(4)
     user_prompt = (
-        f"Generate {count} {difficulty} level MCQ questions about: {topic}. "
+        f"Generate {count} unique and creative {difficulty} level MCQ questions about: {topic}. "
+        f"Ensure variety and avoid common, overused questions. [Seed: {salt}] "
         f"Output ONLY JSON."
     )
 
@@ -344,7 +349,7 @@ async def generate_mcq_questions(
             {"role": "user",   "content": user_prompt},
         ],
         "max_tokens": 2000,
-        "temperature": 0.5,
+        "temperature": 0.7,
     }
 
     async with httpx.AsyncClient(timeout=45.0) as client:

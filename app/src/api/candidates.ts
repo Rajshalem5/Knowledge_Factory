@@ -4,7 +4,7 @@
  */
 
 import { api } from './client';
-import type { Candidate, PaginatedResponse, BulkUploadPreview } from '../types';
+import type { Candidate, PaginatedResponse, BulkUploadPreview, BulkUploadResponse } from '../types';
 
 export const candidatesApi = {
   /**
@@ -98,16 +98,24 @@ export const candidatesApi = {
     api.patch<Candidate>(`/api/candidates/${id}/status`, { status }),
 
   /**
-   * Bulk upload candidates from CSV
+   * Make a final hiring decision with reason
+   * POST /api/selection/candidates/:id/decision
+   */
+  makeDecision: (id: string, status: string, reason?: string) =>
+    api.post<any>(`/api/selection/candidates/${id}/decision`, { status, reason }),
+
+  /**
+   * Bulk upload candidates from CSV or documents
    * POST /api/candidates/bulk-upload
    */
-  bulkUpload: (params: { file: File, data?: any }) => {
+  bulkUpload: (params: { file: File, data?: any, onDuplicate?: 'skip' | 'update' }) => {
     const formData = new FormData();
     formData.append('file', params.file);
     if (params.data) {
       formData.append('data', JSON.stringify(params.data));
     }
-    return api.post<{ batch_id: string; total_records: number; saved: number; errors: any[] }>('/api/candidates/bulk-upload', formData);
+    const query = params.onDuplicate ? `?on_duplicate=${params.onDuplicate}` : '';
+    return api.post<BulkUploadResponse>(`/api/candidates/bulk-upload${query}`, formData);
   },
 
   /**
@@ -119,4 +127,15 @@ export const candidatesApi = {
     formData.append('file', file);
     return api.post<BulkUploadPreview>('/api/candidates/bulk-upload/preview', formData);
   },
+
+  /**
+   * Get resume file blob
+   * GET /api/candidates/:id/resume
+   */
+  getResume: (id: string) =>
+    api.get<Blob>(`/api/candidates/${id}/resume`, {
+      headers: {
+        'Accept': 'application/pdf, application/vnd.openxmlformats-officedocument.wordprocessingml.document, application/msword'
+      }
+    }),
 };
