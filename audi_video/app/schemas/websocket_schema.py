@@ -16,36 +16,14 @@ from pydantic import BaseModel
 class WSIncomingMessage(BaseModel):
     """
     Schema for messages sent by the WebSocket client to the server.
-
-    The client sends either a video frame or an audio chunk, identified
-    by the ``type`` field.
-
-    Attributes:
-        type: Message type — ``"video"`` for a video frame or
-              ``"audio"`` for an audio chunk.
-        frame: Base64-encoded JPEG/PNG image. Required when
-               ``type == "video"``, otherwise ``None``.
-        audio: Base64-encoded audio bytes. Required when
-               ``type == "audio"``, otherwise ``None``.
-
-    Example (video)::
-
-        {
-            "type": "video",
-            "frame": "<base64_image_string>"
-        }
-
-    Example (audio)::
-
-        {
-            "type": "audio",
-            "audio": "<base64_audio_string>"
-        }
     """
 
     type: str
     frame: Optional[str] = None
     audio: Optional[str] = None
+    event_type: Optional[str] = None
+    metadata: Optional[dict] = None
+    timestamp: Optional[str] = None
 
 
 class WSEventMessage(BaseModel):

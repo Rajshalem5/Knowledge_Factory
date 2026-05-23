@@ -361,6 +361,25 @@ async def bulk_upload_candidates(
             errors.append({"row": row_idx, "error": "Missing email"})
             return
 
+        from app.features.selection.service import EvaluationService
+        eval_svc = EvaluationService(db)
+        cfg = cycle.eligibility_config or {}
+
+        from app.core.branch_utils import is_branch_eligible
+
+        def check_eligibility(cand_obj):
+            min_cgpa = float(cfg.get("min_cgpa", 6.0))
+            allowed_branches = cfg.get("allowed_branches", [])
+            allowed_degrees = cfg.get("allowed_degrees", [])
+            allowed_years = cfg.get("passed_out_years", [])
+
+            cgpa_ok = float(cand_obj.cgpa) >= min_cgpa
+            branch_ok = is_branch_eligible(cand_obj.branch, allowed_branches)
+            degree_ok = not allowed_degrees or (cand_obj.degree and cand_obj.degree.lower() in [d.lower() for d in allowed_degrees])
+            year_ok = not allowed_years or cand_obj.passed_out_year in allowed_years
+
+            return cgpa_ok and branch_ok and degree_ok and year_ok
+
         try:
             # Check for existing
             stmt = select(Candidate).where(Candidate.email == email)
@@ -382,8 +401,13 @@ async def bulk_upload_candidates(
                     existing.cgpa = float(c_data.get("cgpa", existing.cgpa) or 0)
                     existing.passed_out_year = int(c_data.get("graduation_year") or c_data.get("passed_out_year") or existing.passed_out_year)
                     existing.skills = c_data.get("skills", "").strip() or existing.skills
+                    
+                    # Auto-screen on update
+                    existing.status = CandidateStatus.ROUND1_PASSED if check_eligibility(existing) else CandidateStatus.ROUND1_REJECTED
+                    await eval_svc.update_candidate_evaluation(existing.id)
+                    
                     updated += 1
-                    logger.info(f"[BulkUpload] Updated existing candidate: {email}")
+                    logger.info(f"[BulkUpload] Updated and screened existing candidate: {email}")
                     return
 
             candidate = Candidate(
@@ -397,15 +421,24 @@ async def bulk_upload_candidates(
                 passed_out_year=int(c_data.get("graduation_year") or c_data.get("passed_out_year") or datetime.now().year),
                 skills=c_data.get("skills", "").strip() or None if isinstance(c_data.get("skills"), str) else ", ".join(c_data.get("skills", [])),
                 language_choice=c_data.get("language_choice", "python").strip().lower(),
-                status=CandidateStatus.APPLIED,
+                status=CandidateStatus.APPLIED, # Temporary, will be updated below
                 phone=c_data.get("phone", "").strip() or None,
                 password_hash=hash_password("Welcome@123"),
                 resume_url=c_data.get("resume_url"),
                 custom_fields=c_data.get("custom_fields", {})
             )
+            
+            # Auto-screen new candidate
+            candidate.status = CandidateStatus.ROUND1_PASSED if check_eligibility(candidate) else CandidateStatus.ROUND1_REJECTED
+            
             db.add(candidate)
-            await db.flush() # Ensure unique constraint check happens
+            await db.flush() # Ensure unique constraint check happens and ID is generated
+            
+            # Update evaluation metrics (calculates screening score)
+            await eval_svc.update_candidate_evaluation(candidate.id)
+            
             created += 1
+            logger.info(f"[BulkUpload] Created and screened candidate: {email} | Status: {candidate.status}")
         except IntegrityError:
             await db.rollback()
             duplicates.append({"email": email, "reason": "Database unique constraint violation"})

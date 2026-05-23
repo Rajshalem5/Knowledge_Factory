@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+// TODO: Re-enable CandidateDetail after type and hook issues are resolved
+// import { useNavigate } from 'react-router-dom';
 import { Search, Filter, X, Download, FileText, FileX, Phone, PhoneOff } from 'lucide-react';
 import { AppShell } from '../../components/layout/AppShell';
 import { Card, Button, Select, Badge, LoadingState, ErrorState } from '../../components/ui';
@@ -22,7 +23,7 @@ const STATUS_OPTIONS = [
 ];
 
 export default function CandidatesList() {
-  const navigate = useNavigate();
+  // const navigate = useNavigate(); // TODO: Re-enable when CandidateDetail is restored
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -263,7 +264,8 @@ export default function CandidatesList() {
               page={page}
               total_pages={totalPages}
               onPageChange={setPage}
-              onRowClick={c => navigate(`/candidates/${c.id}`)}
+              // TODO: Re-enable CandidateDetail after type and hook issues are resolved
+              // onRowClick={c => navigate(`/candidates/${c.id}`)}
               sortBy={sortBy}
               sortOrder={sortOrder}
               onSort={handleSort}

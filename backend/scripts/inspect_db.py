@@ -1,9 +1,12 @@
 import sqlite3
+import os
 from pprint import pprint
 
 def main():
-    db='backend/knowledge_factory.db'
-    print('DB path:', db)
+    db='knowledge_factory.db'
+    if not os.path.exists(db):
+        db='../knowledge_factory.db'
+    print('DB path:', os.path.abspath(db))
     try:
         conn=sqlite3.connect(db)
         c=conn.cursor()

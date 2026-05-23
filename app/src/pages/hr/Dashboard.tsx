@@ -39,7 +39,7 @@ export default function Dashboard() {
 
         {/* Pipeline Aggregates */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-           <StatCard label="Total Applied" value={pipelineStats?.stats?.APPLIED ?? 0} icon={Users} color="secondary" />
+           <StatCard label="Total Applied" value={pipelineStats?.aggregates?.total_filtered ?? 0} icon={Users} color="secondary" />
            <StatCard label="Eligible (R1)" value={pipelineStats?.stats?.ROUND1_PASSED ?? 0} icon={CheckCircle} color="success" />
            <StatCard label="In Assessment" value={(pipelineStats?.stats?.ROUND2_IN_PROGRESS ?? 0) + (pipelineStats?.stats?.ROUND3_IN_PROGRESS ?? 0)} icon={Play} color="warning" />
            <StatCard label="Selected" value={pipelineStats?.stats?.SELECTED ?? 0} icon={Database} color="secondary" />
@@ -99,14 +99,14 @@ export default function Dashboard() {
                    </CardTitle>
                 </CardHeader>
                 <div className="space-y-4">
-                   {pipelineStats?.stats?.APPLIED ? (
+                   {pipelineStats?.aggregates?.total_filtered ? (
                       <div className="flex items-start gap-3">
                          <div className="p-1.5 rounded bg-secondary/10 text-secondary mt-0.5">
                             <Upload size={12} />
                          </div>
                          <div>
                             <p className="text-xs font-medium text-on-surface truncate">Database Records</p>
-                            <p className="text-[10px] text-tertiary">{pipelineStats.stats.APPLIED} total candidates in pipeline</p>
+                            <p className="text-[10px] text-tertiary">{pipelineStats.aggregates.total_filtered} total candidates in pipeline</p>
                          </div>
                       </div>
                    ) : (

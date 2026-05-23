@@ -24,16 +24,17 @@ logger = logging.getLogger(__name__)
 #: Events not present in this table are assigned a weight of 1 and trigger
 #: a WARNING log (Requirement 9.5).
 EVENT_WEIGHTS: dict[str, int] = {
-    "multiple_persons": 5,
-    "suspicious_transcript": 4,
-    "no_face": 3,
-    "mobile_detected": 3,
-    "looking_away": 2,
-    "headset_detected": 2,
-    "long_speech": 2,
-    "keyword_detected": 2,
-    "suspicious_movement": 2,
-    "bad_posture": 1,
+    "no_face": 15,
+    "multiple_persons": 25,
+    "mobile_detected": 80,
+    "headset_detected": 10,
+    "looking_away": 8,
+    "suspicious_transcript": 20,
+    "tab_switch": 10,
+    "window_blur": 5,
+    "copy": 10,
+    "paste": 20,
+    "devtools": 40,
 }
 
 # ---------------------------------------------------------------------------
@@ -42,45 +43,16 @@ EVENT_WEIGHTS: dict[str, int] = {
 
 
 def compute_score(events: List[str]) -> int:
-    """Compute a weighted risk score for a list of detected events.
-
-    Each event name is looked up in :data:`EVENT_WEIGHTS`.  If the event is
-    not found, a weight of ``1`` is used and a WARNING is emitted so that
-    unknown events are visible in the logs without crashing the pipeline.
-
-    The total score is the arithmetic sum of all individual event weights,
-    meaning the same event appearing multiple times in *events* contributes
-    its weight each time (additive property — Requirement 9.6).
-
-    Parameters
-    ----------
-    events:
-        A list of event name strings produced by the detection pipeline
-        (e.g. ``["no_face", "mobile_detected"]``).  May be empty.
-
-    Returns
-    -------
-    int
-        The total risk score (≥ 0).  Returns ``0`` for an empty list.
-
-    Examples
-    --------
-    >>> compute_score(["no_face", "mobile_detected"])
-    6
-    >>> compute_score([])
-    0
-    >>> compute_score(["unknown_event"])  # logs a WARNING, returns 1
-    1
-    """
+    # ... (rest of the function remains same, I'll just provide the full file if needed but surgical edit is better)
     total = 0
     for event in events:
         weight = EVENT_WEIGHTS.get(event)
         if weight is None:
             logger.warning(
                 "Unknown event encountered in risk scoring; assigning default weight",
-                extra={"event": event, "default_weight": 1},
+                extra={"event": event, "default_weight": 5},
             )
-            weight = 1
+            weight = 5
         total += weight
     return total
 
@@ -88,41 +60,17 @@ def compute_score(events: List[str]) -> int:
 def classify(score: int) -> str:
     """Classify a numeric risk score into a categorical risk level.
 
-    Thresholds (Requirement 9.2):
-
-    * ``score >= 8``  → ``"HIGH"``
-    * ``score >= 4``  → ``"MEDIUM"``
-    * otherwise       → ``"LOW"``
-
-    Parameters
-    ----------
-    score:
-        A non-negative integer risk score, typically produced by
-        :func:`compute_score`.
-
-    Returns
-    -------
-    str
-        One of ``"HIGH"``, ``"MEDIUM"``, or ``"LOW"``.
-
-    Examples
-    --------
-    >>> classify(10)
-    'HIGH'
-    >>> classify(8)
-    'HIGH'
-    >>> classify(5)
-    'MEDIUM'
-    >>> classify(4)
-    'MEDIUM'
-    >>> classify(3)
-    'LOW'
-    >>> classify(0)
-    'LOW'
+    Thresholds (Recalibrated):
+    - 0–20: LOW
+    - 21–50: MEDIUM
+    - 51–80: HIGH
+    - 81-100+: CRITICAL
     """
-    if score >= 8:
+    if score > 80:
+        return "CRITICAL"
+    if score > 50:
         return "HIGH"
-    if score >= 4:
+    if score > 20:
         return "MEDIUM"
     return "LOW"
 

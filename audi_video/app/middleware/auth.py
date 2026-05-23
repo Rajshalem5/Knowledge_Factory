@@ -15,7 +15,7 @@ def verify_proctoring_token(token: str) -> Optional[Dict[str, Any]]:
     Returns the payload if valid, otherwise None.
     """
     config = get_config()
-    logger.debug(f"Verifying proctoring token: {token[:15]}...")
+    logger.info(f"DEBUG: Verifying token with secret prefix: {config.PROCTORING_JWT_SECRET[:5]}...")
     try:
         payload = jwt.decode(
             token,
@@ -23,7 +23,7 @@ def verify_proctoring_token(token: str) -> Optional[Dict[str, Any]]:
             algorithms=["HS256"]
         )
         
-        logger.debug(f"JWT decoded successfully. Payload subject: {payload.get('sub')}")
+        logger.info(f"JWT decoded successfully. Payload subject: {payload.get('sub')}")
 
         # Validate type
         token_type = payload.get("type")

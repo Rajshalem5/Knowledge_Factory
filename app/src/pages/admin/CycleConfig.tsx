@@ -5,7 +5,7 @@ import { AppShell } from '../../components/layout/AppShell';
 import { Card, Button } from '../../components/ui';
 
 export default function CycleConfig() {
-  const { data: cycles, isLoading } = useHiringCycles();
+  const { data: cycles, isLoading: _isLoading } = useHiringCycles();
   const [selected, setSelected] = useState<string | null>(null);
   const [jsonText, setJsonText] = useState('');
   const [saving, setSaving] = useState(false);

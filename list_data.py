@@ -5,6 +5,7 @@ import os
 # Add the backend directory to the path
 sys.path.insert(0, os.path.abspath("backend"))
 
+# pyrefly: ignore [missing-import]
 from app.database import async_session_factory
 from sqlalchemy import text
 

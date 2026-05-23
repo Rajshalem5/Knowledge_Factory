@@ -267,6 +267,9 @@ class WorkerManager:
         
         # Debouncing: session_id -> {event_type: last_timestamp}
         self.last_event_emitted: Dict[str, Dict[str, float]] = {}
+        
+        # Temporal smoothing state: session_id -> {event_type: count/consecutive}
+        self.detection_history: Dict[str, Dict[str, Any]] = {}
 
         # Lists of running asyncio.Task objects for each worker pool.
         self._audio_tasks: List[asyncio.Task] = []
@@ -276,6 +279,17 @@ class WorkerManager:
         self._llm_service = llm_service
 
         logger.info("WorkerManager initialised")
+
+    def _get_history(self, session_id: str) -> Dict[str, Any]:
+        """Get or initialize detection history for a session."""
+        if session_id not in self.detection_history:
+            self.detection_history[session_id] = {
+                "no_face_consecutive": 0,
+                "no_face_start_time": None,
+                "multiple_persons_consecutive": 0,
+                "high_conf_count_history": [], # for rolling average if needed
+            }
+        return self.detection_history[session_id]
 
     def _should_emit_event(self, session_id: str, event_type: str, interval: float = 5.0) -> bool:
         """Check if an event should be emitted based on debouncing interval."""
@@ -742,39 +756,7 @@ class WorkerManager:
                     pass
 
     async def _process_video(self, task: VideoTask) -> WorkerResult:
-        """Run the full video analysis pipeline for a single :class:`VideoTask`.
-
-        Pipeline steps
-        --------------
-        1. Call :meth:`YOLOService.detect` to get object detections.
-        2. Call :meth:`HeadsetService.classify` to check for headset presence.
-        3. Call :meth:`ProctorService.analyze` to get behavioural events.
-        4. Aggregate events:
-
-           * Count ``"person"`` detections → ``person_count``.
-           * Append ``"no_face"`` if ``person_count == 0``.
-           * Append ``"multiple_persons"`` if ``person_count > 1``.
-           * Append ``"headset_detected"`` if the headset classifier returns
-             ``True``.
-           * Extend with proctor behavioural events.
-
-        5. Call :func:`~app.services.risk_engine.compute_score` and
-           :func:`~app.services.risk_engine.classify`.
-        6. Return a :class:`WorkerResult` with the full payload dict.
-
-        On any exception the method returns a :class:`WorkerResult` with
-        ``error`` set to the exception message and an empty payload.
-
-        Parameters
-        ----------
-        task:
-            The :class:`VideoTask` to process.
-
-        Returns
-        -------
-        WorkerResult
-            Contains the full analysis payload or an error description.
-        """
+        """Run the full video analysis pipeline for a single :class:`VideoTask`."""
         try:
             t_start = time.monotonic()
             loop = asyncio.get_event_loop()
@@ -788,66 +770,76 @@ class WorkerManager:
 
             # 3. Proctor behavioural analysis — run in executor.
             t_proctor = time.monotonic()
-            proctor_events: List[str] = await loop.run_in_executor(None, ProctorService.analyze, task.frame)
+            # ProctorService now returns a dict
+            proctor_res = await loop.run_in_executor(None, ProctorService.analyze, task.frame)
             proctor_elapsed_ms = round((time.monotonic() - t_proctor) * 1000, 1)
 
-            # 4. Aggregate events.
-            # Count unique person detections — use IoU deduplication to avoid
-            # counting the same person multiple times (body + face overlap).
-            person_detections = [d for d in detections if d.class_name == "person"]
-            person_count: int = _count_unique_persons(person_detections)
+            # 4. Temporal Smoothing Logic
+            history = self._get_history(task.session_id)
+            high_conf_count = proctor_res.get("high_conf_count", 0)
+            multi_threshold_count = proctor_res.get("multi_threshold_count", 0)
+            mobile_detected = proctor_res.get("mobile_detected", False)
+            
+            final_events: List[str] = []
+            
+            # NO FACE smoothing: 5 consecutive missing frames OR 3 seconds absence
+            if high_conf_count == 0:
+                history["no_face_consecutive"] += 1
+                if history["no_face_start_time"] is None:
+                    history["no_face_start_time"] = time.monotonic()
+                
+                absence_duration = time.monotonic() - history["no_face_start_time"]
+                if history["no_face_consecutive"] >= 5 or absence_duration >= 3.0:
+                    final_events.append("no_face")
+            else:
+                history["no_face_consecutive"] = 0
+                history["no_face_start_time"] = None
 
-            # Also check for mobile phone detection
-            mobile_detected = any(d.class_name == "cell phone" for d in detections)
+            # MULTIPLE PERSONS smoothing: 2+ faces detected for 2 consecutive scans
+            if multi_threshold_count > 1:
+                history["multiple_persons_consecutive"] += 1
+                if history["multiple_persons_consecutive"] >= 2:
+                    final_events.append("multiple_persons")
+            else:
+                history["multiple_persons_consecutive"] = 0
 
-            events: List[str] = []
-
-            if person_count == 0:
-                events.append("no_face")
-            elif person_count > 1:
-                events.append("multiple_persons")
-
+            # Mobile detection (no smoothing requested, but good to have)
             if mobile_detected:
-                events.append("mobile_detected")
+                final_events.append("mobile_detected")
 
             if headset_detected:
-                events.append("headset_detected")
-
-            # Filter proctor events — don't duplicate no_face/multiple_persons
-            filtered_proctor = [
-                e for e in proctor_events
-                if e not in ("no_face", "multiple_persons")
-            ]
-            events.extend(filtered_proctor)
+                final_events.append("headset_detected")
 
             # 5. Risk scoring.
-            risk_score: int = compute_score(events)
+            risk_score: int = compute_score(final_events)
             risk_level: str = classify(risk_score)
 
-            # --- Emit to Main Backend ---
-            if events:
-                # Map internal to external event types
-                for ev in events:
-                    ext_ev = None
-                    if ev == "no_face": ext_ev = "NO_FACE"
-                    elif ev == "multiple_persons": ext_ev = "MULTIPLE_PERSONS"
-                    elif ev == "mobile_detected": ext_ev = "PHONE_DETECTED"
-                    
-                    if ext_ev:
-                        # Debounce events to the main backend
-                        if self._should_emit_event(task.session_id, ext_ev):
-                            await emit_proctoring_event(
-                                session_id=task.session_id,
-                                event_type=ext_ev,
-                                severity=risk_level,
-                                risk_score=risk_score / 100.0,
-                                metadata={"person_count": person_count}
-                            )
-                        else:
-                            logger.debug(f"Debounced backend event {ext_ev} for session {task.session_id}")
+            # 6. Emit to Main Backend
+            for ev in final_events:
+                ext_ev = None
+                if ev == "no_face": ext_ev = "NO_FACE"
+                elif ev == "multiple_persons": ext_ev = "MULTIPLE_PERSONS"
+                elif ev == "mobile_detected": ext_ev = "PHONE_DETECTED"
+                
+                if ext_ev:
+                    if self._should_emit_event(task.session_id, ext_ev, interval=10.0):
+                        metadata = {
+                            "high_conf_count": high_conf_count,
+                            "multi_threshold_count": multi_threshold_count,
+                        }
+                        # Add duration for NO_FACE to trigger evidence capture if > 10s
+                        if ev == "no_face" and history["no_face_start_time"]:
+                            metadata["duration"] = round(time.monotonic() - history["no_face_start_time"], 1)
 
-            # 6. Assemble payload.
-            # Serialise Detection objects to plain dicts.
+                        await emit_proctoring_event(
+                            session_id=task.session_id,
+                            event_type=ext_ev,
+                            severity=risk_level,
+                            risk_score=risk_score / 100.0,
+                            metadata=metadata
+                        )
+
+            # 7. Assemble payload.
             detections_payload = [
                 {
                     "class_name": d.class_name,
@@ -863,30 +855,17 @@ class WorkerManager:
             ]
 
             payload = {
-                "type": "risk_update", # Added type for frontend compatibility
+                "type": "risk_update",
                 "session_id": task.session_id,
                 "connection_id": task.connection_id,
-                "events": events,
-                "person_count": person_count,
+                "events": final_events,
+                "person_count": high_conf_count,
                 "risk_score": risk_score,
                 "risk_level": risk_level,
                 "detections": detections_payload,
                 "yolo_elapsed_ms": yolo_elapsed_ms,
                 "proctor_elapsed_ms": proctor_elapsed_ms,
             }
-
-            logger.info(
-                "Video task processed",
-                extra={
-                    "session_id": task.session_id,
-                    "connection_id": task.connection_id,
-                    "yolo_elapsed_ms": yolo_elapsed_ms,
-                    "proctor_elapsed_ms": proctor_elapsed_ms,
-                    "event_count": len(events),
-                    "risk_score": risk_score,
-                    "risk_level": risk_level,
-                },
-            )
 
             return WorkerResult(
                 session_id=task.session_id,
@@ -895,15 +874,8 @@ class WorkerManager:
                 error=None,
             )
 
-        except Exception as exc:  # noqa: BLE001
-            logger.exception(
-                "Video processing pipeline failed",
-                extra={
-                    "session_id": task.session_id,
-                    "connection_id": task.connection_id,
-                    "error": str(exc),
-                },
-            )
+        except Exception as exc:
+            logger.exception("Video processing pipeline failed", extra={"error": str(exc)})
             return WorkerResult(
                 session_id=task.session_id,
                 connection_id=task.connection_id,

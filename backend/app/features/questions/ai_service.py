@@ -12,14 +12,16 @@ logger = logging.getLogger(__name__)
 
 # Ask AI ONLY for problem metadata + test cases — we generate boilerplate ourselves
 SYSTEM_PROMPT = """\
-You are a competitive programming question generator.
+You are an expert technical interviewer creating entry-level coding problems for fresh graduates and Tier-3 college students.
+The candidates have basic programming knowledge (introductory course, <50 problems solved).
+
 Output ONLY a single valid JSON object. No markdown, no code fences, no explanation.
 
 The JSON must have EXACTLY these keys:
 {
   "title": "Short problem title",
-  "description": "Full problem statement including input format, output format, and constraints",
-  "difficulty": "easy",
+  "description": "Full problem statement including input format, output format, and constraints. Use clear, simple language.",
+  "difficulty": "easy|medium",
   "input_format": "Describe each line of stdin. Example: Line 1: integer n. Line 2: n space-separated integers.",
   "output_format": "Describe stdout. Example: Single integer: the sum.",
   "public_test_cases": [
@@ -30,10 +32,21 @@ The JSON must have EXACTLY these keys:
   ]
 }
 
+ALLOWED TOPICS:
+- Strings, Arrays, HashMaps
+- Basic Loops, Functions
+- Basic Sorting (Bubble/Selection/Insertion), Basic Searching (Linear/Binary)
+- Simple data processing and logic
+
+FORBIDDEN TOPICS (DO NOT GENERATE):
+- Dynamic Programming, Graph algorithms, Trees, Tries, Segment Trees
+- Advanced mathematics, Competitive programming tricks
+- LeetCode Hard level problems
+
 RULES:
 1. input is EXACT stdin — lines separated by \\n.
 2. expected_output is EXACT stdout — no trailing spaces or newlines.
-3. difficulty must be exactly: easy, medium, or hard.
+3. difficulty must be exactly: easy or medium.
 4. Do NOT include boilerplate — it will be generated separately.
 5. Output ONLY the JSON object."""
 
@@ -217,15 +230,20 @@ def build_boilerplate(input_format: str, sample_input: str = "") -> dict[str, st
 
 async def generate_question(
     topic: str = "arrays",
-    difficulty: str = "medium",
+    difficulty: str = "easy",
     num_public: int = 2,
     num_private: int = 4,
 ) -> Question:
     import secrets
     salt = secrets.token_hex(4)
+    
+    # Refine difficulty description for entry-level
+    difficulty_hint = "very simple, direct logic" if difficulty == "easy" else "basic implementation with loops or maps"
+    
     user_prompt = (
-        f"Generate a unique and creative {difficulty} coding problem about: {topic}. "
-        f"Ensure it is different from common standard problems. [Seed: {salt}] "
+        f"Generate a unique {difficulty} coding problem about: {topic} for an entry-level developer. "
+        f"The problem should be {difficulty_hint}. "
+        f"Focus on fundamentals. Avoid complex algorithms. [Seed: {salt}] "
         f"Include {num_public} public test cases and {num_private} private test cases. "
         f"stdin/stdout only. Output ONLY JSON."
     )
@@ -302,8 +320,8 @@ async def generate_question(
 
 
 MCQ_SYSTEM_PROMPT = """\
-You are an expert technical interviewer.
-Generate multiple-choice questions (MCQs) for a software engineering role.
+You are an expert technical interviewer for entry-level roles (Tier-3 college students, freshers).
+Generate multiple-choice questions (MCQs) focusing on fundamentals.
 Output ONLY a single valid JSON object. No markdown, no code fences, no explanation.
 
 The JSON must have EXACTLY this key:
@@ -311,34 +329,38 @@ The JSON must have EXACTLY this key:
   "questions": [
     {
       "id": "unique_string_id",
-      "question": "The question text. Can include code snippets.",
+      "question": "The question text. Can include simple code snippets.",
       "options": ["Option A", "Option B", "Option C", "Option D"],
       "correct_answer": "Option A",
-      "explanation": "Why this answer is correct",
+      "explanation": "Simple explanation of the concept",
       "difficulty": "easy|medium|hard",
-      "topic": "OS"
+      "topic": "Fundamentals"
     }
   ]
 }
+
+GUIDELINES:
+- Focus on: Programming fundamentals, OOP basics, SQL basics, Web fundamentals, Git basics, APIs, Java/Python basics, React basics.
+- Avoid: Advanced CS theory, complex system design, or obscure language features.
+- Make questions practical and relevant to a junior developer's day-to-day work.
 
 RULES:
 1. correct_answer must be the EXACT string match of one of the options.
 2. Provide exactly 4 options per question.
 3. difficulty must be exactly: easy, medium, or hard.
-4. topic must be the specific subject being tested.
-5. Output ONLY the JSON object."""
+4. Output ONLY the JSON object."""
 
 
 async def generate_mcq_questions(
-    topic: str = "CS Fundamentals",
-    difficulty: str = "medium",
+    topic: str = "Programming Fundamentals",
+    difficulty: str = "easy",
     count: int = 5,
 ) -> list[dict]:
     import secrets
     salt = secrets.token_hex(4)
     user_prompt = (
-        f"Generate {count} unique and creative {difficulty} level MCQ questions about: {topic}. "
-        f"Ensure variety and avoid common, overused questions. [Seed: {salt}] "
+        f"Generate {count} unique {difficulty} level MCQ questions about: {topic} for a fresh graduate. "
+        f"Focus on basic concepts and practical knowledge. [Seed: {salt}] "
         f"Output ONLY JSON."
     )
 

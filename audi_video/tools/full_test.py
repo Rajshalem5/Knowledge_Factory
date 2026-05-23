@@ -15,8 +15,8 @@ import numpy as np
 import requests
 import websockets
 
-BASE = "http://localhost:8000"
-WS_BASE = "ws://localhost:8000"
+BASE = "http://localhost:8001"
+WS_BASE = "ws://localhost:8001"
 PASS = "\033[92mPASS\033[0m"
 FAIL = "\033[91mFAIL\033[0m"
 results = []

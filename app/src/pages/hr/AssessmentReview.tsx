@@ -1,4 +1,4 @@
-import React from 'react';
+// React import not needed in modern JSX transform
 import { useParams, useNavigate } from 'react-router-dom';
 import { AppShell } from '../../components/layout/AppShell';
 import { Card, Badge, LoadingState, ErrorState } from '../../components/ui';
@@ -50,8 +50,8 @@ export default function AssessmentReview() {
                 <>
                   <div className="flex justify-between items-center border-b border-ghost pb-2">
                     <span className="text-sm text-tertiary">Verdict</span>
-                    <Badge variant={score.verdict === 'PASS' ? 'success' : 'danger'}>
-                      {score.verdict}
+                    <Badge variant={(score as any).verdict === 'PASS' ? 'success' : 'danger'}>
+                      {(score as any).verdict}
                     </Badge>
                   </div>
                   <div className="flex justify-between items-center">
@@ -76,14 +76,14 @@ export default function AssessmentReview() {
                   </pre>
                 </div>
                 
-                {score?.feedback_json && (
+                {(score as any).feedback_json && (
                   <div className="grid grid-cols-2 gap-4">
                     <div className="bg-success/5 p-3 rounded-md flex items-center gap-3">
                       <CheckCircle size={20} className="text-success" />
                       <div>
                         <p className="text-xs text-tertiary uppercase">Passed Tests</p>
                         <p className="text-xl font-bold text-on-surface">
-                          {score.feedback_json.passed_tests} / {score.feedback_json.total_tests}
+                          {(score as any).feedback_json.passed_tests} / {(score as any).feedback_json.total_tests}
                         </p>
                       </div>
                     </div>
@@ -92,7 +92,7 @@ export default function AssessmentReview() {
                       <div>
                         <p className="text-xs text-tertiary uppercase">Failed Tests</p>
                         <p className="text-xl font-bold text-on-surface">
-                          {score.feedback_json.failed_tests}
+                          {(score as any).feedback_json.failed_tests}
                         </p>
                       </div>
                     </div>

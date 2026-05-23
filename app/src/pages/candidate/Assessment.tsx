@@ -8,7 +8,7 @@ import { useCodeExecution } from '../../hooks/useCodeExecution';
 import { useActiveAssessments, useCompleteAssessment, useSubmitSection, useStartAssessment } from '../../hooks/useAssessment';
 import { useMyCandidateProfile } from '../../hooks/useCandidates';
 import { useProctoring } from '../../hooks/useProctoring';
-import { Play, Send, CheckSquare, AlertTriangle, Loader2, Zap, ShieldCheck } from 'lucide-react';
+import { Play, CheckSquare, AlertTriangle, Loader2, Zap, ShieldCheck } from 'lucide-react';
 import { McqPanel } from '../../components/assessment/McqPanel';
 
 const LANGUAGES = [
@@ -52,8 +52,6 @@ export default function Assessment() {
   const hasCoding = Array.isArray(questionsJson.problems) && questionsJson.problems.length > 0;
   const isMultiSection = hasMcq && hasCoding;
 
-  const isMcqRound = activeAssessment?.round === 'ROUND_2' && !isMultiSection;
-
   const codingProblems = questionsJson.problems || [];
   const currentProblem = codingProblems[activeTabIdx];
 
@@ -66,7 +64,7 @@ export default function Assessment() {
     }
   });
 
-  const { status: proctorStatus, start: startProctoring } = proctoring;
+  const { start: startProctoring } = proctoring;
 
   // ── Initialization ──
   useEffect(() => {
@@ -167,7 +165,7 @@ export default function Assessment() {
        await submitSection.mutateAsync({
          assessment_id: activeAssessment.id,
          section: 'CODING',
-         content: { answers: codes },
+         content: { answers: codes } as any,
        });
     }
     
@@ -183,7 +181,7 @@ export default function Assessment() {
         await submitSection.mutateAsync({ assessment_id: activeAssessment.id, section: 'MCQ', content: mcqAnswers });
       }
       if (hasCoding) {
-        await submitSection.mutateAsync({ assessment_id: activeAssessment.id, section: 'CODING', content: { answers: codes } });
+        await submitSection.mutateAsync({ assessment_id: activeAssessment.id, section: 'CODING', content: { answers: codes } as any });
       }
       alert('Progress saved successfully!');
     } catch (e: any) {
@@ -210,10 +208,9 @@ export default function Assessment() {
     setCodes(prev => ({ ...prev, [currentProblem.id]: newCode }));
   };
 
-  const handleInputChange = (newInput: string) => {
-    if (!currentProblem) return;
-    setCustomInputs(prev => ({ ...prev, [currentProblem.id]: newInput }));
-  };
+  // TODO: Re-enable CandidateDetail after type and hook issues are resolved
+  // _handleInputChange was removed (unused — customInputs managed via setCustomInputs directly)
+
 
   const currentRunOutput = currentProblem ? runOutputs[currentProblem.id] : null;
 
@@ -291,7 +288,7 @@ export default function Assessment() {
                   }`}
                 >
                   Pattern {idx + 1}
-                  <Badge variant="success" size="sm">
+                  <Badge variant="success">
                     {p.points}pts
                   </Badge>
                 </button>

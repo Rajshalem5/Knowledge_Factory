@@ -71,18 +71,34 @@ class Settings(BaseSettings):
     
     # ── Proctoring Risk Weights ────────────────────────────────────
     TAB_SWITCH_WEIGHT: float = 10
-    COPY_PASTE_WEIGHT: float = 10
-    WINDOW_BLUR_WEIGHT: float = 15
-    NO_FACE_WEIGHT: float = 20
-    VOICE_DETECTED_WEIGHT: float = 15
-    MULTIPLE_PERSON_WEIGHT: float = 60
+    TAB_SWITCH_REPEATED_WEIGHT: float = 15
+    TAB_SWITCH_FREQUENT_WEIGHT: float = 25
+    
+    WINDOW_BLUR_WEIGHT: float = 5
+    WINDOW_BLUR_REPEATED_WEIGHT: float = 10
+    WINDOW_BLUR_FREQUENT_WEIGHT: float = 20
+    
+    COPY_WEIGHT: float = 10
+    PASTE_WEIGHT: float = 20
+    
+    DEVTOOLS_WEIGHT: float = 40
+    
+    NO_FACE_WEIGHT: float = 15
+    MULTIPLE_PERSON_WEIGHT: float = 25
+    
+    HEAD_POSE_WEIGHT: float = 8
+    HEAD_POSE_REPEATED_WEIGHT: float = 15
+    
+    VOICE_DETECTED_WEIGHT: float = 20
+    CONTINUOUS_CONVERSATION_WEIGHT: float = 35
+    
     PHONE_DETECTED_WEIGHT: float = 80
     FULLSCREEN_EXIT_WEIGHT: float = 20
     
     # ── Proctoring Risk Management ─────────────────────────────────
     RISK_TERMINATION_THRESHOLD: float = 100
-    RISK_DECAY_PERCENT: float = 0.05  # 5% decay
-    RISK_DECAY_INTERVAL: int = 10     # Every 10 seconds
+    RISK_DECAY_PERCENT: float = 0.0  # Purely cumulative as requested
+    RISK_DECAY_INTERVAL: int = 60
     FRAME_CAPTURE_INTERVAL: float = 1.0
     SCREENSHOT_STORAGE_PATH: str = "screenshots"
     HIGH_RISK_AUTO_TERMINATE: bool = True

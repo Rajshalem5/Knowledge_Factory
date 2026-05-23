@@ -11,7 +11,7 @@ export default function UploadCenter() {
   const { data: statsData, isLoading: statsLoading, error: statsError } = usePipelineStats();
 
   // Real data from pipeline stats if available
-  const totalCandidates = statsData?.stats?.APPLIED ?? 0;
+  const totalCandidates = statsData?.aggregates?.total_filtered ?? 0;
   const successRate = statsData?.aggregates?.assessment_completion_rate ?? 0;
 
   return (

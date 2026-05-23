@@ -4,7 +4,7 @@ Production-ready **FastAPI** backend for **Knowledge Factory** - a complete cand
 
 ## ✨ Features
 
-- **FastAPI + Async SQLAlchemy** (PostgreSQL)
+- **FastAPI + Async SQLAlchemy** (SQLite for local development, PostgreSQL for production)
 - **JWT Authentication** with role-based access (Superadmin/HR/Interviewer/Candidate)
 - **Clean Architecture**: Routes → Services → Models → Schemas
 - **Assessment Engine** with secure code sandbox (Python/JS/Java/C++)
@@ -67,7 +67,7 @@ GET  /api/analytics/dashboard # Metrics & funnel
 | Category | Technology |
 |----------|------------|
 | Framework | FastAPI 0.115 |
-| Database | PostgreSQL + Async SQLAlchemy |
+| Database | SQLite (Local) / PostgreSQL (Production) |
 | Auth | JWT + OAuth2 + bcrypt |
 | Email | aiosmtplib + OTP |
 | Files | python-magic + Pillow |
@@ -96,7 +96,7 @@ GET  /api/analytics/dashboard # Metrics & funnel
 
 Required in `.env`:
 ```
-DATABASE_URL=postgresql+asyncpg://user:pass@localhost/kf_db
+DATABASE_URL=sqlite+aiosqlite:///./knowledge_factory.db
 SECRET_KEY=your-very-long-random-secret-key
 SMTP_USER=your-email@gmail.com
 FRONTEND_URL=http://localhost:3000

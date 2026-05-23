@@ -194,12 +194,15 @@ async def proctor_websocket(
     # ------------------------------------------------------------------
     # 0. Verify JWT token
     # ------------------------------------------------------------------
+    logger.info(f"DEBUG: Verifying token for session {session_id}")
     payload = verify_proctoring_token(token)
     if not payload or payload.get("session_id") != session_id:
         logger.warning(
             "WebSocket connection rejected: invalid or mismatched token",
-            extra={"session_id": session_id}
+            extra={"session_id": session_id, "has_payload": bool(payload)}
         )
+        if payload:
+            logger.warning(f"DEBUG: Payload session_id: {payload.get('session_id')}")
         await websocket.close(code=4003)  # Forbidden
         return
 
@@ -352,6 +355,38 @@ async def proctor_websocket(
                         "session_id": session_id,
                         "connection_id": connection_id,
                     },
+                )
+
+            elif msg_type == "violation":
+                if not message.event_type:
+                    continue
+                
+                from app.services.risk_engine import compute_score, classify
+                from app.integrations.main_backend import emit_proctoring_event
+                
+                # Manual map of client event names to internal scoring names if they differ
+                # Current client sends: TAB_SWITCH, WINDOW_BLUR, COPY, PASTE, DEVTOOLS
+                # internal risk_engine uses: tab_switch, window_blur, copy, paste, devtools
+                internal_event = message.event_type.lower()
+                
+                risk_score = compute_score([internal_event])
+                risk_level = classify(risk_score)
+                
+                await emit_proctoring_event(
+                    session_id=session_id,
+                    event_type=message.event_type.upper(),
+                    severity=risk_level,
+                    risk_score=risk_score / 100.0,
+                    metadata=message.metadata or {}
+                )
+                
+                logger.info(
+                    "Manual violation received and emitted",
+                    extra={
+                        "session_id": session_id,
+                        "event_type": message.event_type,
+                        "risk_score": risk_score,
+                    }
                 )
 
             else:

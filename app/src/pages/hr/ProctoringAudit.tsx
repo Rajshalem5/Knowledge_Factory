@@ -1,10 +1,10 @@
-import React from 'react';
+// React import not needed in modern JSX transform
 import { useParams, useNavigate } from 'react-router-dom';
 import { AppShell } from '../../components/layout/AppShell';
 import { Card, Badge, LoadingState, ErrorState } from '../../components/ui';
 import { useProctoringSession, useProctoringEvents, useProctoringEvidence } from '../../hooks/useProctoring';
 import { useCandidate } from '../../hooks/useCandidates';
-import { AlertTriangle, Clock, Camera, Shield, User, FileText } from 'lucide-react';
+import { Clock, Camera, Shield } from 'lucide-react';
 
 export default function ProctoringAudit() {
   const { id } = useParams<{ id: string }>();
@@ -18,8 +18,8 @@ export default function ProctoringAudit() {
   )[0]?.id;
 
   const { data: session, isLoading: isSessionLoading, error: sessionError } = useProctoringSession(latestAssessmentId!);
-  const { data: events, isLoading: isEventsLoading } = useProctoringEvents(session?.session_id);
-  const { data: evidence, isLoading: isEvidenceLoading } = useProctoringEvidence(session?.session_id);
+  const { data: events, isLoading: _isEventsLoading } = useProctoringEvents(session?.session_id);
+  const { data: evidence, isLoading: _isEvidenceLoading } = useProctoringEvidence(session?.session_id);
 
   if (isCandidateLoading || isSessionLoading) return <AppShell title="Proctoring Audit"><LoadingState /></AppShell>;
   
@@ -50,26 +50,59 @@ export default function ProctoringAudit() {
             <div>
               <h3 className="text-xs text-tertiary uppercase font-bold tracking-widest mb-4">Risk Profile</h3>
               <div className="flex flex-col items-center justify-center p-6 bg-[var(--bg-layer1)] rounded-full w-32 h-32 mx-auto border-4 border-ghost">
-                <span className={`text-3xl font-black ${session.final_risk_score > 60 ? 'text-danger' : session.final_risk_score > 20 ? 'text-warning' : 'text-success'}`}>
+                <span className={`text-3xl font-black ${
+                  session.final_risk_score > 80 ? 'text-danger animate-pulse' : 
+                  session.final_risk_score > 50 ? 'text-danger' : 
+                  session.final_risk_score > 20 ? 'text-warning' : 
+                  'text-success'
+                }`}>
                   {Math.round(session.final_risk_score)}
                 </span>
                 <span className="text-[10px] text-tertiary uppercase">Risk Score</span>
               </div>
             </div>
 
-            <div className="space-y-3">
-              <div className="flex justify-between text-sm">
-                <span className="text-tertiary">Violations</span>
-                <span className="font-bold">{session.total_violations}</span>
+            <div className="space-y-4">
+              <div className="p-3 rounded-md bg-[var(--bg-layer1)] border border-ghost">
+                <p className="text-[10px] text-tertiary uppercase font-bold mb-1">Risk Category</p>
+                <p className={`font-black ${
+                  session.final_risk_score > 80 ? 'text-danger' : 
+                  session.final_risk_score > 50 ? 'text-danger' : 
+                  session.final_risk_score > 20 ? 'text-warning' : 
+                  'text-success'
+                }`}>
+                  {session.final_risk_score > 80 ? 'CRITICAL' : 
+                   session.final_risk_score > 50 ? 'HIGH' : 
+                   session.final_risk_score > 20 ? 'MEDIUM' : 
+                   'LOW'}
+                </p>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-tertiary">Status</span>
-                <Badge variant={session.status === 'TERMINATED' ? 'danger' : 'success'}>{session.status}</Badge>
+
+              <div className="p-3 rounded-md bg-[var(--bg-layer1)] border border-ghost">
+                <p className="text-[10px] text-tertiary uppercase font-bold mb-1">Recommendation</p>
+                <p className="text-xs font-bold">
+                  {session.final_risk_score > 80 ? 'Strong Suspicion - Action Required' : 
+                   session.final_risk_score > 50 ? 'Investigate - Potential Malpractice' : 
+                   session.final_risk_score > 20 ? 'Review - Minor Flags Detected' : 
+                   'Safe - No Significant Flags'}
+                </p>
               </div>
+
+              <div className="space-y-3 pt-2 border-t border-ghost">
+                <div className="flex justify-between text-sm">
+                  <span className="text-tertiary">Total Violations</span>
+                  <span className="font-bold">{session.total_violations}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-tertiary">Session Status</span>
+                  <Badge variant={session.status === 'TERMINATED' ? 'danger' : 'success'}>{session.status}</Badge>
+                </div>
+              </div>
+              
               {session.terminated_reason && (
                 <div className="pt-2 border-t border-ghost">
                   <p className="text-[10px] text-tertiary uppercase mb-1">Termination Reason</p>
-                  <p className="text-xs text-danger">{session.terminated_reason}</p>
+                  <p className="text-xs text-danger leading-relaxed">{session.terminated_reason}</p>
                 </div>
               )}
             </div>
@@ -97,7 +130,7 @@ export default function ProctoringAudit() {
                             <span className="font-bold text-sm uppercase tracking-tight">{evt.event_type.replace(/_/g, ' ')}</span>
                             <span className="ml-3 text-[10px] text-tertiary">{new Date(evt.timestamp).toLocaleTimeString()}</span>
                           </div>
-                          <Badge variant={evt.severity === 'HIGH' ? 'danger' : 'warning'} size="sm">
+                          <Badge variant={evt.severity === 'HIGH' ? 'danger' : 'warning'}>
                             Score +{evt.risk_score}
                           </Badge>
                         </div>
@@ -129,7 +162,7 @@ export default function ProctoringAudit() {
                       </div>
                       <div className="flex justify-between items-center px-1">
                         <span className="text-[10px] text-tertiary">{new Date(item.created_at).toLocaleTimeString()}</span>
-                        <Badge size="sm">{item.event_type}</Badge>
+                        <Badge>{item.event_type}</Badge>
                       </div>
                     </div>
                   ))}

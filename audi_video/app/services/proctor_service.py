@@ -233,13 +233,26 @@ class ProctorService:
                     elif cls_idx == _CLS_CELL_PHONE:
                         mobile_detected = True
 
-            person_count = _count_unique_persons(person_boxes)
+            # Confidence-based person counting
+            # High confidence: >= 0.55 (Face Present)
+            # Uncertain: 0.35 - 0.55
+            # Multi-person threshold: 0.50 (as per requirements)
+            
+            high_conf_persons = [b for b in person_boxes if b[4] >= 0.55]
+            multi_threshold_persons = [b for b in person_boxes if b[4] >= 0.50]
+            any_persons = person_boxes # all are >= 0.35 due to YOLO_CONFIDENCE
+
+            high_conf_count = _count_unique_persons(high_conf_persons)
+            multi_threshold_count = _count_unique_persons(multi_threshold_persons)
+            any_count = _count_unique_persons(any_persons)
 
             active_events: List[str] = []
 
-            if person_count == 0:
+            # We'll let WorkerManager handle the temporal smoothing and final event emission
+            # but we still return some basic events for backward compatibility or simple cases
+            if high_conf_count == 0:
                 active_events.append("no_face")
-            elif person_count > 1:
+            elif multi_threshold_count > 1:
                 active_events.append("multiple_persons")
 
             if mobile_detected:
@@ -249,12 +262,23 @@ class ProctorService:
                 "ProctorService.analyze complete",
                 extra={
                     "active_events": active_events,
-                    "person_count": person_count,
+                    "high_conf_count": high_conf_count,
+                    "multi_threshold_count": multi_threshold_count,
+                    "any_count": any_count,
                     "mobile_detected": mobile_detected,
                 },
             )
-            return active_events
+            
+            # Return a dict if possible, or just the list for now and handle details in WorkerManager
+            # Actually, I'll return a special format if I want to pass more data
+            return {
+                "events": active_events,
+                "high_conf_count": high_conf_count,
+                "multi_threshold_count": multi_threshold_count,
+                "any_count": any_count,
+                "mobile_detected": mobile_detected
+            }
 
         except Exception:
             logger.exception("ProctorService.analyze raised an unexpected exception.")
-            return []
+            return {"events": [], "high_conf_count": 0, "any_count": 0, "mobile_detected": False}

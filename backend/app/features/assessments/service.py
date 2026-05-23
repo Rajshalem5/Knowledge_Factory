@@ -120,18 +120,30 @@ class AssessmentService:
         """Call AI service to generate questions based on round type."""
         try:
             if round_type == AssessmentRound.ROUND_2:
-                # MCQ Round - Generate from multiple topics in parallel
+                # MCQ Round - Revised for Freshers/Tier-3
                 available_topics = [
-                    "Aptitude", "Reasoning", "DBMS", "OS", "Networking", 
-                    "OOPs", "Java", "Python", "JavaScript", "SQL", "DSA Fundamentals"
+                    "Programming Fundamentals", "OOP Basics", "SQL Basics", 
+                    "Web Fundamentals", "Git Basics", "APIs", 
+                    "Java Basics", "Python Basics", "React Basics"
                 ]
-                # Pick 3 random topics
-                selected_topics = random.sample(available_topics, 3)
+                # Pick 4 random topics
+                selected_topics = random.sample(available_topics, 4)
                 
                 logger.info(f"Generating MCQs for topics: {selected_topics}")
                 
-                # Each topic generates 4 questions = 12 total
-                tasks = [generate_mcq_questions(topic=t, count=4) for t in selected_topics]
+                # Distribution: 70% Easy, 25% Medium, 5% Hard
+                # Total 12 questions (3 per topic)
+                # ~8 Easy, ~3 Medium, ~1 Hard
+                difficulties = ["easy"] * 8 + ["medium"] * 3 + ["hard"] * 1
+                random.shuffle(difficulties)
+                
+                tasks = []
+                for i, topic in enumerate(selected_topics):
+                    # 3 questions per topic
+                    for j in range(3):
+                        diff = difficulties.pop()
+                        tasks.append(generate_mcq_questions(topic=topic, count=1, difficulty=diff))
+                
                 results = await asyncio.gather(*tasks)
                 
                 all_questions = []
@@ -144,7 +156,7 @@ class AssessmentService:
                 # Shuffle the combined list
                 random.shuffle(all_questions)
                 # Add Pattern Coding Section for Round 2 (Continuous)
-                pattern_topics = ["Pattern Printing", "Basic Loops"]
+                pattern_topics = ["Basic Loops", "Conditional Logic"]
                 pattern_tasks = [generate_question(topic=random.choice(pattern_topics), difficulty="easy")]
                 pattern_results = await asyncio.gather(*pattern_tasks)
                 
@@ -170,11 +182,10 @@ class AssessmentService:
                 
                 return {"questions": all_questions, "problems": problems}
             else:
-                # Coding Round - Redesigned format (3 questions)
+                # Coding Round - Revised for Freshers (3 questions)
                 available_coding_topics = [
-                    "Arrays", "Strings", "Hash Maps", "Searching", "Sorting", 
-                    "Recursion", "Stack", "Queue", "Linked Lists", "Trees", 
-                    "Binary Search", "Greedy", "Basic Dynamic Programming"
+                    "Strings", "Arrays", "HashMaps", "Loops", 
+                    "Functions", "Basic Sorting", "Basic Searching", "Simple Data Processing"
                 ]
                 # Pick 3 random topics
                 selected_topics = random.sample(available_coding_topics, 3)
@@ -182,14 +193,13 @@ class AssessmentService:
                 logger.info(f"Generating Coding Problems for topics: {selected_topics}")
                 
                 # Q1: Easy
-                # Q2: Medium
-                # Q3: 70% Medium, 30% Hard
-                q3_diff = "medium" if random.random() < 0.7 else "hard"
+                # Q2: Easy-Medium (Calling it easy for the prompt but with slightly more logic)
+                # Q3: Medium
                 
                 tasks = [
                     generate_question(topic=selected_topics[0], difficulty="easy"),
-                    generate_question(topic=selected_topics[1], difficulty="medium"),
-                    generate_question(topic=selected_topics[2], difficulty=q3_diff)
+                    generate_question(topic=selected_topics[1], difficulty="easy"), # "Easy-Medium" mapped to easy with prompt hints
+                    generate_question(topic=selected_topics[2], difficulty="medium")
                 ]
                 
                 results = await asyncio.gather(*tasks)
@@ -200,18 +210,21 @@ class AssessmentService:
                     if i == 0:
                         points = 20
                         duration_mins = 15
+                        diff_label = "easy"
                     elif i == 1:
                         points = 30
                         duration_mins = 20
+                        diff_label = "easy-medium"
                     else:
                         points = 50
                         duration_mins = 25
+                        diff_label = "medium"
                         
                     problems.append({
                         "id": q.id,
                         "title": q.title,
                         "description": q.description,
-                        "difficulty": q.difficulty,
+                        "difficulty": diff_label,
                         "points": points,
                         "suggested_duration_mins": duration_mins,
                         "starter_code": q.boilerplate.get(candidate.language_choice, q.boilerplate.get("python", "")),
@@ -239,7 +252,7 @@ class AssessmentService:
                 "questions": [
                     {
                         "id": "fallback_1",
-                        "question": "What is the time complexity of binary search?",
+                        "question": "What is the time complexity of searching an element in a sorted array using Binary Search?",
                         "options": ["O(n)", "O(log n)", "O(n^2)", "O(1)"],
                         "correct_answer": "O(log n)",
                         "explanation": "Binary search divides the search space by half in each step.",
@@ -248,25 +261,25 @@ class AssessmentService:
                     },
                     {
                         "id": "fallback_2",
-                        "question": "Which of the following is not a pillar of OOPs?",
-                        "options": ["Encapsulation", "Inheritance", "Polymorphism", "Compilation"],
-                        "correct_answer": "Compilation",
-                        "explanation": "Pillars are Encapsulation, Abstraction, Inheritance, Polymorphism.",
+                        "question": "Which of the following is a core pillar of OOP?",
+                        "options": ["Compilation", "Interpretation", "Encapsulation", "Garbage Collection"],
+                        "correct_answer": "Encapsulation",
+                        "explanation": "The four pillars of OOP are Encapsulation, Abstraction, Inheritance, and Polymorphism.",
                         "difficulty": "easy",
-                        "topic": "OOPs"
+                        "topic": "OOP Basics"
                     }
                 ],
                 "problems": [
                     {
                         "id": "pattern_1",
-                        "title": "Star Pattern",
+                        "title": "Square Pattern",
                         "description": "Print a 3x3 grid of stars (*).",
                         "difficulty": "easy",
-                        "points": 10,
-                        "suggested_duration_mins": 5,
-                        "starter_code": "print('***\n***\n***')",
-                        "test_cases": [{"input": "", "expectedOutput": "***\n***\n***"}],
-                        "_private_cases": [{"input": "", "expectedOutput": "***\n***\n***"}]
+                        "points": 20,
+                        "suggested_duration_mins": 10,
+                        "starter_code": "print('***\\n***\\n***')",
+                        "test_cases": [{"input": "", "expectedOutput": "***\\n***\\n***"}],
+                        "_private_cases": [{"input": "", "expectedOutput": "***\\n***\\n***"}]
                     }
                 ]
             }
@@ -274,36 +287,36 @@ class AssessmentService:
             "problems": [
                 {
                     "id": "fallback_code_1",
-                    "title": "Hello World",
-                    "description": "Print 'Hello, World!' to stdout.",
+                    "title": "Sum of Two Numbers",
+                    "description": "Read two integers from stdin and print their sum.",
                     "difficulty": "easy",
                     "points": 20,
                     "suggested_duration_mins": 15,
-                    "starter_code": "print('Hello, World!')",
-                    "test_cases": [{"input": "", "expectedOutput": "Hello, World!"}],
-                    "_private_cases": [{"input": "", "expectedOutput": "Hello, World!"}]
+                    "starter_code": "import sys\\na, b = map(int, sys.stdin.read().split())\\nprint(a + b)",
+                    "test_cases": [{"input": "5 10", "expectedOutput": "15"}],
+                    "_private_cases": [{"input": "100 200", "expectedOutput": "300"}]
                 },
                 {
                     "id": "fallback_code_2",
-                    "title": "Reverse Array",
-                    "description": "Reverse given input.",
-                    "difficulty": "medium",
+                    "title": "Find Largest in Array",
+                    "description": "Given an array of integers, find the largest element.",
+                    "difficulty": "easy-medium",
                     "points": 30,
                     "suggested_duration_mins": 20,
-                    "starter_code": "print('Reversed')",
-                    "test_cases": [{"input": "1 2 3", "expectedOutput": "Reversed"}],
-                    "_private_cases": [{"input": "4 5", "expectedOutput": "Reversed"}]
+                    "starter_code": "import sys\\ndata = list(map(int, sys.stdin.read().split()))\\nprint(max(data))",
+                    "test_cases": [{"input": "1 5 3 9 2", "expectedOutput": "9"}],
+                    "_private_cases": [{"input": "10 20 5", "expectedOutput": "20"}]
                 },
                 {
                     "id": "fallback_code_3",
-                    "title": "Merge Intervals",
-                    "description": "Merge intervals.",
-                    "difficulty": "hard",
+                    "title": "Count Vowels",
+                    "description": "Given a string, count the number of vowels in it.",
+                    "difficulty": "medium",
                     "points": 50,
                     "suggested_duration_mins": 25,
-                    "starter_code": "print('Merged')",
-                    "test_cases": [{"input": "1 3", "expectedOutput": "Merged"}],
-                    "_private_cases": [{"input": "1 4", "expectedOutput": "Merged"}]
+                    "starter_code": "import sys\\ns = sys.stdin.read().strip()\\ncount = sum(1 for char in s if char.lower() in 'aeiou')\\nprint(count)",
+                    "test_cases": [{"input": "Hello World", "expectedOutput": "3"}],
+                    "_private_cases": [{"input": "Knowledge Factory", "expectedOutput": "5"}]
                 }
             ]
         }
@@ -520,8 +533,9 @@ class AssessmentService:
             
             final_percentage = (total_weighted_score / total_possible_score) * 100.0 if total_possible_score > 0 else 0.0
             
-            # Pass criteria: >= 70% AND Q1 >= 1 passing test case
-            verdict = "PASS" if (final_percentage >= 70.0 and q1_passed_at_least_one) else "FAIL"
+            # Pass criteria: >= 40% AND Q1 >= 1 passing test case
+            # This aligns with freshers where solving Q1 and part of Q2 is considered a 'pass'
+            verdict = "PASS" if (final_percentage >= 40.0 and q1_passed_at_least_one) else "FAIL"
 
             # 4. Fetch proctoring risk if available
             risk_stmt = select(ProctoringSession).where(ProctoringSession.assessment_attempt_id == assessment_id)

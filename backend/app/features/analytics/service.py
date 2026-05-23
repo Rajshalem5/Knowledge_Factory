@@ -47,15 +47,17 @@ class AnalyticsService:
         """Get hiring funnel counts with optional filters.
 
         Stages:
-          applied    = APPLIED + ROUND1_REVIEW (awaiting screening decision)
+          applied    = Total candidates (sum of all statuses)
           eligible   = ROUND1_PASSED (passed screening)
           assessed   = ROUND2_IN_PROGRESS + ROUND2_PASSED + ROUND2_REJECTED + ROUND3_IN_PROGRESS + ROUND3_PASSED + ROUND3_REJECTED
           interviewed = INTERVIEW_SCHEDULED + INTERVIEW_COMPLETED + SELECTED
           selected   = SELECTED
         """
-        def _build_q(statuses: list[CandidateStatus]) -> select:
+        def _build_q(statuses: list[CandidateStatus] | None = None) -> select:
             """Build a filtered count query for the given statuses."""
-            q = select(func.count(Candidate.id)).where(Candidate.status.in_(statuses))
+            q = select(func.count(Candidate.id))
+            if statuses is not None:
+                q = q.where(Candidate.status.in_(statuses))
             q = apply_candidate_filters(
                 q,
                 name=name, branch=branch, college=college, search=search,
@@ -81,7 +83,7 @@ class AnalyticsService:
             return q
 
         stage_queries = {
-            "applied": _build_q([CandidateStatus.APPLIED, CandidateStatus.ROUND1_REVIEW]),
+            "applied": _build_q(None),  # Applied is the sum of all statuses
             "eligible": _build_q([CandidateStatus.ROUND1_PASSED]),
             "assessed": _build_q([
                 CandidateStatus.ROUND2_IN_PROGRESS,

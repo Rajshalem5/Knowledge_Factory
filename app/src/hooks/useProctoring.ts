@@ -43,11 +43,12 @@ export function useProctoring({ assessmentAttemptId, onViolation, onTerminated }
 
   const wsRef = useRef<WebSocket | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const sessionIdRef = useRef<string | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const captureIntervalRef = useRef<number | null>(null);
+  const streamingCleanupRef = useRef<(() => void) | null>(null);
 
   const wsInitTokenRef = useRef<{ url: string; token: string } | null>(null);
+  const sessionIdRef = useRef<string | null>(null);
   const startedRef = useRef(false);
   const startPromiseRef = useRef<Promise<void> | null>(null);
   const unmountedRef = useRef(false);
@@ -68,6 +69,11 @@ export function useProctoring({ assessmentAttemptId, onViolation, onTerminated }
     wsRef.current?.close();
     wsRef.current = null;
 
+    if (streamingCleanupRef.current) {
+      streamingCleanupRef.current();
+      streamingCleanupRef.current = null;
+    }
+
     try {
       streamRef.current?.getTracks().forEach((track) => track.stop());
     } catch {
@@ -75,6 +81,7 @@ export function useProctoring({ assessmentAttemptId, onViolation, onTerminated }
     }
     streamRef.current = null;
     setStream(null);
+    setConnectionStatus('disconnected');
 
     try {
       mediaRecorderRef.current?.stop();
@@ -102,6 +109,41 @@ export function useProctoring({ assessmentAttemptId, onViolation, onTerminated }
 
   const startStreaming = useCallback(() => {
     if (!wsRef.current || !streamRef.current) return;
+
+    // ── Behavior Listeners ──
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        sendViolation('TAB_SWITCH');
+      }
+    };
+
+    const handleBlur = () => {
+      sendViolation('WINDOW_BLUR');
+    };
+
+    const handleCopy = () => {
+      sendViolation('COPY');
+    };
+
+    const handlePaste = () => {
+      sendViolation('PASTE');
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Common DevTools shortcuts: F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C
+      if (
+        e.key === 'F12' ||
+        ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C'))
+      ) {
+        sendViolation('DEVTOOLS');
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('blur', handleBlur);
+    document.addEventListener('copy', handleCopy);
+    document.addEventListener('paste', handlePaste);
+    window.addEventListener('keydown', handleKeyDown);
 
     const videoTracks = streamRef.current.getVideoTracks();
     const audioTracks = streamRef.current.getAudioTracks();
@@ -152,7 +194,16 @@ export function useProctoring({ assessmentAttemptId, onViolation, onTerminated }
     } catch (e) {
       console.warn('Audio recorder init failed:', e);
     }
-  }, []);
+
+    // Return cleanup function to be called when session stops
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('blur', handleBlur);
+      document.removeEventListener('copy', handleCopy);
+      document.removeEventListener('paste', handlePaste);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [sendViolation]);
 
   const connectWS = useCallback(
     async (url: string, token: string) => {
@@ -183,7 +234,10 @@ export function useProctoring({ assessmentAttemptId, onViolation, onTerminated }
           return;
         }
         setConnectionStatus('connected');
-        startStreaming();
+        const cleanup_fn = startStreaming();
+        if (typeof cleanup_fn === 'function') {
+          streamingCleanupRef.current = cleanup_fn;
+        }
         setStatus('ready');
       };
 
@@ -208,6 +262,10 @@ export function useProctoring({ assessmentAttemptId, onViolation, onTerminated }
 
       ws.onclose = () => {
         setConnectionStatus('disconnected');
+        if (streamingCleanupRef.current) {
+          streamingCleanupRef.current();
+          streamingCleanupRef.current = null;
+        }
         if (!unmountedRef.current && startedRef.current && status !== 'terminated' && status !== 'failed') {
           const retry = wsInitTokenRef.current;
           if (retry) {
@@ -349,7 +407,7 @@ export function useProctoringEvents(sessionId: string) {
     queryKey: ['proctoring-events', sessionId],
     queryFn: async () => {
       const resp = await proctoringService.getEvents(sessionId);
-      return resp.data || resp;
+      return (resp as any).data || resp;
     },
     enabled: !!sessionId,
   });
@@ -360,7 +418,7 @@ export function useProctoringEvidence(sessionId: string) {
     queryKey: ['proctoring-evidence', sessionId],
     queryFn: async () => {
       const resp = await proctoringService.getEvidence(sessionId);
-      return resp.data || resp;
+      return (resp as any).data || resp;
     },
     enabled: !!sessionId,
   });

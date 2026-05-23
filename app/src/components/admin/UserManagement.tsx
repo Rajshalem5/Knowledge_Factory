@@ -18,7 +18,7 @@ const ROLE_OPTIONS = [
   { value: 'interviewer', label: 'Interviewer' },
 ];
 
-export function UserManagement({ manageAdmins = false }: UserManagementProps) {
+export function UserManagement({ manageAdmins: _manageAdmins = false }: UserManagementProps) {
   const { user: currentUser } = useAuth();
   const queryClient = useQueryClient();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);

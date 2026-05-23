@@ -125,11 +125,13 @@ async def run_screening(
     passed = 0
     rejected = 0
 
+    from app.core.branch_utils import is_branch_eligible
+
     for c in candidates:
         cgpa_val = float(c.cgpa)
         
-        # 1. Branch check
-        branch_ok = not allowed_branches or c.branch.lower() in [b.lower() for b in allowed_branches]
+        # 1. Branch check (flexible matching)
+        branch_ok = is_branch_eligible(c.branch, allowed_branches)
         
         # 2. Degree check
         allowed_degrees = cfg.get("allowed_degrees", [])
