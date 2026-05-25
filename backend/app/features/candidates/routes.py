@@ -108,10 +108,16 @@ async def upload_my_resume(
     db: AsyncSession = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
-    """Allow candidate to upload/update their own resume."""
+    """Allow candidate to upload/update their own resume with AI parsing and auto-screening."""
     from app.features.candidates.models import Candidate
+    from app.features.hiring_cycles.models import HiringCycle
+    from app.features.selection.service import EvaluationService
+    from app.services.parser import extract_text_from_file
+    from app.services.extractor import extract_candidate_info
+    from app.core.branch_utils import is_branch_eligible
     import uuid
     import os
+    import json
 
     # Resolve candidate
     stmt = select(Candidate).where(Candidate.id == current_user.id)
@@ -121,12 +127,100 @@ async def upload_my_resume(
     if not candidate:
         raise HTTPException(status_code=404, detail="Candidate not found")
 
-    # In a real app, save to S3. For local, we just update the URL.
+    # Get active cycle for screening config
+    cycle_stmt = select(HiringCycle).where(HiringCycle.id == candidate.cycle_id)
+    cycle_res = await db.execute(cycle_stmt)
+    cycle = cycle_res.scalar_one_or_none()
+    
+    if not cycle:
+        raise HTTPException(status_code=500, detail="Hiring cycle not found for candidate")
+
+    # 1. Save file to disk
+    content = await file.read()
     filename = f"resume_{uuid.uuid4().hex[:8]}{os.path.splitext(file.filename)[1]}"
+    upload_dir = "uploads/resumes"
+    os.makedirs(upload_dir, exist_ok=True)
+    file_path = os.path.join(upload_dir, filename)
+    
+    with open(file_path, "wb") as f:
+        f.write(content)
+
+    # 2. Extract info via AI
+    try:
+        raw_text = await extract_text_from_file(content, filename)
+        extracted = await extract_candidate_info(raw_text)
+        
+        # 3. Update candidate fields (prioritize extracted data for empty/default fields)
+        if extracted.get("name") and candidate.name in ["Unnamed Candidate", "Unknown", ""]:
+            candidate.name = extracted["name"]
+        
+        if extracted.get("college") and candidate.college in ["Unknown", ""]:
+            candidate.college = extracted["college"]
+            
+        if extracted.get("branch") and candidate.branch in ["Unknown", ""]:
+            candidate.branch = extracted["branch"]
+            
+        if extracted.get("degree") and (not candidate.degree or candidate.degree == "Unknown"):
+            candidate.degree = extracted["degree"]
+            
+        if extracted.get("cgpa"):
+            try:
+                candidate.cgpa = float(extracted["cgpa"])
+            except (ValueError, TypeError):
+                pass
+                
+        if extracted.get("graduation_year"):
+            try:
+                candidate.passed_out_year = int(extracted["graduation_year"])
+            except (ValueError, TypeError):
+                pass
+        
+        if extracted.get("skills"):
+            new_skills = extracted["skills"]
+            if isinstance(new_skills, list):
+                new_skills = ", ".join(new_skills)
+            candidate.skills = new_skills
+
+        # Update custom fields
+        candidate.custom_fields = {
+            **(candidate.custom_fields or {}),
+            "percentage": extracted.get("percentage"),
+            "academic_status": extracted.get("academic_status"),
+            "experience_summary": extracted.get("experience_summary"),
+            "university": extracted.get("university"),
+        }
+    except Exception as e:
+        logger.error(f"AI parsing failed for candidate {candidate.id}: {e}")
+        # We still continue since the resume was uploaded successfully
+
+    # 4. Auto-screening logic
+    cfg = cycle.eligibility_config or {}
+    def check_eligibility(cand_obj):
+        min_cgpa = float(cfg.get("min_cgpa", 6.0))
+        allowed_branches = cfg.get("allowed_branches", [])
+        allowed_degrees = cfg.get("allowed_degrees", [])
+        allowed_years = cfg.get("passed_out_years", [])
+
+        cgpa_ok = float(cand_obj.cgpa) >= min_cgpa
+        branch_ok = is_branch_eligible(cand_obj.branch, allowed_branches)
+        degree_ok = not allowed_degrees or (cand_obj.degree and cand_obj.degree.lower() in [d.lower() for d in allowed_degrees])
+        year_ok = not allowed_years or cand_obj.passed_out_year in allowed_years
+
+        return cgpa_ok and branch_ok and degree_ok and year_ok
+
     candidate.resume_url = f"uploads/resumes/{filename}"
+    candidate.status = CandidateStatus.ROUND1_PASSED if check_eligibility(candidate) else CandidateStatus.ROUND1_REJECTED
+    
+    # 5. Update evaluation metrics
+    eval_svc = EvaluationService(db)
+    await eval_svc.update_candidate_evaluation(candidate.id)
     
     await db.commit()
-    return {"message": "Resume uploaded successfully", "resume_url": candidate.resume_url}
+    return {
+        "message": "Resume uploaded, parsed, and screened successfully", 
+        "resume_url": candidate.resume_url,
+        "status": candidate.status
+    }
 
 
 @router.get("/me", response_model=CandidateRead)

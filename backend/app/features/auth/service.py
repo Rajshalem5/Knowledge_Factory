@@ -65,11 +65,20 @@ class AuthService:
         return None
 
     async def register_candidate(
-        self, register_data: CandidateRegisterRequest, cycle_id: str
+        self, register_data: CandidateRegisterRequest, cycle_id: str, resume: Any | None = None
     ) -> Candidate:
-        """Register a new candidate."""
+        """Register a new candidate with optional resume parsing and auto-screening."""
         from app.config import settings
-        
+        from app.features.hiring_cycles.models import HiringCycle
+        from app.features.selection.service import EvaluationService
+        from app.services.parser import extract_text_from_file
+        from app.services.extractor import extract_candidate_info
+        from app.core.branch_utils import is_branch_eligible
+        from app.core.enums import CandidateStatus
+        import uuid
+        import os
+        from datetime import datetime
+
         # Check for duplicate email
         stmt = select(Candidate).where(Candidate.email == register_data.email)
         result = await self.db.execute(stmt)
@@ -79,6 +88,14 @@ class AuthService:
                 f"A candidate with email '{register_data.email}' is already registered."
             )
 
+        # Get cycle for screening config
+        stmt = select(HiringCycle).where(HiringCycle.id == cycle_id)
+        res = await self.db.execute(stmt)
+        cycle = res.scalar_one_or_none()
+        if not cycle:
+            raise ValueError("Hiring cycle not found")
+
+        # Initial creation
         new_candidate = Candidate(
             cycle_id=cycle_id,
             email=register_data.email,
@@ -89,10 +106,89 @@ class AuthService:
             cgpa=register_data.cgpa,
             passed_out_year=register_data.passed_out_year,
             language_choice=register_data.language_choice,
-            email_verified=not settings.ENABLE_EMAIL_VERIFICATION, # auto-verify if disabled
+            email_verified=not settings.ENABLE_EMAIL_VERIFICATION,
+            status=CandidateStatus.APPLIED
         )
+
+        # Handle Resume if provided
+        if resume:
+            try:
+                # 1. Save file to disk
+                content = await resume.read()
+                filename = f"resume_{uuid.uuid4().hex[:8]}{os.path.splitext(resume.filename)[1]}"
+                upload_dir = "uploads/resumes"
+                os.makedirs(upload_dir, exist_ok=True)
+                file_path = os.path.join(upload_dir, filename)
+                
+                with open(file_path, "wb") as f:
+                    f.write(content)
+                
+                new_candidate.resume_url = f"uploads/resumes/{filename}"
+
+                # 2. Extract info via AI
+                raw_text = await extract_text_from_file(content, filename)
+                extracted = await extract_candidate_info(raw_text)
+                
+                # 3. Enrich profile (if fields were empty in registration)
+                if extracted.get("name") and new_candidate.name in ["", "Unnamed Candidate"]:
+                    new_candidate.name = extracted["name"]
+                
+                if extracted.get("college") and not new_candidate.college:
+                    new_candidate.college = extracted["college"]
+                    
+                if extracted.get("branch") and not new_candidate.branch:
+                    new_candidate.branch = extracted["branch"]
+                    
+                if extracted.get("degree"):
+                    new_candidate.degree = extracted["degree"]
+                    
+                if extracted.get("cgpa") and new_candidate.cgpa == 0:
+                    try:
+                        new_candidate.cgpa = float(extracted["cgpa"])
+                    except: pass
+                        
+                if extracted.get("graduation_year") and new_candidate.passed_out_year == 0:
+                    try:
+                        new_candidate.passed_out_year = int(extracted["graduation_year"])
+                    except: pass
+                
+                if extracted.get("skills"):
+                    skills = extracted["skills"]
+                    new_candidate.skills = ", ".join(skills) if isinstance(skills, list) else skills
+
+                # Update custom fields
+                new_candidate.custom_fields = {
+                    "percentage": extracted.get("percentage"),
+                    "academic_status": extracted.get("academic_status"),
+                    "experience_summary": extracted.get("experience_summary"),
+                }
+            except Exception as e:
+                logger.error(f"AI parsing failed during registration for {register_data.email}: {e}")
+
+        # 4. Auto-screening
+        cfg = cycle.eligibility_config or {}
+        def check_eligibility(cand_obj):
+            min_cgpa = float(cfg.get("min_cgpa", 6.0))
+            allowed_branches = cfg.get("allowed_branches", [])
+            allowed_degrees = cfg.get("allowed_degrees", [])
+            allowed_years = cfg.get("passed_out_years", [])
+
+            cgpa_ok = float(cand_obj.cgpa) >= min_cgpa
+            branch_ok = is_branch_eligible(cand_obj.branch, allowed_branches)
+            degree_ok = not allowed_degrees or (cand_obj.degree and cand_obj.degree.lower() in [d.lower() for d in allowed_degrees])
+            year_ok = not allowed_years or cand_obj.passed_out_year in allowed_years
+
+            return cgpa_ok and branch_ok and degree_ok and year_ok
+
+        new_candidate.status = CandidateStatus.ROUND1_PASSED if check_eligibility(new_candidate) else CandidateStatus.ROUND1_REJECTED
+        
         self.db.add(new_candidate)
         await self.db.flush()
+
+        # 5. Update evaluation metrics
+        eval_svc = EvaluationService(self.db)
+        await eval_svc.update_candidate_evaluation(new_candidate.id)
+        
         return new_candidate
 
     @staticmethod

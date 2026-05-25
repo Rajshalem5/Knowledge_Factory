@@ -30,11 +30,20 @@ export default function Register() {
     }
 
     try {
-      await register({
-        name,
-        email,
-        password,
-      });
+      if (resume) {
+        const formData = new FormData();
+        formData.append('name', name);
+        formData.append('email', email);
+        formData.append('password', password);
+        formData.append('resume', resume);
+        await register(formData);
+      } else {
+        await register({
+          name,
+          email,
+          password,
+        });
+      }
       // Email verification is disabled for now, auto-login and go to portal
       navigate('/portal');
     } catch (err) {

@@ -1,6 +1,8 @@
 """Authentication routes - simplified without multi-tenancy."""
 
-from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
+import logging
+from fastapi import APIRouter, Depends, HTTPException, status, Response, Request, Form, File, UploadFile
+from pydantic import EmailStr
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,6 +21,8 @@ from app.features.auth.service import AuthService
 from app.features.candidates.models import Candidate
 from app.features.auth.models import User
 from app.core.enums import Role
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -73,7 +77,15 @@ async def login(login_data: LoginRequest, db: AsyncSession = Depends(get_db), re
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 async def register_candidate(
-    register_data: CandidateRegisterRequest,
+    name: str = Form(...),
+    email: EmailStr = Form(...),
+    password: str = Form(...),
+    college: str = Form(""),
+    branch: str = Form(""),
+    cgpa: float = Form(0.0),
+    passed_out_year: int = Form(0),
+    language_choice: str = Form("english"),
+    resume: UploadFile | None = File(None),
     db: AsyncSession = Depends(get_db),
     response: Response = None,
 ):
@@ -91,9 +103,21 @@ async def register_candidate(
         )
 
     auth_service = AuthService(db)
+    
+    # Create request object for internal compatibility
+    register_data = CandidateRegisterRequest(
+        name=name,
+        email=email,
+        password=password,
+        college=college,
+        branch=branch,
+        cgpa=cgpa,
+        passed_out_year=passed_out_year,
+        language_choice=language_choice
+    )
 
     try:
-        candidate = await auth_service.register_candidate(register_data, cycle.id)
+        candidate = await auth_service.register_candidate(register_data, cycle.id, resume)
 
         token_data = auth_service.generate_token_response(candidate)
 
@@ -107,8 +131,13 @@ async def register_candidate(
             "user": token_data["user"],
         }
 
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        import traceback
+        logger.error(f"Registration failed: {exc}")
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail="Internal server error during registration")
 
 
 @router.get("/me", response_model=UserResponse)
