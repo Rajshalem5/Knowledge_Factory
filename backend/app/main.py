@@ -1,80 +1,104 @@
-"""FastAPI app bootstrap — all routers wired + SPA fallback."""
+"""FastAPI app bootstrap — all routers wired with security middleware."""
 
 import logging
-from pathlib import Path
-from datetime import datetime, timezone
-
+import os
 from contextlib import asynccontextmanager
-from collections import defaultdict
-from datetime import timedelta
+from datetime import date, datetime, timezone
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
+from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.core.enums import Role, UserStatus, CycleStatus
 from app.database import Base
 
+from fastapi.staticfiles import StaticFiles
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(name)s - %(message)s")
 logger = logging.getLogger(__name__)
 
+os.makedirs(settings.SCREENSHOT_STORAGE_PATH, exist_ok=True)
 
-# ── Application Lifespan ───────────────────────────────────────────
+
+# ── Lifespan Events ────────────────────────────────────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Startup and shutdown lifecycle using the modern lifespan pattern.
-    
-    Replaces the deprecated @app.on_event('startup') pattern.
-    """
+    """Startup and shutdown event handling."""
     logger.info("Starting Knowledge Factory API...")
+    logger.info("Active SQLite database: %s", settings.DATABASE_URL)
 
-    # Register all models eagerly so SQLAlchemy can resolve
-    # cross-model relationship() string references at runtime.
-    import app.models  # noqa: F401
+    from app.database import async_session_factory, Base
+    from sqlalchemy import create_engine as create_sync_engine
 
-    # Auto-create tables for SQLite dev mode (no-op for PostgreSQL — use Alembic)
+    # Import ALL models so SQLAlchemy discovers them
+    from app.features.auth.models import User
+    from app.features.candidates.models import Candidate
+    from app.features.hiring_cycles.models import HiringCycle
+    from app.features.assessments.models import Assessment, Submission, Score
+    from app.features.proctoring.models import ProctoringSession, ProctoringEvent, ProctoringEvidence, RiskSnapshot
+    from app.features.interviews.models import InterviewFeedback
+    from app.features.audit.models import AuditLog
+    from app.features.analytics.models import AIGenerationLog
+    from app.features.notifications.models import EmailLog
+
     if "sqlite" in settings.DATABASE_URL:
-        from sqlalchemy import create_engine as create_sync_engine
-        sync_url = settings.DATABASE_URL.replace("+aiosqlite://", "://")
-        sync_engine = create_sync_engine(sync_url)
+        import sqlite3
+        db_path = settings.DATABASE_URL.replace("sqlite+aiosqlite:///", "")
+        abs_path = os.path.abspath(db_path)
+        logger.info("DB path: %s", abs_path)
+
+        sync_engine = create_sync_engine(settings.DATABASE_URL.replace("+aiosqlite://", "://"))
         Base.metadata.create_all(bind=sync_engine)
         sync_engine.dispose()
-        logger.info("SQLite tables auto-created.")
+
+        # Log active alembic version
+        try:
+            conn = sqlite3.connect(db_path)
+            cur = conn.execute("SELECT version_num FROM alembic_version")
+            version = cur.fetchone()[0]
+            logger.info("Alembic version: %s", version)
+            conn.close()
+        except Exception:
+            logger.warning("Alembic version not stamped (fresh DB)")
 
     logger.info("Database initialized.")
+
+    # Startup: Run diagnostics
+    try:
+        from assessment_diagnostic import run_assessment_diagnostic
+        await run_assessment_diagnostic()
+    except Exception as e:
+        logger.error(f"Diagnostic failed: {e}")
+        
     yield
-    logger.info("Knowledge Factory shutting down.")
 
-# ── Rotating File Logging ─────────────────────────────────────────
-import logging.handlers
-logs_dir = Path(__file__).resolve().parent.parent / "logs"
-logs_dir.mkdir(exist_ok=True)
-file_handler = logging.handlers.TimedRotatingFileHandler(
-    logs_dir / "knowledge_factory.log",
-    when="midnight",
-    interval=1,
-    backupCount=30,
+
+app = FastAPI(
+    title=settings.APP_NAME,
+    version=settings.APP_VERSION,
+    docs_url="/docs" if settings.DEBUG else None,
+    redoc_url="/redoc" if settings.DEBUG else None,
+    lifespan=lifespan,
 )
-file_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s"))
-logging.getLogger().addHandler(file_handler)
 
-app = FastAPI(title=settings.APP_NAME, version=settings.APP_VERSION, docs_url="/docs" if settings.DEBUG else None, redoc_url="/redoc" if settings.DEBUG else None, lifespan=lifespan)
-
-# CORS — origins from config
+# ── CORS — strict, no wildcard fallback ─────────────────────────
 cors_origins = [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()]
+if not cors_origins:
+    logger.warning("CORS_ORIGINS is empty — API will not be accessible from any origin.")
+    cors_origins = []  # empty = all origins denied by CORS spec
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Accept"],
 )
 
-# ── Security Headers Middleware ──────────────────────────────────
+
+# ── Security Headers Middleware ─────────────────────────────────
 @app.middleware("http")
-async def security_headers_middleware(request: Request, call_next):
-    """Add security headers to every response."""
+async def add_security_headers(request: Request, call_next):
     response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
@@ -83,66 +107,19 @@ async def security_headers_middleware(request: Request, call_next):
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
     if not settings.DEBUG:
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-        response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'"
+        response.headers["Content-Security-Policy"] = "default-src 'self'"
     return response
 
 
-# ── Rate Limiting for Auth Endpoints ────────────────────────────
-from collections import defaultdict
-from datetime import datetime, timedelta, timezone
+# ── Global Exception Handler (prevent info leakage) ──────────────
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error("Unhandled exception: %s", exc, exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error"},
+    )
 
-_rate_limit_store: dict[str, list[datetime]] = defaultdict(list)
-RATE_LIMIT_WINDOW = timedelta(minutes=15)
-RATE_LIMIT_MAX = 20  # requests per window
-
-
-@app.middleware("http")
-async def rate_limit_middleware(request: Request, call_next):
-    """Simple in-memory rate limiter for auth endpoints.
-    
-    In DEBUG mode uses a higher threshold so dev workflow is not interrupted.
-    Follows guidance from addyosmani/agent-skills security-and-hardening:
-    rate limiting should never be fully disabled — not even in dev.
-    """
-    path = request.url.path
-    # Only rate-limit auth endpoints
-    if not path.startswith("/api/auth/") or path in ("/api/auth/me", "/api/auth/logout", "/api/auth/refresh", "/api/auth/confirm-password", "/api/auth/delete-account"):
-        return await call_next(request)
-
-    max_requests = RATE_LIMIT_MAX * 5 if settings.DEBUG else RATE_LIMIT_MAX  # 100 in dev, 20 in prod
-
-    client_ip = request.client.host if request.client else "unknown"
-    key = f"{client_ip}:{path}"
-    now = datetime.now(timezone.utc)
-
-    # Clean old entries
-    _rate_limit_store[key] = [t for t in _rate_limit_store[key] if now - t < RATE_LIMIT_WINDOW]
-
-    if len(_rate_limit_store[key]) >= max_requests:
-        from fastapi.responses import JSONResponse
-        return JSONResponse(
-            {"detail": "Too many requests. Please try again later."},
-            status_code=429,
-        )
-
-    _rate_limit_store[key].append(now)
-    return await call_next(request)
-
-
-# ── Maintenance Mode Middleware ─────────────────────────────────
-@app.middleware("http")
-async def maintenance_middleware(request: Request, call_next):
-    if settings.MAINTENANCE_MODE:
-        path = request.url.path
-        if not (path.startswith("/api/auth/login") or path.startswith("/docs") or path == "/health"):
-            from fastapi.responses import JSONResponse
-            return JSONResponse({"detail": "System under maintenance. Please check back later."}, status_code=503)
-    return await call_next(request)
-
-# ── Sentry Init ────────────────────────────────────────────────
-if settings.SENTRY_DSN:
-    import sentry_sdk
-    sentry_sdk.init(dsn=settings.SENTRY_DSN, traces_sample_rate=0.1)
 
 # ── Feature Routers ───────────────────────────────────────────────
 from app.features.auth.routes import router as auth_router
@@ -155,9 +132,10 @@ from app.features.analytics.routes import router as analytics_router
 from app.features.admin.routes import router as admin_router
 from app.features.hiring_cycles.routes import router as hiring_cycles_router
 from app.features.screening.routes import router as screening_router
+from app.features.audit.routes import router as audit_router
 from app.features.code_execution.routes import router as code_execution_router
 from app.features.questions.routes import router as questions_router
-from app.features.audit.routes import router as audit_router
+from app.websockets.proctoring import router as ws_proctoring_router
 
 app.include_router(auth_router, prefix="/api/auth", tags=["Auth"])
 app.include_router(candidates_router, prefix="/api/candidates", tags=["Candidates"])
@@ -171,39 +149,12 @@ app.include_router(analytics_router, prefix="/api/analytics", tags=["Analytics"]
 app.include_router(admin_router, prefix="/api/admin", tags=["Admin"])
 app.include_router(hiring_cycles_router, prefix="/api/hiring-cycles", tags=["Hiring Cycles"])
 app.include_router(screening_router, prefix="/api/screening", tags=["Screening"])
-app.include_router(audit_router, prefix="/api/audit", tags=["Audit"])
+app.include_router(audit_router, prefix="/api/admin", tags=["Audit"])
+app.include_router(ws_proctoring_router, tags=["WebSockets"])
 
+
+app.mount("/api/proctoring/screenshots", StaticFiles(directory=settings.SCREENSHOT_STORAGE_PATH), name="screenshots")
 
 @app.get("/health")
 def health_check():
     return {"status": "ok", "version": settings.APP_VERSION, "debug": settings.DEBUG}
-
-
-# ── SPA Fallback — serve frontend for non-API routes ──────────────
-frontend_dist = Path(__file__).resolve().parent.parent.parent / "app" / "dist"
-if frontend_dist.exists() and (frontend_dist / "index.html").exists():
-    # Serve /assets, /favicon.svg, /icons.svg as static files
-    app.mount("/assets", StaticFiles(directory=str(frontend_dist / "assets")), name="assets")
-
-    assets_dir = frontend_dist / "assets"
-
-    @app.get("/{full_path:path}")
-    async def spa_fallback(full_path: str):
-        # Skip API routes, health, docs
-        if (full_path.startswith("api/") or full_path == "api"
-            or full_path.startswith("docs") or full_path.startswith("redoc")
-            or full_path == "health" or full_path.startswith("openapi")):
-            from fastapi.responses import JSONResponse
-            return JSONResponse({"detail": "Not Found"}, status_code=404)
-        # Serve actual files like /favicon.svg, /icons.svg
-        if full_path in ("favicon.svg", "icons.svg"):
-            f = frontend_dist / full_path
-            if f.exists():
-                return HTMLResponse(content=f.read_bytes(), media_type="image/svg+xml")
-        return HTMLResponse(content=(frontend_dist / "index.html").read_text())
-
-    @app.get("/")
-    async def root():
-        return HTMLResponse(content=(frontend_dist / "index.html").read_text())
-
-    logger.info("Frontend SPA mounted from %s", frontend_dist)

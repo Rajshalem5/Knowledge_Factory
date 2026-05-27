@@ -117,14 +117,14 @@ class TestRole:
 
     def test_role_values(self):
         """Test: Role enum has expected members."""
-        assert Role.SUPERADMIN.value == "SUPERADMIN"
+        assert Role.SUPER_ADMIN.value == "SUPER_ADMIN"
         assert Role.ADMIN.value == "ADMIN"
         assert Role.HR.value == "HR"
         assert Role.INTERVIEWER.value == "INTERVIEWER"
 
     def test_role_string_coercion(self):
         """Test: Role values can be compared with strings."""
-        assert Role("SUPERADMIN") == Role.SUPERADMIN
+        assert Role("SUPER_ADMIN") == Role.SUPER_ADMIN
         assert Role("ADMIN") == Role.ADMIN
         assert Role("HR") == Role.HR
         assert Role("INTERVIEWER") == Role.INTERVIEWER

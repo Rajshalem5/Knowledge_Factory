@@ -2,12 +2,14 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   Users,
+  Upload,
   MessageSquare,
   CheckCircle,
   BarChart3,
   Shield,
   UserCircle,
   Code,
+  FileText,
   Factory,
   LogOut,
 } from 'lucide-react';
@@ -24,12 +26,18 @@ interface NavItem {
 
 const NAV_ITEMS: Record<Role, NavItem[]> = {
   candidate: [
-    { label: 'My Portal', path: '/portal', icon: UserCircle },
-    { label: 'Assessment', path: '/assessment', icon: Code },
+    { label: 'Dashboard', path: '/portal', icon: LayoutDashboard },
+    { label: 'Assessments', path: '/portal/assessments', icon: Code },
+    { label: 'Results', path: '/portal/results', icon: CheckCircle },
+    { label: 'Documents', path: '/portal/documents', icon: FileText },
+    { label: 'Notifications', path: '/portal/notifications', icon: MessageSquare },
+    { label: 'My Profile', path: '/portal/profile', icon: UserCircle },
   ],
   hr: [
     { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { label: 'Candidates', path: '/candidates', icon: Users },
+    { label: 'Upload Center', path: '/uploads', icon: Upload },
+    { label: 'Resumes', path: '/resumes', icon: FileText },
     { label: 'Selection', path: '/selection', icon: CheckCircle },
     { label: 'Analytics', path: '/analytics', icon: BarChart3 },
   ],
@@ -40,6 +48,8 @@ const NAV_ITEMS: Record<Role, NavItem[]> = {
   admin: [
     { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { label: 'Candidates', path: '/candidates', icon: Users },
+    { label: 'Upload Center', path: '/uploads', icon: Upload },
+    { label: 'Resumes', path: '/resumes', icon: FileText },
     { label: 'Interviews', path: '/interview', icon: MessageSquare },
     { label: 'Selection', path: '/selection', icon: CheckCircle },
     { label: 'Analytics', path: '/analytics', icon: BarChart3 },
@@ -48,6 +58,8 @@ const NAV_ITEMS: Record<Role, NavItem[]> = {
     { label: 'Super Admin', path: '/superadmin', icon: Shield },
     { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { label: 'Candidates', path: '/candidates', icon: Users },
+    { label: 'Upload Center', path: '/uploads', icon: Upload },
+    { label: 'Resumes', path: '/resumes', icon: FileText },
     { label: 'Selection', path: '/selection', icon: CheckCircle },
     { label: 'Analytics', path: '/analytics', icon: BarChart3 },
   ],

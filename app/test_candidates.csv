@@ -1,0 +1,11 @@
+name,email,phone,college,degree,branch,cgpa,graduation_year,skills
+John Doe,john.doe@gmail.com,9876543210,VIT,B.Tech,CSE,8.4,2025,"Python;React;SQL"
+Jane Smith,jane.smith@yahoo.com,9812345678,IIT Delhi,B.Tech,ECE,9.2,2026,"C++;Embedded Systems;Verilog"
+Alice Williams,alice.w@outlook.com,9765432109,NIT Trichy,B.Arch,Architecture,7.5,2024,"AutoCAD;SketchUp;Revit"
+Bob Brown,bob.brown@hotmail.com,9123456780,BITS Pilani,B.E.,Computer Science,8.9,2025,"Java;Spring Boot;Docker"
+Charlie Davis,charlie.d@gmail.com,9888777666,DTU,B.Tech,IT,8.1,2026,"JavaScript;Node.js;MongoDB"
+Emily Evans,emily.e@test.com,9998887776,SRM,M.Tech,Data Science,9.5,2025,"Python;Pandas;TensorFlow"
+Frank Foster,frank.f@company.com,9112223334,COEP,B.E.,Mechanical,7.2,2024,"SolidWorks;CATIA;Ansys"
+Grace Gray,grace.g@gmail.com,9445556667,Anna University,B.E.,EEE,8.6,2026,"MATLAB;Circuit Design;Power Systems"
+Henry Hill,henry.h@edu.in,9223334445,Jadavpur University,B.E.,Civil,7.8,2025,"StaadPro;Construction Management"
+Ivy Irwin,ivy.i@live.com,9334445556,Manipal,B.Tech,Biotech,8.3,2026,"Bioinformatics;Lab Techniques;Genetics"

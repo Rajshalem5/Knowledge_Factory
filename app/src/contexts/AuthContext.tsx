@@ -9,14 +9,16 @@ import { useAuth as useClerkAuth, useUser, useClerk } from '@clerk/react';
 import type { User } from '../types';
 import { authApi } from '../api/auth';
 import { tokenStore } from '../api/token';
+import { normalizeRole } from '../utils/roles';
 
 interface AuthContextValue {
   user: User | null;
   token: string | null;
   isLoading: boolean;
+  isVerifying: boolean;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (data: RegisterData) => Promise<void>;
+  login: (email: string, password: string) => Promise<User>;
+  register: (data: RegisterData | FormData) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
   hasRole: (role: string[]) => boolean;
@@ -26,11 +28,10 @@ interface RegisterData {
   name: string;
   email: string;
   password: string;
-  college: string;
-  branch: string;
-  cgpa: number;
-  passed_out_year: number;
-  language_choice: string;
+  college?: string;
+  branch?: string;
+  cgpa?: number;
+  passed_out_year?: number;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -40,33 +41,73 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { user: clerkUser } = useUser();
   const { signOut } = useClerk();
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(() => tokenStore.getAccessToken());
   const [isVerifying, setIsVerifying] = useState(true);
 
-  // Sync Clerk auth state → local user state
+  // On mount: try cookie-based refresh for session persistence across reloads
   useEffect(() => {
-    if (!clerkLoaded) return;
+    let timeoutId: ReturnType<typeof setTimeout>;
+    let settled = false;
 
-    if (!isSignedIn || !clerkUser) {
-      setUser(null);
-      setToken(null);
-      tokenStore.clear();
-      setIsVerifying(false);
+    const forceUnverified = () => {
+      if (!settled) {
+        settled = true;
+        console.log('[AuthContext] Session verification timed out after 5s — treating as unauthenticated');
+        setIsVerifying(false);
+      }
+    };
+
+    // 5-second safety timeout: if backend is unreachable, unblock the UI
+    timeoutId = setTimeout(forceUnverified, 5000);
+
+    const accessToken = tokenStore.getAccessToken();
+
+    if (!accessToken) {
+      // No in-memory token — try cookie-based refresh
+      authApi.refreshToken()
+        .then((refreshRes: any) => {
+          if (!refreshRes || !refreshRes.access_token) throw new Error('no refresh');
+          return authApi.normalizeTokenResponse(refreshRes as any);
+        })
+        .then((normalized) => {
+          if (normalized) {
+            tokenStore.setAccessToken(normalized.token);
+            setToken(normalized.token);
+            setUser(normalized.user);
+          }
+        })
+        .catch(() => {
+          // No cookie either — user needs to log in
+        })
+        .finally(() => {
+          clearTimeout(timeoutId);
+          if (!settled) {
+            settled = true;
+            setIsVerifying(false);
+          }
+        });
       return;
     }
 
-    // Get role from Clerk user's public metadata
-    const role = clerkUser.publicMetadata?.role as string | undefined;
-
-    // Fall back to fetching user profile from KF backend if no role in metadata
-    const activeUser = clerkUser; // captured at effect time, non-null here
-    async function syncUser() {
-      try {
-        const clerkToken = await getToken();
-        if (!clerkToken || !activeUser) {
-          setUser(null);
-          setIsVerifying(false);
-          return;
+    // Have an in-memory token — verify current session
+    authApi.getMe()
+      .then((userData) => {
+        const role = normalizeRole(userData.role);
+        console.log(`[AuthContext] getMe success: id=${userData.id}, email=${userData.email}, rawRole=${userData.role}, normalizedRole=${role}`);
+        setUser({
+          id: userData.id,
+          email: userData.email,
+          name: userData.name,
+          role,
+        });
+      })
+      .catch(() => {
+        // Try refresh as fallback (cookie-based)
+        return authApi.refreshToken();
+      })
+      .then((refreshRes) => {
+        if (refreshRes) {
+          return authApi.normalizeTokenResponse(refreshRes);
         }
 
         // Store the Clerk token for API calls
@@ -92,15 +133,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } catch {
         setUser(null);
-        setToken(null);
-        tokenStore.clear();
-      } finally {
-        setIsVerifying(false);
-      }
-    }
-
-    syncUser();
-  }, [clerkLoaded, isSignedIn, clerkUser, getToken]);
+      })
+      .finally(() => {
+        clearTimeout(timeoutId);
+        if (!settled) {
+          settled = true;
+          setIsVerifying(false);
+        }
+      });
+  }, []);
 
   const handleLogout = useCallback(() => {
     tokenStore.clear();
@@ -115,11 +156,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     tokenStore.setAccessToken(response.token);
     setToken(response.token);
     setUser(response.user);
+    console.log(`[AuthContext] login: User set with role=${response.user.role}`);
+    return response.user;
   }, []);
 
-  const register = useCallback(async (data: RegisterData) => {
-    // Use Clerk's sign-up via the prebuilt UI instead
-    // This path is kept for backward compatibility
+  const register = useCallback(async (data: RegisterData | FormData) => {
     const response = await authApi.register(data);
     tokenStore.setAccessToken(response.token);
     setToken(response.token);
@@ -136,11 +177,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const userData = await authApi.getMe();
+      const role = normalizeRole(userData.role);
+      console.log(`[AuthContext] refreshUser: rawRole=${userData.role}, normalizedRole=${role}`);
       setUser({
         id: userData.id,
         email: userData.email,
         name: userData.name,
-        role: userData.role.toLowerCase() as User['role'],
+        role,
       });
     } catch {
       handleLogout();
@@ -155,14 +198,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const hasRole = useCallback((roles: string[]): boolean => {
     if (!user) return false;
-    const userRole = user.role.toLowerCase().replace('_', '');
-    return roles.some(r => r.toLowerCase().replace('_', '') === userRole);
+    const userRole = normalizeRole(user.role);
+    const normalizedAllowed = roles.map(r => normalizeRole(r));
+    const hasMatch = normalizedAllowed.includes(userRole);
+    console.log(`[Auth] hasRole: UserRole=${userRole} (raw: ${user.role}), Allowed=[${normalizedAllowed.join(', ')}] (raw: [${roles.join(', ')}]). Result=${hasMatch}`);
+    return hasMatch;
   }, [user]);
 
   const value: AuthContextValue = {
     user,
     token,
     isLoading: isVerifying,
+    isVerifying,
     isAuthenticated: !!token && !!user,
     login,
     register,
@@ -171,10 +218,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     hasRole,
   };
 
-  if (isVerifying && clerkLoaded) {
-    return null; // Block render until session is verified
-  }
+  // Diagnostic: log auth state changes
+  console.log(`[AuthContext] isVerifying=${isVerifying}, user=${user?.email}, loading=${isVerifying}`);
 
+  // Always render children — public routes must not be blocked during verification.
+  // ProtectedRoute handles the loading gate for protected pages.
   return (
     <AuthContext.Provider value={value}>
       {children}

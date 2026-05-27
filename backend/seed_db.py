@@ -6,17 +6,19 @@ from app.database import async_session_factory, Base
 from sqlalchemy import create_engine as create_sync_engine
 from app.core.security import hash_password, verify_password
 from datetime import date
-from sqlalchemy import select
+from sqlalchemy import select, delete
 
 # Import ALL models so SQLAlchemy can resolve relationships
 from app.features.auth.models import User
 from app.features.candidates.models import Candidate
 from app.features.hiring_cycles.models import HiringCycle
 from app.features.assessments.models import Assessment, Submission, Score
-from app.features.proctoring.models import ProctoringRecord
 from app.features.interviews.models import InterviewFeedback
 from app.features.audit.models import AuditLog
 from app.features.analytics.models import AIGenerationLog
+from app.features.proctoring.models import ProctoringSession, ProctoringEvent, ProctoringEvidence, RiskSnapshot
+from app.features.notifications.models import EmailLog
+
 
 
 async def seed():
@@ -32,25 +34,43 @@ async def seed():
 
     async with async_session_factory() as session:
         async with session.begin():
+            # Clear All Existing Data (Async)
+            print('Clearing all existing data...')
+            await session.execute(delete(RiskSnapshot))
+            await session.execute(delete(ProctoringEvidence))
+            await session.execute(delete(ProctoringEvent))
+            await session.execute(delete(ProctoringSession))
+            await session.execute(delete(EmailLog))
+            await session.execute(delete(Score))
+            await session.execute(delete(Submission))
+            await session.execute(delete(Assessment))
+            await session.execute(delete(InterviewFeedback))
+            await session.execute(delete(Candidate))
+            await session.execute(delete(HiringCycle))
+            await session.execute(delete(AuditLog))
+            await session.execute(delete(AIGenerationLog))
+            await session.execute(delete(User))
+            print('All existing data cleared.')
+
             # ── Staff Users ─────────────────────────────────────────
             staff_users = [
                 {
-                    "email": "hr@knowledgefactory.com",
-                    "password": "Hr@12345",
-                    "name": "HR Manager",
-                    "role": "HR",
-                },
-                {
-                    "email": "admin@knowledgefactory.io",
-                    "password": "Admin@12345",
+                    "email": "admin@test.com",
+                    "password": "Test@123",
                     "name": "Admin User",
                     "role": "ADMIN",
                 },
                 {
-                    "email": "ops@test.com",
-                    "password": "Ops@12345",
-                    "name": "Ops User",
-                    "role": "SUPERADMIN",
+                    "email": "hr@test.com",
+                    "password": "Test@123",
+                    "name": "HR Manager",
+                    "role": "HR",
+                },
+                {
+                    "email": "interviewer@test.com",
+                    "password": "Test@123",
+                    "name": "Interviewer",
+                    "role": "INTERVIEWER",
                 },
             ]
             for su in staff_users:
@@ -95,13 +115,13 @@ async def seed():
             existing = (await session.execute(stmt)).scalar_one_or_none()
             if not existing:
                 candidates_data = [
-                    {"name": "Alice Sharma", "email": "alice@test.com", "password": "Candidate@123", "college": "IIT Bombay", "branch": "CSE", "cgpa": 8.7, "passed_out_year": 2026, "language_choice": "python"},
-                    {"name": "Bob Patel", "email": "bob@test.com", "password": "Candidate@123", "college": "NIT Trichy", "branch": "ECE", "cgpa": 7.2, "passed_out_year": 2026, "language_choice": "java"},
-                    {"name": "Charlie Singh", "email": "charlie@test.com", "password": "Candidate@123", "college": "DTU Delhi", "branch": "IT", "cgpa": 6.5, "passed_out_year": 2025, "language_choice": "python"},
-                    {"name": "Divya Kumar", "email": "divya@test.com", "password": "Candidate@123", "college": "VIT Vellore", "branch": "CSE", "cgpa": 9.1, "passed_out_year": 2026, "language_choice": "cpp"},
-                    {"name": "Esha Gupta", "email": "esha@test.com", "password": "Candidate@123", "college": "SRM Chennai", "branch": "EEE", "cgpa": 5.8, "passed_out_year": 2026, "language_choice": "python"},
-                    {"name": "Farhan Qureshi", "email": "farhan@test.com", "password": "Candidate@123", "college": "BITS Pilani", "branch": "CSE", "cgpa": 8.3, "passed_out_year": 2024, "language_choice": "java"},
-                    {"name": "Gauri Joshi", "email": "gauri@test.com", "password": "Candidate@123", "college": "COEP Pune", "branch": "CIVIL", "cgpa": 7.8, "passed_out_year": 2026, "language_choice": "python"},
+                    {"name": "Alice Sharma", "email": "alice@test.com", "password": "Welcome@123", "college": "IIT Bombay", "branch": "CSE", "cgpa": 8.7, "passed_out_year": 2026, "language_choice": "python"},
+                    {"name": "Bob Patel", "email": "bob@test.com", "password": "Welcome@123", "college": "NIT Trichy", "branch": "ECE", "cgpa": 7.2, "passed_out_year": 2026, "language_choice": "java"},
+                    {"name": "Charlie Singh", "email": "charlie@test.com", "password": "Welcome@123", "college": "DTU Delhi", "branch": "IT", "cgpa": 6.5, "passed_out_year": 2025, "language_choice": "python"},
+                    {"name": "Divya Kumar", "email": "divya@test.com", "password": "Welcome@123", "college": "VIT Vellore", "branch": "CSE", "cgpa": 9.1, "passed_out_year": 2026, "language_choice": "cpp"},
+                    {"name": "Esha Gupta", "email": "esha@test.com", "password": "Welcome@123", "college": "SRM Chennai", "branch": "EEE", "cgpa": 5.8, "passed_out_year": 2026, "language_choice": "python"},
+                    {"name": "Farhan Qureshi", "email": "farhan@test.com", "password": "Welcome@123", "college": "BITS Pilani", "branch": "CSE", "cgpa": 8.3, "passed_out_year": 2024, "language_choice": "java"},
+                    {"name": "Gauri Joshi", "email": "gauri@test.com", "password": "Welcome@123", "college": "COEP Pune", "branch": "CIVIL", "cgpa": 7.8, "passed_out_year": 2026, "language_choice": "python"},
                 ]
                 from app.core.security import hash_password as _hash
                 for cd in candidates_data:

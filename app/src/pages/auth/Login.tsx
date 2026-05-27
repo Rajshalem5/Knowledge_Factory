@@ -1,32 +1,27 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Factory } from 'lucide-react';
 import { Button, Input, Card } from '../../components/ui';
 import { useAuth } from '../../contexts/AuthContext';
-import { ROLE_HOME_ROUTES } from '../../utils/roles';
-import { useClerk } from '@clerk/react';
+import { getSafeHomeRoute } from '../../utils/roles';
 
 export default function Login() {
   const navigate = useNavigate();
-  const { login, isLoading, user, isAuthenticated } = useAuth();
-  const clerk = useClerk();
+  const { login, isLoading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-
-  // Redirect if already authenticated
-  useEffect(() => {
-    if (isAuthenticated && user) {
-      const homeRoute = ROLE_HOME_ROUTES[user.role] || '/portal';
-      navigate(homeRoute);
-    }
-  }, [isAuthenticated, user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     try {
-      await login(email, password);
+      const userData = await login(email, password);
+      const rawRole = userData.role || 'candidate';
+      const normalizedRole = rawRole.toLowerCase().replace(/_/g, '');
+      const target = getSafeHomeRoute(normalizedRole);
+      console.log(`[Login] Success. User: ${userData.email}, RawRole: ${rawRole}, NormalizedRole: ${normalizedRole}, Redirecting to: ${target}`);
+      navigate(target);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     }

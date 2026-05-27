@@ -1,5 +1,7 @@
 # Taste (Continuously Learned by [CommandCode][cmd])
 
+[cmd]: https://commandcode.ai/
+
 [cmd
 ]: https://commandcode.ai/
 

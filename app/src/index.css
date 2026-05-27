@@ -148,4 +148,7 @@
   .tracking-architectural {
     letter-spacing: 0.05em;
   }
+  .mirror {
+    transform: scaleX(-1);
+  }
 }

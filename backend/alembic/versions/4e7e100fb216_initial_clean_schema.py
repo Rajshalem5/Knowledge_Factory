@@ -35,7 +35,7 @@ def upgrade() -> None:
     op.create_index(op.f('ix_ai_generation_logs_prompt_hash'), 'ai_generation_logs', ['prompt_hash'], unique=False)
     op.create_index(op.f('ix_ai_generation_logs_status'), 'ai_generation_logs', ['status'], unique=False)
     op.create_table('email_logs',
-    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('id', sa.String(length=36), nullable=False),
     sa.Column('template_name', sa.String(length=100), nullable=False),
     sa.Column('recipient_email', sa.String(length=255), nullable=False),
     sa.Column('subject', sa.String(length=500), nullable=False),

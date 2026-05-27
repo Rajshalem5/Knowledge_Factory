@@ -1,91 +1,85 @@
 import logging
 import tempfile
+import os
+import io
 
 logger = logging.getLogger(__name__)
 
-# Heavy deps loaded lazily so the server starts even if not installed
-_reader = None
-
-def _get_reader():
-    global _reader
-    if _reader is None:
-        try:
-            import torch
-            import easyocr
-            USE_GPU = torch.cuda.is_available()
-            logger.info(f"GPU Available: {USE_GPU}")
-            _reader = easyocr.Reader(
-                ['en'],
-                gpu=USE_GPU,
-                model_storage_directory='./models'
-            )
-        except ImportError as e:
-            raise RuntimeError(
-                f"OCR dependencies not installed ({e}). "
-                "Run: pip install easyocr torch"
-            ) from e
-    return _reader
-
-
-def extract_text_with_ocr(file_bytes: bytes):
-    try:
-        import numpy as np
-        import fitz
-        reader = _get_reader()
-
-        doc = fitz.open(stream=file_bytes, filetype="pdf")
-        full_text = ""
-
-        for page in doc:
-            mat = fitz.Matrix(2.5, 2.5)  # high resolution
-            pix = page.get_pixmap(matrix=mat)
-
-            img = np.frombuffer(pix.samples, dtype=np.uint8)
-            img = img.reshape(pix.height, pix.width, pix.n)
-
-            results = reader.readtext(
-                img,
-                detail=0,
-                paragraph=True,
-                batch_size=8
-            )
-
-            page_text = " ".join(results)
-            full_text += page_text + "\n"
-
-        return full_text
-
-    except Exception as e:
-        logger.error(f"OCR failed: {str(e)}")
-        return ""
-
-
 # 🔹 MAIN extractor (PDF + DOCX + DOC)
-def extract_text_from_file(file_bytes: bytes, filename: str):
+async def extract_text_from_file(file_bytes: bytes, filename: str):
+    """
+    Extract text from documents.
+    Provides detailed logging of failures and missing dependencies.
+    """
+    suffix = filename.split(".")[-1].lower()
+    logger.info(f"[parser] Attempting extraction from {filename} (size: {len(file_bytes)} bytes)")
+
     try:
-        from docling.document_converter import DocumentConverter
-        converter = DocumentConverter()
+        # Try Docling first (if installed)
+        try:
+            from docling.document_converter import DocumentConverter
+            
+            with tempfile.NamedTemporaryFile(delete=False, suffix=f".{suffix}") as tmp:
+                tmp.write(file_bytes)
+                tmp_path = tmp.name
 
-        suffix = filename.split(".")[-1].lower()
+            try:
+                converter = DocumentConverter()
+                result = converter.convert(tmp_path)
+                text = result.document.export_to_text()
+                if text.strip():
+                    logger.info(f"[parser] Docling successful for {filename}")
+                    return text
+            finally:
+                if os.path.exists(tmp_path):
+                    os.remove(tmp_path)
+        except ImportError:
+            logger.debug("[parser] Docling not installed, trying fallbacks...")
 
-    
-        with tempfile.NamedTemporaryFile(delete=False, suffix=f".{suffix}") as tmp:
-            tmp.write(file_bytes)
-            tmp_path = tmp.name
+        # Fallback 1: PDF via PyMuPDF or pypdf
+        if suffix == "pdf":
+            try:
+                import fitz # PyMuPDF
+                doc = fitz.open(stream=file_bytes, filetype="pdf")
+                text = ""
+                for page in doc:
+                    text += page.get_text()
+                if text.strip():
+                    logger.info(f"[parser] PyMuPDF successful for {filename}")
+                    return text
+            except ImportError:
+                logger.debug("[parser] PyMuPDF not installed")
+            
+            try:
+                import pypdf
+                import io
+                reader = pypdf.PdfReader(io.BytesIO(file_bytes))
+                text = ""
+                for page in reader.pages:
+                    text += page.extract_text() or ""
+                if text.strip():
+                    logger.info(f"[parser] pypdf successful for {filename}")
+                    return text
+            except ImportError:
+                logger.debug("[parser] pypdf not installed")
 
-        result = converter.convert(tmp_path)
-        text = result.document.export_to_text()
+        # Fallback 2: DOCX via python-docx
+        if suffix == "docx":
+            try:
+                import docx
+                import io
+                doc = docx.Document(io.BytesIO(file_bytes))
+                text = "\n".join([para.text for para in doc.paragraphs])
+                if text.strip():
+                    logger.info(f"[parser] python-docx successful for {filename}")
+                    return text
+            except ImportError:
+                logger.debug("[parser] python-docx not installed")
 
-        
-        if not text.strip() and suffix == "pdf":
-            logger.info("Docling empty → OCR fallback")
-            text = extract_text_with_ocr(file_bytes)
-
-        if not text.strip():
-            raise ValueError("Unable to extract text")
-
-        return text
+        # Final check
+        raise ValueError(f"No suitable parser installed for {suffix} files. Please install docling, pymupdf, or python-docx.")
 
     except Exception as e:
-        logger.error(f"Extraction failed: {str(e)}")
-        raise ValueError("Invalid or unsupported file")
+        logger.error(f"[parser] Extraction failed for {filename}: {str(e)}")
+        # We re-raise a clear error message
+        raise ValueError(f"Parsing failed: {str(e)}")

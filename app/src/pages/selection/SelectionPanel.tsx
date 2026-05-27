@@ -1,97 +1,108 @@
-import { useState } from 'react';
 import { AppShell } from '../../components/layout/AppShell';
-import { Card, Button, Toggle, LoadingState, ErrorState } from '../../components/ui';
-import { useCandidates, useUpdateCandidateStatus } from '../../hooks/useCandidates';
-import { CheckCircle, XCircle, Trophy } from 'lucide-react';
+import { Card, Badge, LoadingState, ErrorState } from '../../components/ui';
+import { DataTable, type Column } from '../../components/ui/DataTable';
+import { useCandidates } from '../../hooks/useCandidates';
+import { Calculator, Trophy } from 'lucide-react';
+import type { Candidate } from '../../types';
 
 export default function SelectionPanel() {
-  const { data: candidatesData, isLoading, error } = useCandidates({ limit: 100 });
-  const updateStatus = useUpdateCandidateStatus();
-  const [selections, setSelections] = useState<Record<string, boolean>>({});
+  // Fetch candidates
+  const { data: candidatesData, isLoading, error } = useCandidates({ 
+    limit: 200, 
+    sort_by: 'adjusted_final_score', 
+    sort_order: 'desc' 
+  });
+  
+  const rawCandidates = Array.isArray(candidatesData?.data) ? candidatesData.data : [];
 
-  const candidates = (candidatesData?.data ?? []).filter(
-    c => c.display_status === 'interviewed' || c.display_status === 'selected' || c.display_status === 'rejected'
-  );
-
-  const handleToggle = (id: string, selected: boolean) => {
-    setSelections(prev => ({ ...prev, [id]: selected }));
-  };
-
-  const handleConfirmAll = () => {
-    Object.entries(selections).forEach(([id, selected]) => {
-      updateStatus.mutate({ id, status: selected ? 'selected' : 'rejected' });
+  // Filter: Only show candidates who cleared all 3 rounds (Screening, MCQ, Coding)
+  const qualifiedStatuses = ['ROUND3_PASSED', 'INTERVIEW_SCHEDULED', 'INTERVIEW_COMPLETED', 'SELECTED'];
+  
+  const candidates = rawCandidates
+    .filter(c => qualifiedStatuses.includes(c.status))
+    .sort((a, b) => {
+      const scoreA = a.adjusted_final_score ?? a.composite_score ?? a.screening_score ?? 0;
+      const scoreB = b.adjusted_final_score ?? b.composite_score ?? b.screening_score ?? 0;
+      return scoreB - scoreA;
     });
-  };
+
+  const columns: Column<Candidate>[] = [
+    {
+      key: 'rank',
+      header: 'Rank',
+      render: (_, idx) => <span className="font-black text-secondary">#{idx + 1}</span>
+    },
+    {
+      key: 'name',
+      header: 'Candidate',
+      render: (c) => (
+        <div>
+          <p className="font-bold text-on-surface">{c.name}</p>
+          <p className="text-[10px] text-tertiary">{c.college}</p>
+        </div>
+      )
+    },
+    {
+      key: 'score',
+      header: 'Score',
+      render: (c) => {
+        const score = c.adjusted_final_score ?? c.composite_score ?? 0;
+        return (
+          <div className="flex items-center gap-2">
+             <Calculator size={12} className="text-tertiary" />
+             <span className="font-mono font-bold text-sm">{score.toFixed(1)}%</span>
+          </div>
+        );
+      }
+    },
+    {
+      key: 'status',
+      header: 'Stage',
+      render: (c) => {
+        const labels: Record<string, string> = {
+          'ROUND3_PASSED': 'CODING PASSED',
+          'INTERVIEW_SCHEDULED': 'INTERVIEWING',
+          'INTERVIEW_COMPLETED': 'INTERVIEWED',
+          'SELECTED': 'SELECTED',
+          'FINAL_REJECTED': 'REJECTED'
+        };
+        const label = labels[c.status] || c.display_status?.toUpperCase() || 'QUALIFIED';
+        return (
+          <Badge variant={c.status === 'SELECTED' ? 'success' : c.status === 'FINAL_REJECTED' ? 'danger' : 'default'}>
+            {label}
+          </Badge>
+        );
+      }
+    }
+  ];
 
   if (isLoading) return <AppShell title="Selection"><LoadingState /></AppShell>;
   if (error) return <AppShell title="Selection"><ErrorState /></AppShell>;
 
   return (
-    <AppShell title="Final Selection">
+    <AppShell title="Ranking & Selection">
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex justify-between items-center">
           <div>
-            <h2 className="text-xl font-bold text-on-surface tracking-tight-display">Final Selection</h2>
-            <p className="text-sm text-tertiary">{candidates.length} candidates ready for final decision</p>
+            <h1 className="text-2xl font-bold text-on-surface">Final Selection Leaderboard</h1>
+            <p className="text-sm text-tertiary">Ranking candidates who successfully cleared Screening, MCQ, and Coding rounds</p>
           </div>
-          <Button onClick={handleConfirmAll} isLoading={updateStatus.isPending}>
-            Confirm All Decisions
-          </Button>
+          <Trophy size={32} className="text-secondary opacity-50" />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {candidates.map(candidate => {
-            const isSelected = selections[candidate.id] ?? candidate.display_status === 'selected';
-            return (
-              <Card key={candidate.id}>
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-secondary/20 flex items-center justify-center">
-                      <span className="text-sm font-bold text-secondary">{candidate.name.charAt(0)}</span>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-on-surface">{candidate.name}</p>
-                      <p className="text-xs text-tertiary">{candidate.college}</p>
-                    </div>
-                  </div>
-                  <Toggle
-                    enabled={isSelected}
-                    onChange={(val) => handleToggle(candidate.id, val)}
-                  />
-                </div>
-
-                <div className="flex items-center gap-2 text-xs text-tertiary mb-3">
-                  <span>{candidate.branch}</span>
-                  <span>|</span>
-                  <span>CGPA: {candidate.cgpa}</span>
-                </div>
-
-                {candidate.scores.length > 0 && (
-                  <div className="flex gap-2 mb-3">
-                    {candidate.scores.map(s => (
-                      <span key={s.round} className="text-[10px] px-2 py-0.5 rounded bg-[var(--bg-layer1)] font-mono text-on-surface-variant">
-                        R{s.round}: {s.score}/{s.maxScore}
-                      </span>
-                    ))}
-                  </div>
-                )}
-
-                <div className={`flex items-center gap-1.5 pt-3 bg-[var(--bg-layer1)] -mx-4 -mb-4 px-4 pb-4 rounded-b-md text-xs font-medium ${
-                  isSelected ? 'text-secondary' : 'text-danger'
-                }`}>
-                  {isSelected ? <CheckCircle size={12} /> : <XCircle size={12} />}
-                  {isSelected ? 'Select' : 'Reject'}
-                </div>
-              </Card>
-            );
-          })}
-        </div>
-
-        {candidates.length === 0 && (
+        {candidates.length > 0 ? (
+          <Card padding="none">
+             <DataTable
+               columns={columns}
+               data={candidates}
+               keyExtractor={c => c.id}
+             />
+          </Card>
+        ) : (
           <Card>
-            <div className="py-12 text-center">
-              <Trophy size={32} className="mx-auto mb-3 text-tertiary opacity-30" />
-              <p className="text-sm text-tertiary">No candidates ready for selection</p>
+            <div className="py-20 text-center space-y-4">
+               <Trophy size={48} className="mx-auto text-ghost" />
+               <p className="text-tertiary">No candidates have completed evaluations yet.</p>
             </div>
           </Card>
         )}

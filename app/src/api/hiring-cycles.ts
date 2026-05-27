@@ -20,4 +20,5 @@ export interface HiringCycleItem {
 export const hiringCyclesApi = {
   getAll: () =>
     api.get<HiringCycleItem[]>('/api/hiring-cycles/'),
+  update: (id: string, data: any) => api.patch(`/api/hiring-cycles/${id}`, data),
 };

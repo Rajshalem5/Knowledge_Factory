@@ -18,7 +18,7 @@ async def submit_feedback(
     candidate_id: str,
     feedback_data: dict,
     db: AsyncSession = Depends(get_db),
-    current_user = Depends(require_role([Role.INTERVIEWER, Role.ADMIN, Role.SUPERADMIN])),
+    current_user = Depends(require_role([Role.INTERVIEWER, Role.ADMIN, Role.SUPER_ADMIN])),
 ):
     """Submit interviewer feedback for a candidate.
     
@@ -62,7 +62,7 @@ async def submit_feedback(
 
 
 @router.get("/candidates/{candidate_id}/feedback")
-async def get_feedback(candidate_id: str, db: AsyncSession = Depends(get_db), current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPERADMIN]))):
+async def get_feedback(candidate_id: str, db: AsyncSession = Depends(get_db), current_user = Depends(require_role([Role.HR, Role.ADMIN, Role.SUPER_ADMIN]))):
     stmt = select(InterviewFeedback).where(InterviewFeedback.candidate_id == str(candidate_id))
     res = await db.execute(stmt)
     fbs = res.scalars().all()

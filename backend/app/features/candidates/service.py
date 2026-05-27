@@ -44,21 +44,30 @@ class CandidateService:
     ):
         query = select(Candidate)
 
-        # Simplified filtering - bypass complex apply_candidate_filters for now
-        if status:
-            query = query.where(Candidate.status == status.upper())
-        if search:
-            query = query.where(Candidate.name.ilike(f'%{search}%'))
-        if name:
-            query = query.where(Candidate.name.ilike(f'%{name}%'))
-        if branch:
-            query = query.where(Candidate.branch.ilike(f'%{branch}%'))
-        if college:
-            query = query.where(Candidate.college.ilike(f'%{college}%'))
-        if cgpa_min:
-            query = query.where(Candidate.cgpa >= cgpa_min)
-        if cgpa_max:
-            query = query.where(Candidate.cgpa <= cgpa_max)
+        query = apply_candidate_filters(
+            query,
+            search=search, name=name,
+            branch=branch, college=college,
+            cgpa_min=cgpa_min, cgpa_max=cgpa_max,
+            passed_out_year=passed_out_year,
+            language_choice=language_choice,
+            has_resume=has_resume, has_govt_id=has_govt_id,
+            has_phone=has_phone,
+            has_assessment=has_assessment,
+            has_interview_feedback=has_interview_feedback,
+            created_after=created_after, created_before=created_before,
+            passed_out_year_min=passed_out_year_min,
+            passed_out_year_max=passed_out_year_max,
+            email_verified=email_verified,
+            phone=phone, email=email,
+            cycle_id=cycle_id,
+            status=status,
+            updated_after=updated_after,
+            updated_before=updated_before,
+            assessment_status=assessment_status,
+            min_score=min_score,
+            max_score=max_score,
+        )
 
         count_q = select(func.count()).select_from(query.subquery())
         count_result = await self.db.execute(count_q)
@@ -75,6 +84,9 @@ class CandidateService:
             "created_at": Candidate.created_at,
             "updated_at": Candidate.updated_at,
             "status": Candidate.status,
+            "adjusted_final_score": Candidate.adjusted_final_score,
+            "composite_score": Candidate.composite_score,
+            "screening_score": Candidate.screening_score,
         }
         if sort_by and sort_by in allowed_sort_columns:
             col = allowed_sort_columns[sort_by]
@@ -87,7 +99,20 @@ class CandidateService:
         result = await self.db.execute(query)
         candidates = result.scalars().all()
 
-        return [CandidateRead.from_orm_compat(c) for c in candidates], total
+        # Map to Read schemas
+        candidate_data = []
+        for c in candidates:
+            try:
+                candidate_data.append(CandidateRead.from_orm_compat(c))
+            except Exception as e:
+                logger.error(f"Failed to map candidate {c.id} ({c.email}): {e}")
+                # Log traceback for debugging
+                import traceback
+                logger.error(traceback.format_exc())
+                # Re-raise to trigger 500 so we see it in logs
+                raise
+
+        return candidate_data, total
 
     async def get_candidate(self, candidate_id: str) -> CandidateRead | None:
         stmt = select(Candidate).where(Candidate.id == candidate_id)

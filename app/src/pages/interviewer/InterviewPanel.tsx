@@ -83,7 +83,7 @@ export default function InterviewPanel() {
                 </div>
                 {selectedCandidate.scores.length > 0 && (
                   <div className="mt-4 flex gap-3">
-                    {selectedCandidate.scores.map(s => (
+                    {selectedCandidate.scores.map((s: any) => (
                       <div key={s.round} className="px-3 py-2 rounded-md bg-[var(--bg-layer1)] text-center">
                         <p className="text-[10px] text-tertiary uppercase tracking-architectural">Round {s.round}</p>
                         <p className="font-bold text-sm text-on-surface">{s.score}/{s.maxScore}</p>

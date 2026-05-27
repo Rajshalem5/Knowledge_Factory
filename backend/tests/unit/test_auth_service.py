@@ -35,13 +35,15 @@ async def test_authenticate_user_success():
     login_data = LoginRequest(email="test@example.com", password=password)
     
     # Act
-    authenticated_user = await service.authenticate(login_data)
+    result = await service.authenticate(login_data)
     
     # Assert
-    assert authenticated_user is not None
+    assert result is not None
+    authenticated_user, is_candidate = result
     assert authenticated_user.email == "test@example.com"
     assert authenticated_user.id == "user-id"
     assert authenticated_user.role == "ADMIN"
+    assert is_candidate is False
 
 @pytest.mark.asyncio
 async def test_authenticate_user_failure():
@@ -57,7 +59,7 @@ async def test_authenticate_user_failure():
     login_data = LoginRequest(email="wrong@example.com", password="any")
     
     # Act
-    authenticated_user = await service.authenticate(login_data)
+    result = await service.authenticate(login_data)
     
     # Assert
-    assert authenticated_user is None
+    assert result is None

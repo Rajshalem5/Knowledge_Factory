@@ -5,7 +5,7 @@ import { cn } from '../../utils/cn';
 export interface Column<T> {
   key: string;
   header: string;
-  render?: (item: T) => ReactNode;
+  render?: (item: T, index: number) => ReactNode;
   className?: string;
   sortable?: boolean;
 }
@@ -89,7 +89,7 @@ export function DataTable<T>({
                 {columns.map(col => (
                   <td key={col.key} className={cn('px-4 py-3 leading-relaxed', col.className)}>
                     {col.render
-                      ? col.render(item)
+                      ? col.render(item, index)
                       : String((item as Record<string, unknown>)[col.key] ?? '')}
                   </td>
                 ))}

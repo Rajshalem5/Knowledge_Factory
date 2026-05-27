@@ -1,15 +1,31 @@
 # Knowledge Factory Backend Dependencies
+
+# Web Framework
 fastapi==0.136.0
 uvicorn[standard]==0.44.0
+
+# Database
 sqlalchemy[asyncio]==2.0.49
 aiosqlite>=0.19.0
+
+# For PostgreSQL (production), uncomment:
 asyncpg>=0.29.0
+# psycopg2-binary>=2.9.9
+
+# API & Serialization
 pydantic[email]==2.13.2
 pydantic-settings==2.13.1
-pyjwt>=2.12.0
+
+# Authentication & Security
+python-jose[cryptography]==3.3.0
 bcrypt==4.0.1
-python-multipart>=0.0.28
+
+# Utilities
+python-multipart==0.0.26
 httpx==0.28.1
+pypdf==4.2.0
+python-docx==1.1.2
+
+# Database Migrations
 alembic==1.17.0
-sentry-sdk>=2.0.0
-nh3>=0.3.5
+

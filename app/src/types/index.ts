@@ -12,6 +12,8 @@ export interface User {
   email: string;
   name: string;
   role: Role;
+  status?: 'ACTIVE' | 'INACTIVE';
+  created_at?: string;
 }
 
 export type CandidateStatus = 
@@ -30,6 +32,8 @@ export interface Candidate {
   name: string;
   college: string;
   branch: string;
+  degree?: string;
+  skills?: string;
   cgpa: number;
   status: string;
   display_status: string;
@@ -39,12 +43,26 @@ export interface Candidate {
   scores: AssessmentScore[];
   proctoring_flags: ProctoringFlag[];
   interview_feedback?: InterviewFeedback;
+  assessments?: Array<{ id: string; round: string }>;
   created_at: string;
   updated_at?: string;
   phone?: string;
   cycle_id?: string;
   passed_out_year: number;
   language_choice: string;
+  custom_fields?: Record<string, any>;
+  // Evaluation fields (persisted)
+  screening_score?: number;
+  mcq_score?: number;
+  coding_score?: number;
+  risk_penalty: number;
+  composite_score?: number;
+  adjusted_final_score?: number;
+  recommendation?: string | null;
+  // Decision audit
+  decision_reason?: string | null;
+  decision_by?: string | null;
+  decision_timestamp?: string | null;
 }
 
 export interface AssessmentScore {
@@ -140,4 +158,36 @@ export interface PaginatedResponse<T> {
     total: number;
     total_pages: number;
   };
+}
+
+export interface BulkUploadPreview {
+  batch_id: string;
+  total_records: number;
+  valid_records: number;
+  invalid_records: number;
+  preview: Array<{
+    row: number;
+    data: Record<string, any>;
+    valid: boolean;
+  }>;
+  errors: Array<{
+    row: number;
+    error: string;
+  }>;
+}
+
+export interface BulkUploadResponse {
+  batch_id: string;
+  total_records: number;
+  created: number;
+  updated: number;
+  skipped: number;
+  errors: Array<{
+    row: number;
+    error: string;
+  }>;
+  duplicates: Array<{
+    email: string;
+    reason: string;
+  }>;
 }

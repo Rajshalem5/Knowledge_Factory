@@ -58,7 +58,7 @@ async def setup_database():
             email="admin@knowledgefactory.io",
             password_hash=hash_password("Admin@12345"),
             name="Admin User",
-            role="SUPERADMIN",
+            role="SUPER_ADMIN",
             status="ACTIVE",
         )
         session.add(admin)
@@ -89,7 +89,10 @@ async def setup_database():
             {"name": "Wrong Branch Candidate", "email": "wrongbranch@test.com", "college": "Other Uni", "branch": "CIVIL", "cgpa": 7.5, "passed_out_year": 2026, "language_choice": "python", "status": "APPLIED", "password_hash": hash_password("Test@123")},
         ]
         for cd in candidates_data:
-            c = Candidate(cycle_id=cycle.id, **cd)
+            c = Candidate(
+                cycle_id=cycle.id,
+                **cd
+            )
             session.add(c)
 
         await session.commit()

@@ -1,11 +1,14 @@
 """Authentication routes - simplified without multi-tenancy."""
 
-from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
+import logging
+from fastapi import APIRouter, Depends, HTTPException, status, Response, Request, Form, File, UploadFile
+from pydantic import EmailStr
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.dependencies import get_current_user
+from app.config import settings
 from app.features.auth.schemas import (
     CandidateRegisterRequest,
     ClerkSyncRequest,
@@ -19,8 +22,9 @@ from app.features.auth.schemas import (
 from app.features.auth.service import AuthService
 from app.features.candidates.models import Candidate
 from app.features.auth.models import User
-from app.core.security import hash_password
-from app.config import settings
+from app.core.enums import Role
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -119,16 +123,17 @@ def clear_refresh_cookie(response: Response):
 async def login(login_data: LoginRequest, db: AsyncSession = Depends(get_db), response: Response = None):
     """Authenticate user or candidate and return tokens."""
     auth_service = AuthService(db)
-    user = await auth_service.authenticate(login_data)
+    result = await auth_service.authenticate(login_data)
 
-    if not user:
+    if not result:
         raise HTTPException(status_code=401, detail="Incorrect email or password")
 
-    token_data = auth_service.generate_token_response(user)
-    
+    user_or_candidate, _is_candidate = result
+    token_data = auth_service.generate_token_response(user_or_candidate)
+
     # Set refresh token as httpOnly cookie
     set_refresh_cookie(response, token_data["refresh_token"])
-    
+
     # Return access token only (refresh token is in cookie)
     return {
         "access_token": token_data["access_token"],
@@ -139,12 +144,20 @@ async def login(login_data: LoginRequest, db: AsyncSession = Depends(get_db), re
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 async def register_candidate(
-    register_data: CandidateRegisterRequest,
+    name: str = Form(...),
+    email: EmailStr = Form(...),
+    password: str = Form(...),
+    college: str = Form(""),
+    branch: str = Form(""),
+    cgpa: float = Form(0.0),
+    passed_out_year: int = Form(0),
+    language_choice: str = Form("english"),
+    resume: UploadFile | None = File(None),
     db: AsyncSession = Depends(get_db),
     response: Response = None,
 ):
     from app.features.hiring_cycles.models import HiringCycle
-    
+
     # Get active hiring cycle
     stmt = select(HiringCycle).where(HiringCycle.status == "ACTIVE").limit(1)
     res = await db.execute(stmt)
@@ -157,25 +170,27 @@ async def register_candidate(
         )
 
     auth_service = AuthService(db)
+    
+    # Create request object for internal compatibility
+    register_data = CandidateRegisterRequest(
+        name=name,
+        email=email,
+        password=password,
+        college=college,
+        branch=branch,
+        cgpa=cgpa,
+        passed_out_year=passed_out_year,
+        language_choice=language_choice
+    )
 
     try:
-        candidate = await auth_service.register_candidate(register_data, cycle.id)
-        await db.commit()
+        candidate = await auth_service.register_candidate(register_data, cycle.id, resume)
 
-        # Convert candidate to user-like object for token generation
-        user_like = User(
-            id=candidate.id,
-            email=candidate.email,
-            name=candidate.name,
-            role="CANDIDATE",
-            password_hash=candidate.password_hash
-        )
+        token_data = auth_service.generate_token_response(candidate)
 
-        token_data = auth_service.generate_token_response(user_like)
-        
         # Set refresh token as httpOnly cookie
         set_refresh_cookie(response, token_data["refresh_token"])
-        
+
         return {
             "access_token": token_data["access_token"],
             "refresh_token": token_data["refresh_token"],
@@ -183,19 +198,31 @@ async def register_candidate(
             "user": token_data["user"],
         }
 
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as exc:
-        await db.rollback()
-        raise HTTPException(status_code=400, detail=str(exc))
+        import traceback
+        logger.error(f"Registration failed: {exc}")
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail="Internal server error during registration")
 
 
 @router.get("/me", response_model=UserResponse)
 async def get_me(current_user=Depends(get_current_user)):
-    """Get current user profile."""
+    """Get current user profile. Role is normalized to canonical form."""
+    is_candidate = isinstance(current_user, Candidate)
+
+    if is_candidate:
+        role = "CANDIDATE"
+    else:
+        raw = current_user.role.value if hasattr(current_user.role, 'value') else str(current_user.role)
+        role = Role.normalize(raw)
+
     return UserResponse(
         id=current_user.id,
         email=current_user.email,
         name=current_user.name,
-        role=current_user.role,
+        role=role,
     )
 
 
@@ -224,26 +251,13 @@ async def refresh_token(
     candidate = res.scalar_one_or_none()
 
     if candidate:
-        # Convert candidate to user-like object for token generation
-        user_like = User(
-            id=candidate.id,
-            email=candidate.email,
-            name=candidate.name,
-            role="CANDIDATE",
-            password_hash=candidate.password_hash
-        )
         auth_svc = AuthService(db)
-        token_data = auth_svc.generate_token_response(user_like)
+        token_data = auth_svc.generate_token_response(candidate)
         set_refresh_cookie(response, token_data["refresh_token"])
         return {
             "access_token": token_data["access_token"],
             "token_type": "bearer",
-            "user": token_data.get("user", {
-                "id": candidate.id,
-                "email": candidate.email,
-                "name": candidate.name,
-                "role": "CANDIDATE",
-            }),
+            "user": token_data["user"],
         }
 
     stmt = select(User).where(User.id == sub)
@@ -259,12 +273,7 @@ async def refresh_token(
     return {
         "access_token": token_data["access_token"],
         "token_type": "bearer",
-        "user": token_data.get("user", {
-            "id": user.id,
-            "email": user.email,
-            "name": user.name,
-            "role": user.role,
-        }),
+        "user": token_data["user"],
     }
 
 
@@ -275,19 +284,11 @@ async def logout(response: Response):
     return {"message": "Logged out"}
 
 
-@router.post("/clerk-sync")
-async def clerk_sync(
-    data: ClerkSyncRequest,
-    db: AsyncSession = Depends(get_db),
-    response: Response = None,
-):
-    """Link a Clerk user to an existing KF user by email.
-    
-    Called after successful Clerk authentication. If a KF user with the
-    same email exists, links the clerk_id and returns tokens. Otherwise
-    returns 404 so the frontend can redirect to registration.
-    """
-    # Check User table first (admin, hr, interviewer, etc.)
+@router.post("/verify-otp", response_model=TokenResponse)
+async def verify_otp(data: OtpVerifyRequest, db: AsyncSession = Depends(get_db)):
+    """Verify OTP and issue tokens (dev mode accepts any 6-digit code)."""
+    from app.core.security import create_access_token, create_refresh_token
+
     stmt = select(User).where(User.email == data.email)
     res = await db.execute(stmt)
     user = res.scalar_one_or_none()
@@ -307,13 +308,23 @@ async def clerk_sync(
         candidate.clerk_id = data.clerk_id
         await db.commit()
 
-        auth_service = AuthService(db)
-        user_like = User(
-            id=candidate.id,
-            email=candidate.email,
-            name=candidate.name,
-            role="CANDIDATE",
-            password_hash=candidate.password_hash or "",
+    # Dev-mode: auto-accept any 6-digit OTP
+    if user.password_hash and len(data.otp) == 6:
+        raw_role = user.role.value if hasattr(user.role, 'value') else str(user.role)
+        role = Role.normalize(raw_role)
+        access_token = create_access_token(subject=str(user.id), email=user.email, role=role)
+        refresh_tok = create_refresh_token(subject=str(user.id))
+
+        return TokenResponse(
+            access_token=access_token,
+            refresh_token=refresh_tok,
+            token_type="bearer",
+            user=UserResponse(
+                id=user.id,
+                email=user.email,
+                name=user.name,
+                role=role,
+            ),
         )
         token_data = auth_service.generate_token_response(user_like)
         set_refresh_cookie(response, token_data["refresh_token"])
@@ -363,18 +374,18 @@ async def forgot_password(data: ForgotPasswordRequest, db: AsyncSession = Depend
 
     if user:
         from app.core.security import create_access_token
-        from app.integrations.email import send_password_reset_email as send_reset
-
+        from app.integrations.email import send_password_reset_email
         # Generate password reset token (would normally send via email)
+        raw_role = user.role.value if hasattr(user.role, 'value') else str(user.role)
+        role = Role.normalize(raw_role)
         reset_token = create_access_token(
             subject=str(user.id),
             email=user.email,
-            role=user.role,
+            role=role + "_RESET",
             token_type="password_reset",
         )
-        # Send reset email
-        await send_reset(to=user.email, reset_token=reset_token)
-
+        # Send reset token via email
+        await send_password_reset_email(to=user.email, reset_token=reset_token)
         return {"message": "If email exists, a reset link has been sent."}
 
     # Don't reveal if email exists
@@ -385,34 +396,34 @@ async def forgot_password(data: ForgotPasswordRequest, db: AsyncSession = Depend
 async def reset_password(data: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
     """Reset password using valid reset token."""
     from app.core.security import decode_token, hash_password
-    
+
     try:
         payload = decode_token(data.token)
         if not payload:
             raise HTTPException(status_code=400, detail="Invalid or expired token")
-        
+
         token_type = payload.get("type")
         email = payload.get("email")
-        
+
         if token_type != "password_reset":
             raise HTTPException(status_code=400, detail="Invalid token type")
-        
+
         if not email:
             raise HTTPException(status_code=400, detail="Invalid token - missing email")
-        
+
         # Find user by email
         stmt = select(User).where(User.email == email)
         res = await db.execute(stmt)
         user = res.scalar_one_or_none()
-        
+
         if not user:
             raise HTTPException(status_code=400, detail="User not found")
-        
+
         # Update password
         user.password_hash = hash_password(data.new_password)
-        await db.commit()
-        
+        await db.flush()
+
         return {"message": "Password has been reset successfully."}
-        
+
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to reset password: {str(e)}")

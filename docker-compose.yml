@@ -1,0 +1,237 @@
+# ============================================================
+# HIRING PLATFORM - Complete Docker Compose
+# ============================================================
+# Services:
+#   - backend: Main FastAPI backend (Port 8000)
+#   - ai-proctoring: AI Proctoring Service (Port 8001)
+#   - frontend: React frontend (Port 5173)
+#   - postgres: PostgreSQL database
+#   - redis: Redis cache
+#   - minio: MinIO object storage (S3-compatible)
+#   - nginx: Reverse proxy (optional)
+#
+# Usage:
+#   docker compose up --build -d       # Build and start in background
+#   docker compose logs -f             # Follow logs
+#   docker compose down -v             # Stop and remove volumes
+#   docker compose ps                  # List running services
+# ============================================================
+
+version: '3.8'
+
+services:
+  # ============================================================
+  # PostgreSQL Database
+  # ============================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: hiring-postgres
+    hostname: postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-kf_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-kf_password}
+      POSTGRES_DB: ${POSTGRES_DB:-knowledge_factory}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-kf_user} -d ${POSTGRES_DB:-knowledge_factory}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - hiring_network
+    restart: unless-stopped
+
+
+  # ============================================================
+  # Redis Cache
+  # ============================================================
+  redis:
+    image: redis:7-alpine
+    container_name: hiring-redis
+    hostname: redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - hiring_network
+    restart: unless-stopped
+
+
+  # ============================================================
+  # MinIO Object Storage (S3-compatible)
+  # ============================================================
+  minio:
+    image: minio/minio:latest
+    container_name: hiring-minio
+    hostname: minio
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    ports:
+      - "9000:9000"      # API
+      - "9001:9001"      # Console
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - hiring_network
+    restart: unless-stopped
+
+
+  # ============================================================
+  # Main Backend Service (Port 8000)
+  # ============================================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: hiring-backend
+    hostname: backend
+    env_file: .env
+    environment:
+      DATABASE_URL: sqlite+aiosqlite:///./knowledge_factory.db
+      REDIS_URL: redis://redis:6379/0
+      PROCTORING_SERVICE_WS_URL: ws://ai-proctoring:8001
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - ./backend/logs:/app/logs
+      - ./backend/uploads:/app/uploads
+    networks:
+      - hiring_network
+    restart: unless-stopped
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+
+  # ============================================================
+  # AI Proctoring Service (Port 8001)
+  # ============================================================
+  ai-proctoring:
+    build:
+      context: ./audi_video
+      dockerfile: Dockerfile
+    container_name: hiring-ai-proctoring
+    hostname: ai-proctoring
+    env_file: .env
+    environment:
+      SERVICE_PORT: 8001
+      SERVICE_HOST: 0.0.0.0
+      BACKEND_WEBHOOK_URL: http://backend:8000/api/proctoring/webhook/event
+      ENABLE_GPU: ${ENABLE_GPU:-False}
+    ports:
+      - "8001:8001"
+    depends_on:
+      - backend
+    volumes:
+      - ./audi_video:/app
+      - ./audi_video/logs:/app/logs
+      - ./audi_video/uploads:/app/uploads
+      - ./audi_video/app/models:/app/app/models
+      - hf_cache:/app/.hf_modules_cache
+    networks:
+      - hiring_network
+    restart: unless-stopped
+    # GPU support (uncomment if CUDA available)
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+    deploy:
+      resources:
+        limits:
+          memory: 6g
+        reservations:
+          memory: 3g
+
+
+  # ============================================================
+  # Frontend Service (Port 5173)
+  # ============================================================
+  frontend:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: hiring-frontend
+    hostname: frontend
+    environment:
+      VITE_API_BASE_URL: http://localhost:8000/api
+      VITE_PROCTORING_WS_URL: ws://localhost:8001
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+      - ai-proctoring
+    volumes:
+      - ./app:/app
+      - /app/node_modules
+    networks:
+      - hiring_network
+    restart: unless-stopped
+
+
+  # ============================================================
+  # Nginx Reverse Proxy (Optional - uncomment if needed)
+  # ============================================================
+  # nginx:
+  #   image: nginx:alpine
+  #   container_name: hiring-nginx
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./nginx.conf:/etc/nginx/nginx.conf:ro
+  #     - ./certs:/etc/nginx/certs:ro
+  #   depends_on:
+  #     - backend
+  #     - ai-proctoring
+  #     - frontend
+  #   networks:
+  #     - hiring_network
+  #   restart: unless-stopped
+
+
+# ============================================================
+# Networks
+# ============================================================
+networks:
+  hiring_network:
+    driver: bridge
+
+
+# ============================================================
+# Volumes
+# ============================================================
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  minio_data:
+    driver: local
+  hf_cache:
+    driver: local

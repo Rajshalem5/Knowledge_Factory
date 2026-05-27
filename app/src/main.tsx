@@ -20,6 +20,8 @@ const queryClient = new QueryClient({
   },
 })
 
+console.log('[main.tsx] Bootstrapping React app...');
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ClerkProvider publishableKey={PUBLISHABLE_KEY}>

@@ -28,6 +28,8 @@ const FEATURES = [
 ];
 
 export default function Landing() {
+  console.log('[Landing] === RENDERING ===');
+  console.log('[Landing] Path:', window.location.pathname);
   const navigate = useNavigate();
   const { user } = useAuth();
   const { theme, toggleTheme } = useTheme();

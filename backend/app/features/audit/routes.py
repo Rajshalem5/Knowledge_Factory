@@ -20,7 +20,7 @@ async def list_audit_logs(
     limit: int = Query(50, ge=1, le=100),
     entity_type: str | None = None,
     db: AsyncSession = Depends(get_db),
-    current_user = Depends(require_role([Role.ADMIN, Role.SUPERADMIN])),
+    current_user = Depends(require_role([Role.ADMIN, Role.SUPER_ADMIN])),
 ):
     """Retrieve audit logs for all users."""
     q = select(AuditLog)

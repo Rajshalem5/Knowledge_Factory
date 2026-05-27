@@ -34,3 +34,28 @@ class SubmissionCreate(BaseModel):
     content: dict # MCQ answers or Code string
     time_spent_seconds: int = 0
 
+class SubmissionRead(BaseModel):
+    id: str
+    section: SubmissionSection
+    payload_json: dict
+    submitted_at: datetime
+    time_spent_seconds: Optional[int]
+
+    model_config = ConfigDict(from_attributes=True)
+
+class AssessmentAdminRead(AssessmentRead):
+    submissions: list[SubmissionRead] = []
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AssessmentResult(BaseModel):
+    assessment_id: str
+    round: AssessmentRound
+    score: float
+    passed_tests: int
+    total_tests: int
+    verdict: str
+    status: str # PASS/FAIL
+    summary: str
+

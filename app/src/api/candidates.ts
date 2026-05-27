@@ -4,7 +4,7 @@
  */
 
 import { api } from './client';
-import type { Candidate, PaginatedResponse } from '../types';
+import type { Candidate, PaginatedResponse, BulkUploadPreview, BulkUploadResponse } from '../types';
 
 export interface AssessmentResult {
   assessment_id: string;
@@ -31,10 +31,14 @@ export interface AssessmentResult {
 }
 
 export const candidatesApi = {
-  getAll: (params?: {
-    page?: number;
-    limit?: number;
-    status?: string;
+  /**
+   * Get all candidates with pagination and filters
+   * GET /api/candidates
+   */
+  getAll: async (params?: { 
+    page?: number; 
+    limit?: number; 
+    status?: string; 
     name?: string;
     branch?: string;
     college?: string;
@@ -63,10 +67,28 @@ export const candidatesApi = {
     max_score?: number;
     sort_by?: string;
     sort_order?: string;
-  }) =>
-    api.get<PaginatedResponse<Candidate>>('/api/candidates/', {
-      params: params as Record<string, string | number | boolean | undefined>,
-    }),
+  }) => {
+    console.log('[candidatesApi] Fetching candidates with params:', params);
+    const response = await api.get<any>('/api/candidates/', { 
+      params: params as Record<string, string | number | boolean | undefined> 
+    });
+    console.log('[candidatesApi] Received response:', response);
+    
+    // Normalize response structure
+    if (Array.isArray(response)) {
+      return {
+        data: response,
+        pagination: {
+          page: params?.page || 1,
+          limit: params?.limit || response.length,
+          total: response.length,
+          total_pages: 1
+        }
+      };
+    }
+    
+    return response as PaginatedResponse<Candidate>;
+  },
 
   getById: (id: string) =>
     api.get<Candidate>(`/api/candidates/${id}`),
@@ -74,21 +96,58 @@ export const candidatesApi = {
   getMe: () =>
     api.get<Candidate>('/api/candidates/me'),
 
+  /**
+   * Upload resume
+   * POST /api/candidates/me/resume
+   */
+  uploadResume: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post<{ message: string; resume_url: string }>('/api/candidates/me/resume', formData);
+  },
+
+  /**
+   * Update candidate status
+   * PATCH /api/candidates/:id/status
+   */
   updateStatus: (id: string, status: string) =>
     api.patch<Candidate>(`/api/candidates/${id}/status`, { status }),
 
-  bulkUpload: (file: File) => {
+  /**
+   * Make a final hiring decision with reason
+   * POST /api/selection/candidates/:id/decision
+   */
+  makeDecision: (id: string, status: string, reason?: string) =>
+    api.post<any>(`/api/selection/candidates/${id}/decision`, { status, reason }),
+
+  /**
+   * Bulk upload candidates from CSV or documents
+   * POST /api/candidates/bulk-upload
+   */
+  bulkUpload: (params: { file: File, data?: any, onDuplicate?: 'skip' | 'update' }) => {
     const formData = new FormData();
-    formData.append('file', file);
-    return api.post<unknown>('/api/candidates/bulk-upload', formData) as Promise<unknown>;
+    formData.append('file', params.file);
+    if (params.data) {
+      formData.append('data', JSON.stringify(params.data));
+    }
+    const query = params.onDuplicate ? `?on_duplicate=${params.onDuplicate}` : '';
+    return api.post<BulkUploadResponse>(`/api/candidates/bulk-upload${query}`, formData);
   },
 
   previewBulkUpload: (file: File) => {
     const formData = new FormData();
     formData.append('file', file);
-    return api.post<unknown>('/api/candidates/bulk-upload/preview', formData) as Promise<unknown>;
+    return api.post<BulkUploadPreview>('/api/candidates/bulk-upload/preview', formData);
   },
 
-  getAssessments: (id: string) =>
-    api.get<{ data: AssessmentResult[] }>(`/api/candidates/${id}/assessments`),
+  /**
+   * Get resume file blob
+   * GET /api/candidates/:id/resume
+   */
+  getResume: (id: string) =>
+    api.get<Blob>(`/api/candidates/${id}/resume`, {
+      headers: {
+        'Accept': 'application/pdf, application/vnd.openxmlformats-officedocument.wordprocessingml.document, application/msword'
+      }
+    }),
 };

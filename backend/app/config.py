@@ -25,12 +25,16 @@ class Settings(BaseSettings):
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
 
     # ── Database ───────────────────────────────────────────────────
-    DATABASE_URL: str = "postgresql+asyncpg://kf_user:kf_password@localhost:5432/knowledge_factory"
-    DB_POOL_SIZE: int = 20
+    # Local development: SQLite (single file, no server needed)
+    # Production: Set to postgresql+asyncpg://... for PostgreSQL
+    DATABASE_URL: str = "sqlite+aiosqlite:///./knowledge_factory.db"
+    DB_POOL_SIZE: int = 5  # SQLite uses connection pooling differently
     DB_MAX_OVERFLOW: int = 10
     DB_ECHO: bool = False
 
     # ── Redis ──────────────────────────────────────────────────────
+    # Optional for local development (session cache, task queue)
+    # Leave empty to disable Redis features
     REDIS_URL: str = "redis://localhost:6379/0"
 
     # ── JWT / Security ─────────────────────────────────────────────
@@ -41,22 +45,16 @@ class Settings(BaseSettings):
     JWT_REFRESH_TTL_DAYS: int = 7
 
     # ── AI Question Generation ─────────────────────────────────────
-    AI_API_URL: str = ""
-    AI_API_KEY: str = ""
+    AI_API_URL: str = "http://Code7-ai-alb-120690216.ap-south-1.elb.amazonaws.com/v1/chat/completions"
+    AI_API_KEY: str = "sk-8YoGZvol4JFZGXbWC0hFlg"
     AI_MODEL: str = "qwen3-coder-30b"
 
     # ── Code Execution Sandbox ─────────────────────────────────────
-    PISTON_URL: str = ""
-    SANDBOX_URL: str = ""
+    SANDBOX_URL: str = "https://emkc.org/api/v2/piston/execute"
     SANDBOX_API_KEY: str = ""
 
-    # ── Security ─────────────────────────────────────────────────
-    SECURE_COOKIES: bool = False
-    MAINTENANCE_MODE: bool = False
-    SENTRY_DSN: str = ""
-
     # ── Object Storage (S3-compatible) ─────────────────────────────
-    S3_BUCKET_NAME: str = ""
+    S3_BUCKET_NAME: str = "knowledge-factory"
     S3_REGION: str = "us-east-1"
     S3_ACCESS_KEY_ID: str = ""
     S3_SECRET_ACCESS_KEY: str = ""
@@ -67,6 +65,43 @@ class Settings(BaseSettings):
     # ── Proctoring ─────────────────────────────────────────────────
     PROCTORING_MAX_WARNINGS: int = 3
     PROCTORING_EVENT_INTERVAL_SECONDS: int = 5
+    PROCTORING_SERVICE_WS_URL: str = "ws://localhost:8000"
+    PROCTORING_JWT_SECRET: str = "dev-proctoring-secret-stable"
+    
+    # ── Proctoring Risk Weights ────────────────────────────────────
+    TAB_SWITCH_WEIGHT: float = 10
+    TAB_SWITCH_REPEATED_WEIGHT: float = 15
+    TAB_SWITCH_FREQUENT_WEIGHT: float = 25
+    
+    WINDOW_BLUR_WEIGHT: float = 5
+    WINDOW_BLUR_REPEATED_WEIGHT: float = 10
+    WINDOW_BLUR_FREQUENT_WEIGHT: float = 20
+    
+    COPY_WEIGHT: float = 10
+    PASTE_WEIGHT: float = 20
+    
+    DEVTOOLS_WEIGHT: float = 40
+    
+    NO_FACE_WEIGHT: float = 15
+    MULTIPLE_PERSON_WEIGHT: float = 25
+    
+    HEAD_POSE_WEIGHT: float = 8
+    HEAD_POSE_REPEATED_WEIGHT: float = 15
+    
+    VOICE_DETECTED_WEIGHT: float = 20
+    CONTINUOUS_CONVERSATION_WEIGHT: float = 35
+    
+    PHONE_DETECTED_WEIGHT: float = 80
+    FULLSCREEN_EXIT_WEIGHT: float = 20
+    
+    # ── Proctoring Risk Management ─────────────────────────────────
+    RISK_TERMINATION_THRESHOLD: float = 100
+    RISK_DECAY_PERCENT: float = 0.0  # Purely cumulative as requested
+    RISK_DECAY_INTERVAL: int = 60
+    FRAME_CAPTURE_INTERVAL: float = 1.0
+    SCREENSHOT_STORAGE_PATH: str = "screenshots"
+    HIGH_RISK_AUTO_TERMINATE: bool = True
+    WEBSOCKET_HEARTBEAT_TIMEOUT: int = 30
 
     # ── Rate Limiting ──────────────────────────────────────────────
     LOGIN_RATE_LIMIT: str = "5/15min"
@@ -75,6 +110,9 @@ class Settings(BaseSettings):
     # ── Seed Credentials (read from env, never hardcoded) ──────────
     SEED_ADMIN_PASSWORD: str = ""
     SEED_HR_PASSWORD: str = ""
+
+    # ── Feature Flags ──────────────────────────────────────────────
+    ENABLE_EMAIL_VERIFICATION: bool = False
 
 
 @lru_cache
