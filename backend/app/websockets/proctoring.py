@@ -74,6 +74,10 @@ async def proctoring_websocket(
     last_snapshot_time = time.time()
     snapshot_interval = 15.0  # seconds
 
+    # Backend debounce: skip same event_type within 5s
+    last_event_times: dict[str, float] = {}
+    debounce_interval = 5.0
+
     try:
         while True:
             data = await websocket.receive_json()
@@ -81,21 +85,16 @@ async def proctoring_websocket(
             
             async with async_session_factory() as db:
                 service = ProctoringService(db)
-                
-                if msg_type == "video":
-                    # Periodic snapshot check
-                    current_time = time.time()
-                    if current_time - last_snapshot_time >= snapshot_interval:
-                        last_snapshot_time = current_time
-                        frame = data.get("frame")
-                        if frame:
-                            filepath = save_screenshot(frame, session_id, "periodic_snapshot")
-                            if filepath:
-                                await record_evidence(db, session_id, "PERIODIC_SNAPSHOT", filepath)
-                
-                elif msg_type == "violation":
-                    # Received frontend violation (tab switch, etc.)
+
+                if msg_type == "violation":
                     event_type = data.get("event_type", "UNKNOWN")
+                    # Backend debounce: skip same event_type within 5s
+                    now = time.time()
+                    last_evt = last_event_times.get(event_type, 0)
+                    if now - last_evt < debounce_interval:
+                        continue
+                    last_event_times[event_type] = now
+
                     # Send to proctoring service
                     evt = ProctoringEventCreate(
                         session_id=session_id,
@@ -132,7 +131,18 @@ async def proctoring_websocket(
                                 "type": "termination",
                                 "reason": session.terminated_reason
                             }, session_id)
-                            
+
+                elif msg_type == "video":
+                    # Periodic snapshot check
+                    current_time = time.time()
+                    if current_time - last_snapshot_time >= snapshot_interval:
+                        last_snapshot_time = current_time
+                        frame = data.get("frame")
+                        if frame:
+                            filepath = save_screenshot(frame, session_id, "periodic_snapshot")
+                            if filepath:
+                                await record_evidence(db, session_id, "PERIODIC_SNAPSHOT", filepath)
+
                 # TODO: We can add actual computer vision inference here on 'frame'
                 # For now, we rely on the frontend sending 'violation' events or we take periodic snapshots.
                 

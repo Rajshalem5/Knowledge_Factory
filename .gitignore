@@ -32,3 +32,4 @@ backend/app/core/database.py
 backend/app/core/dependencies.py
 backend/app/core/rbac.py
 backend/screenshots/
+backend/reset_proctor_test.py

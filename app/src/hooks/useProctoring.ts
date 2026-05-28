@@ -53,6 +53,10 @@ export function useProctoring({ assessmentAttemptId, onViolation, onTerminated }
   const startPromiseRef = useRef<Promise<void> | null>(null);
   const unmountedRef = useRef(false);
 
+  // Debounce: skip duplicate event type within 5s window
+  const lastViolationRef = useRef<Record<string, number>>({});
+  const DEBOUNCE_MS = 5000;
+
   useEffect(() => {
     unmountedRef.current = false;
     return () => {
@@ -96,6 +100,12 @@ export function useProctoring({ assessmentAttemptId, onViolation, onTerminated }
   }, []);
 
   const sendViolation = useCallback((type: string) => {
+    // Debounce: skip if same event type fired within last 5s
+    const now = Date.now();
+    const last = lastViolationRef.current[type] || 0;
+    if (now - last < DEBOUNCE_MS) return;
+    lastViolationRef.current[type] = now;
+
     // Try WebSocket first
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(
