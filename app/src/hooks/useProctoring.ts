@@ -114,7 +114,7 @@ export function useProctoring({ assessmentAttemptId, onViolation, onTerminated }
         session_id: sessionIdRef.current,
         event_type: type,
         severity: type === 'TAB_SWITCH' || type === 'WINDOW_BLUR' ? 'MEDIUM' : 'HIGH',
-        risk_score: type === 'TAB_SWITCH' ? 10 : type === 'WINDOW_BLUR' ? 5 : type === 'DEVTOOLS' ? 40 : 10,
+        risk_score: type === 'TAB_SWITCH' ? 10 : type === 'WINDOW_BLUR' ? 5 : type === 'DEVTOOLS' ? 40 : type === 'RIGHT_CLICK' ? 10 : type === 'WINDOW_RESIZE' ? 15 : 10,
         timestamp: new Date().toISOString(),
         metadata: { details: `Frontend detected ${type}` }
       }).catch(() => {});
@@ -150,11 +150,29 @@ export function useProctoring({ assessmentAttemptId, onViolation, onTerminated }
       }
     };
 
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+      sendViolation('RIGHT_CLICK');
+    };
+
+    let lastWindowSize = { w: window.innerWidth, h: window.innerHeight };
+    const handleResize = () => {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      // Fire violation if window shrinks below 800x500 or drops by >40% from last size
+      if (w < 800 || h < 500 || w < lastWindowSize.w * 0.6 || h < lastWindowSize.h * 0.6) {
+        sendViolation('WINDOW_RESIZE');
+      }
+      lastWindowSize = { w, h };
+    };
+
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('blur', handleBlur);
     document.addEventListener('copy', handleCopy);
     document.addEventListener('paste', handlePaste);
     window.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('contextmenu', handleContextMenu);
+    window.addEventListener('resize', handleResize);
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
@@ -162,6 +180,8 @@ export function useProctoring({ assessmentAttemptId, onViolation, onTerminated }
       document.removeEventListener('copy', handleCopy);
       document.removeEventListener('paste', handlePaste);
       window.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('contextmenu', handleContextMenu);
+      window.removeEventListener('resize', handleResize);
     };
   }, [sendViolation]);
 

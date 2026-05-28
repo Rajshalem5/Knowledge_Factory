@@ -103,7 +103,17 @@ async def proctoring_websocket(
                         timestamp=datetime.now(timezone.utc),
                         event_type=event_type,
                         severity="MEDIUM" if event_type in ["TAB_SWITCH", "WINDOW_BLUR"] else "HIGH",
-                        risk_score=0.0, # Service computes actual score
+                        # Map event type to correct weight from constants
+                        risk_score={
+                            "TAB_SWITCH": 10, "WINDOW_BLUR": 5,
+                            "COPY": 10, "PASTE": 20,
+                            "DEVTOOLS": 40, "NO_FACE": 15,
+                            "MULTIPLE_PERSONS": 25, "HEAD_POSE": 8,
+                            "VOICE_DETECTED": 20, "CONTINUOUS_CONVERSATION": 35,
+                            "PHONE_DETECTED": 80, "FULLSCREEN_EXIT": 20,
+                            "RIGHT_CLICK": 10,
+                            "WINDOW_RESIZE": 15,
+                        }.get(event_type, 10),
                         metadata={"details": f"Frontend reported {event_type}"}
                     )
                     saved_evt = await service.record_event(evt)

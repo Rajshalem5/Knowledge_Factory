@@ -66,6 +66,8 @@ async def record_proctoring_event(
     service = ProctoringService(db)
     try:
         event = await service.record_event(data)
+        import logging
+        logging.getLogger(__name__).info(f"WEBHOOK RECEIVED: event_type={data.event_type} risk_score={data.risk_score} session_id={data.session_id}")
         if event is None:
             return {"status": "skipped", "message": "Session not found", "event_id": data.event_id}
         return {
