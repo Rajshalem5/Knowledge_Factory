@@ -31,3 +31,4 @@ backend/app/core/auth.py
 backend/app/core/database.py
 backend/app/core/dependencies.py
 backend/app/core/rbac.py
+backend/screenshots/
