@@ -136,11 +136,12 @@ async def HR_AND_ABOVE(current_user: User = Depends(get_current_user)) -> User:
     return current_user
 
 
-async def CANDIDATE_ONLY(current_user: User = Depends(get_current_user)) -> User:
-    """Allow only CANDIDATE role."""
-    if current_user.role != "CANDIDATE":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only candidates can access this endpoint",
-        )
-    return current_user
+async def CANDIDATE_ONLY(current_user: AuthUser = Depends(get_current_user)) -> AuthUser:
+    """Allow only CANDIDATE role. Checks isinstance Candidate since Candidate model has no `role` field."""
+    from app.features.candidates.models import Candidate
+    if isinstance(current_user, Candidate):
+        return current_user
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Only candidates can access this endpoint",
+    )

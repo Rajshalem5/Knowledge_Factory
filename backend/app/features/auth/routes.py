@@ -1,7 +1,7 @@
 """Authentication routes - simplified without multi-tenancy."""
 
 import logging
-from fastapi import APIRouter, Depends, HTTPException, status, Response, Request, Form, File, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
 from pydantic import EmailStr
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -144,18 +144,11 @@ async def login(login_data: LoginRequest, db: AsyncSession = Depends(get_db), re
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 async def register_candidate(
-    name: str = Form(...),
-    email: EmailStr = Form(...),
-    password: str = Form(...),
-    college: str = Form(""),
-    branch: str = Form(""),
-    cgpa: float = Form(0.0),
-    passed_out_year: int = Form(0),
-    language_choice: str = Form("english"),
-    resume: UploadFile | None = File(None),
+    body: CandidateRegisterRequest,
     db: AsyncSession = Depends(get_db),
     response: Response = None,
 ):
+    """Register a new candidate (JSON body)."""
     from app.features.hiring_cycles.models import HiringCycle
 
     # Get active hiring cycle
@@ -170,41 +163,22 @@ async def register_candidate(
         )
 
     auth_service = AuthService(db)
-    
-    # Create request object for internal compatibility
-    register_data = CandidateRegisterRequest(
-        name=name,
-        email=email,
-        password=password,
-        college=college,
-        branch=branch,
-        cgpa=cgpa,
-        passed_out_year=passed_out_year,
-        language_choice=language_choice
+
+    candidate = await auth_service.register_candidate(
+        body, cycle.id, resume=None
     )
 
-    try:
-        candidate = await auth_service.register_candidate(register_data, cycle.id, resume)
+    token_data = auth_service.generate_token_response(candidate)
 
-        token_data = auth_service.generate_token_response(candidate)
+    # Set refresh token as httpOnly cookie
+    set_refresh_cookie(response, token_data["refresh_token"])
 
-        # Set refresh token as httpOnly cookie
-        set_refresh_cookie(response, token_data["refresh_token"])
-
-        return {
-            "access_token": token_data["access_token"],
-            "refresh_token": token_data["refresh_token"],
-            "token_type": "bearer",
-            "user": token_data["user"],
-        }
-
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as exc:
-        import traceback
-        logger.error(f"Registration failed: {exc}")
-        logger.error(traceback.format_exc())
-        raise HTTPException(status_code=500, detail="Internal server error during registration")
+    return {
+        "access_token": token_data["access_token"],
+        "refresh_token": token_data["refresh_token"],
+        "token_type": "bearer",
+        "user": token_data["user"],
+    }
 
 
 @router.get("/me", response_model=UserResponse)

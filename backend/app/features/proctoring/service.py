@@ -72,6 +72,12 @@ class ProctoringService:
         )
         return result.scalar_one_or_none()
 
+    async def get_session_by_assessment(self, assessment_id: str) -> Optional[ProctoringSession]:
+        result = await self.db.execute(
+            select(ProctoringSession).where(ProctoringSession.assessment_attempt_id == assessment_id).order_by(ProctoringSession.started_at.desc())
+        )
+        return result.scalars().first()
+
     async def _get_event_count(self, session_id: str, event_type: str) -> int:
         """Get the number of times an event type has occurred in a session."""
         result = await self.db.execute(
@@ -82,23 +88,80 @@ class ProctoringService:
         return result.scalar() or 0
 
     async def record_event(self, data: ProctoringEventCreate) -> Optional[ProctoringEvent]:
-        """Record a proctoring event and update rolling risk (non-blocking)."""
+        """Record a proctoring event and update rolling risk."""
         try:
-            # 1. Fetch session
             session = await self.get_session(data.session_id)
             if not session:
                 logger.warning(f"Proctoring session {data.session_id} not found, skipping event.")
                 return None
 
-            # ... [remaining implementation with error handling]
+            # Find the last event to get previous risk score
+            last_event_result = await self.db.execute(
+                select(ProctoringEvent)
+                .where(ProctoringEvent.session_id == session.id)
+                .order_by(ProctoringEvent.timestamp.desc())
+                .limit(1)
+            )
+            last_event = last_event_result.scalar_one_or_none()
+
+            last_score = session.final_risk_score
+            last_time = last_event.timestamp if last_event else session.started_at
+            now = data.timestamp or datetime.now(timezone.utc)
             
-            # ... (the rest of the logic)
-            
+            # Normalize timezone awareness
+            if last_time.tzinfo is None:
+                last_time = last_time.replace(tzinfo=timezone.utc)
+            if now.tzinfo is None:
+                now = now.replace(tzinfo=timezone.utc)
+
+            # Compute new rolling risk
+            new_score = compute_rolling_risk(
+                previous_score=last_score,
+                last_event_time=last_time,
+                current_time=now,
+                event_weight=data.risk_score
+            )
+
+            # Create the event
+            event = ProctoringEvent(
+                session_id=session.id,
+                event_id=data.event_id,
+                timestamp=now,
+                event_type=data.event_type,
+                severity=data.severity,
+                risk_score=data.risk_score,
+                meta=data.metadata or {}
+            )
+            self.db.add(event)
+
+            # Update session risk score
+            session.final_risk_score = new_score
+            session.total_violations = (session.total_violations or 0) + 1
+
+            # Auto-terminate if threshold exceeded
+            if is_termination_required(new_score):
+                session.status = "TERMINATED"
+                session.terminated_reason = f"Risk score {new_score:.1f} exceeded threshold"
+                session.ended_at = now
+
+            # Snapshot every 15s or 20pt change
+            last_event_ts = last_event.timestamp if last_event else None
+            if last_event_ts and last_event_ts.tzinfo is None:
+                last_event_ts = last_event_ts.replace(tzinfo=timezone.utc)
+            if not last_event or (now - last_event_ts).total_seconds() >= 15 or abs(new_score - last_score) >= 20:
+                snapshot = RiskSnapshot(
+                    session_id=session.id,
+                    timestamp=now,
+                    rolling_risk_score=new_score,
+                    active_flags={"event_type": data.event_type}
+                )
+                self.db.add(snapshot)
+
             await self.db.commit()
             await self.db.refresh(event)
             return event
         except Exception as e:
-            logger.warning(f"Proctoring persistence failed (Demo Mode - non-blocking): {e}")
+            logger.warning(f"Proctoring persistence failed: {e}")
             await self.db.rollback()
             return None
 
@@ -176,7 +239,7 @@ class ProctoringService:
                 "severity": e.severity,
                 "risk_score": e.risk_score,
                 "timestamp": e.timestamp,
-                "metadata": e.metadata
+                "metadata": e.meta
             }
             for e in events
         ]
@@ -199,7 +262,7 @@ class ProctoringService:
                 "speaker_label": e.speaker_label,
                 "audio_confidence": e.audio_confidence,
                 "created_at": e.created_at,
-                "metadata": e.metadata
+                "metadata": e.meta
             }
             for e in evidence_items
         ]

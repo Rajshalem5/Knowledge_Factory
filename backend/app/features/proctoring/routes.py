@@ -62,14 +62,22 @@ async def record_proctoring_event(
     data: ProctoringEventCreate,
     db: AsyncSession = Depends(get_db)
 ):
-    """
-    Webhook for the AI Proctoring Service to report violations.
-    In a real production system, this would be secured via a shared secret or IP whitelist.
-    """
+    """Webhook for the AI Proctoring Service to report violations."""
     service = ProctoringService(db)
     try:
         event = await service.record_event(data)
-        return event
+        if event is None:
+            return {"status": "skipped", "message": "Session not found", "event_id": data.event_id}
+        return {
+            "id": event.id,
+            "event_id": event.event_id,
+            "session_id": event.session_id,
+            "event_type": event.event_type,
+            "severity": event.severity,
+            "risk_score": event.risk_score,
+            "timestamp": event.timestamp.isoformat() if event.timestamp else None,
+            "metadata": event.meta or {}
+        }
     except ValueError as e:
         # Session not found
         logger.warning(f"Webhook error: {e}")
@@ -109,12 +117,8 @@ async def get_session_by_assessment(
     current_user = Depends(get_current_user)
 ):
     """Get the proctoring session for a specific assessment attempt."""
-    from sqlalchemy import select
-    from app.features.proctoring.models import ProctoringSession
-    
-    stmt = select(ProctoringSession).where(ProctoringSession.assessment_attempt_id == assessment_id)
-    res = await db.execute(stmt)
-    session = res.scalar_one_or_none()
+    service = ProctoringService(db)
+    session = await service.get_session_by_assessment(assessment_id)
     
     if not session:
         raise HTTPException(status_code=404, detail="Proctoring session not found for this assessment")
@@ -124,8 +128,8 @@ async def get_session_by_assessment(
         "status": session.status,
         "final_risk_score": session.final_risk_score,
         "total_violations": session.total_violations,
-        "started_at": session.started_at,
-        "ended_at": session.ended_at,
+        "started_at": session.started_at.isoformat() if session.started_at else None,
+        "ended_at": session.ended_at.isoformat() if session.ended_at else None,
         "terminated_reason": session.terminated_reason
     }
 
