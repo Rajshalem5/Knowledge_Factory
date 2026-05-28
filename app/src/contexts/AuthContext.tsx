@@ -5,11 +5,29 @@
  */
 
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
-import { useAuth as useClerkAuth, useUser, useClerk } from '@clerk/react';
 import type { User } from '../types';
 import { authApi } from '../api/auth';
 import { tokenStore } from '../api/token';
 import { normalizeRole } from '../utils/roles';
+
+// Lazy Clerk hooks — dynamic import so Vite pre-bundles @clerk/react but
+// runtime failures (blocked CDN) don't crash the app.
+let clerkModule: any = null;
+const clerkPromise = import('@clerk/react').then(m => { clerkModule = m; }).catch(() => {
+  console.warn('[AuthContext] Clerk SDK unavailable — using JWT auth only');
+});
+function useSafeClerkAuth() {
+  if (!clerkModule) return { isLoaded: true, isSignedIn: false, getToken: async () => null };
+  try { return clerkModule.useAuth(); } catch { return { isLoaded: true, isSignedIn: false, getToken: async () => null }; }
+}
+function useSafeUser() {
+  if (!clerkModule) return { user: null };
+  try { return clerkModule.useUser(); } catch { return { user: null }; }
+}
+function useSafeClerk() {
+  if (!clerkModule) return { signOut: () => {} };
+  try { return clerkModule.useClerk(); } catch { return { signOut: () => {} }; }
+}
 
 interface AuthContextValue {
   user: User | null;
@@ -37,9 +55,9 @@ interface RegisterData {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { isLoaded: clerkLoaded, isSignedIn, getToken } = useClerkAuth();
-  const { user: clerkUser } = useUser();
-  const { signOut } = useClerk();
+  const { isLoaded: clerkLoaded, isSignedIn, getToken } = useSafeClerkAuth();
+  const { user: clerkUser } = useSafeUser();
+  const { signOut } = useSafeClerk();
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(() => tokenStore.getAccessToken());
   const [isVerifying, setIsVerifying] = useState(true);
@@ -105,7 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Try refresh as fallback (cookie-based)
         return authApi.refreshToken();
       })
-      .then((refreshRes) => {
+      .then(async (refreshRes) => {
         if (refreshRes) {
           return authApi.normalizeTokenResponse(refreshRes);
         }
@@ -131,7 +149,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             role: userData.role.toLowerCase() as User['role'],
           });
         }
-      } catch {
+      })
+      .catch((_err) => {
         setUser(null);
       })
       .finally(() => {

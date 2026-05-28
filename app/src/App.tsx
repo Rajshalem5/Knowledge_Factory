@@ -23,6 +23,11 @@ import SelectionPanel from './pages/selection/SelectionPanel';
 import AnalyticsDashboard from './pages/analytics/AnalyticsDashboard';
 import SuperAdminPanel from './pages/super_admin/SuperAdminPanel';
 import CycleConfig from './pages/admin/CycleConfig';
+import Privacy from './pages/legal/Privacy';
+import Terms from './pages/legal/Terms';
+import Settings from './pages/hr/Settings';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import CookieConsent from './components/ui/CookieConsent';
 
 import CandidatesList from './pages/hr/CandidatesList';
 import UploadCenter from './pages/hr/UploadCenter';
