@@ -28,8 +28,15 @@ FULLSCREEN_EXIT_WEIGHT = 20
 
 # Risk Policy
 RISK_TERMINATION_THRESHOLD = 100
-RISK_DECAY_PERCENT = 0.0  # Purely cumulative
-RISK_DECAY_INTERVAL = 60
+# Risk decay: score reduces by 10% every 60 seconds with no violations.
+# Formula: decayed = prev * (1 - DECAY_PERCENT) ^ (seconds / INTERVAL)
+# Tuning guide:
+#   5% / 60s → gentle, score 100 → 61 after 10 min clean
+#  10% / 60s → moderate, score 100 → 35 after 10 min clean (default)
+#  20% / 60s → aggressive, score 100 → 11 after 10 min clean
+#   0% / 60s → purely cumulative, score never decays (debug/testing)
+RISK_DECAY_PERCENT = 0.10  # 10% decay per interval
+RISK_DECAY_INTERVAL = 60   # seconds per decay step
 
 # Session Configuration
 FRAME_CAPTURE_INTERVAL = 1.0  # Seconds
