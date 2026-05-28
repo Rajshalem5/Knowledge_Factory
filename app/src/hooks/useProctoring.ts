@@ -96,6 +96,7 @@ export function useProctoring({ assessmentAttemptId, onViolation, onTerminated }
   }, []);
 
   const sendViolation = useCallback((type: string) => {
+    // Try WebSocket first
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(
         JSON.stringify({
@@ -104,13 +105,24 @@ export function useProctoring({ assessmentAttemptId, onViolation, onTerminated }
           timestamp: new Date().toISOString(),
         }),
       );
+      return;
+    }
+    // Fallback: send via REST API if we have a session
+    if (sessionIdRef.current) {
+      proctoringService.recordEvent({
+        event_id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2),
+        session_id: sessionIdRef.current,
+        event_type: type,
+        severity: type === 'TAB_SWITCH' || type === 'WINDOW_BLUR' ? 'MEDIUM' : 'HIGH',
+        risk_score: type === 'TAB_SWITCH' ? 10 : type === 'WINDOW_BLUR' ? 5 : type === 'DEVTOOLS' ? 40 : 10,
+        timestamp: new Date().toISOString(),
+        metadata: { details: `Frontend detected ${type}` }
+      }).catch(() => {});
     }
   }, []);
 
-  const startStreaming = useCallback(() => {
-    if (!wsRef.current || !streamRef.current) return;
-
-    // ── Behavior Listeners ──
+  const attachBehaviorListeners = useCallback(() => {
+    // ── Behavior Listeners (always attached regardless of camera/WS) ──
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
         sendViolation('TAB_SWITCH');
@@ -130,7 +142,6 @@ export function useProctoring({ assessmentAttemptId, onViolation, onTerminated }
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Common DevTools shortcuts: F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C
       if (
         e.key === 'F12' ||
         ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C'))
@@ -144,6 +155,18 @@ export function useProctoring({ assessmentAttemptId, onViolation, onTerminated }
     document.addEventListener('copy', handleCopy);
     document.addEventListener('paste', handlePaste);
     window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('blur', handleBlur);
+      document.removeEventListener('copy', handleCopy);
+      document.removeEventListener('paste', handlePaste);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [sendViolation]);
+
+  const startStreaming = useCallback(() => {
+    if (!wsRef.current || !streamRef.current) return;
 
     const videoTracks = streamRef.current.getVideoTracks();
     const audioTracks = streamRef.current.getAudioTracks();
@@ -234,10 +257,13 @@ export function useProctoring({ assessmentAttemptId, onViolation, onTerminated }
           return;
         }
         setConnectionStatus('connected');
+        // Always attach behavior listeners (tab switch, devtools, etc.)
+        const cleanupListeners = attachBehaviorListeners();
         const cleanup_fn = startStreaming();
-        if (typeof cleanup_fn === 'function') {
-          streamingCleanupRef.current = cleanup_fn;
-        }
+        streamingCleanupRef.current = () => {
+          cleanupListeners?.();
+          if (typeof cleanup_fn === 'function') cleanup_fn();
+        };
         setStatus('ready');
       };
 
@@ -328,36 +354,46 @@ export function useProctoring({ assessmentAttemptId, onViolation, onTerminated }
 
     const promise = (async () => {
       try {
-        // 1) Request fullscreen
+        // 1) Request fullscreen (soft fail)
         setStatus('fullscreen_pending');
         if (!document.fullscreenElement) {
-          await document.documentElement.requestFullscreen();
+          try { await document.documentElement.requestFullscreen(); }
+          catch { console.warn('[Proctoring] Fullscreen not available'); }
         }
 
-        // 2) Request webcam/mic permissions
-        await requestMediaPermissions();
+        // 2) Request webcam/mic permissions (soft fail)
+        try { await requestMediaPermissions(); }
+        catch { console.warn('[Proctoring] Camera/mic unavailable — violations still monitored'); }
 
         // 3) Initialize session via API
-        const sessionData = await withTimeout(
-          proctoringService.initializeSession(assessmentAttemptId),
-          15000,
-          'Session initialization timed out',
-        );
-
-        if (!sessionData || !sessionData.session_id) {
-          throw new Error('Failed to initialize proctoring session: Invalid response data');
+        setStatus('connecting_websocket');
+        let sessionData: ProctoringSessionResponse | null = null;
+        try {
+          sessionData = await withTimeout(
+            proctoringService.initializeSession(assessmentAttemptId),
+            15000,
+            'Session initialization timed out',
+          );
+        } catch {
+          console.warn('[Proctoring] Session init failed — violations via REST fallback');
         }
 
-        sessionIdRef.current = sessionData.session_id;
-        wsInitTokenRef.current = { url: sessionData.ws_url, token: sessionData.token };
+        if (sessionData?.session_id) {
+          sessionIdRef.current = sessionData.session_id;
+          wsInitTokenRef.current = { url: sessionData.ws_url, token: sessionData.token };
 
-        // 4) Connect WebSocket
-        await connectWS(sessionData.ws_url, sessionData.token);
+          // 4) Connect WebSocket (soft fail)
+          try { await connectWS(sessionData.ws_url, sessionData.token); }
+          catch { console.warn('[Proctoring] WebSocket failed — violations via REST'); }
+        }
+
+        // 5) Always attach behavior listeners (independent of camera/WS)
+        streamingCleanupRef.current = attachBehaviorListeners();
+        setStatus('ready');
       } catch (err: any) {
         if (!unmountedRef.current) {
           cleanup();
           setStatus('failed');
-          
         }
         startedRef.current = false;
         startPromiseRef.current = null;
