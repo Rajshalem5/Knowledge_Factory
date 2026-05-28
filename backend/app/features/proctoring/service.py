@@ -114,12 +114,27 @@ class ProctoringService:
             if now.tzinfo is None:
                 now = now.replace(tzinfo=timezone.utc)
 
+            # Weight escalation: TAB_SWITCH and WINDOW_BLUR get heavier with repetition
+            event_weight = data.risk_score
+            if data.event_type in ("TAB_SWITCH", "WINDOW_BLUR"):
+                same_type_count = await self._get_event_count(session.id, data.event_type)
+                tier_weights = {
+                    "TAB_SWITCH": (10, 15, 25),
+                    "WINDOW_BLUR": (5, 10, 20),
+                }
+                base, repeated, frequent = tier_weights[data.event_type]
+                if same_type_count >= 4:
+                    event_weight = frequent
+                elif same_type_count >= 2:
+                    event_weight = repeated
+                # else: 1st occurrence, keep original weight (base)
+
             # Compute new rolling risk
             new_score = compute_rolling_risk(
                 previous_score=last_score,
                 last_event_time=last_time,
                 current_time=now,
-                event_weight=data.risk_score
+                event_weight=event_weight
             )
 
             # Create the event
@@ -129,7 +144,7 @@ class ProctoringService:
                 timestamp=now,
                 event_type=data.event_type,
                 severity=data.severity,
-                risk_score=data.risk_score,
+                risk_score=event_weight,
                 meta=data.metadata or {}
             )
             self.db.add(event)
