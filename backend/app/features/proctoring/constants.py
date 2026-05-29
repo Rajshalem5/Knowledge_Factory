@@ -14,6 +14,10 @@ PASTE_WEIGHT = 20
 
 DEVTOOLS_WEIGHT = 40
 
+# ── NOT_IMPLEMENTED: Require audi_video microservice (CV/audio AI pipeline) ──
+# These weights are defined for reference but will never be triggered
+# without the audi_video service wired in (YOLO + STT + LLM analysis).
+# See kf-proctoring-testing skill → references/audi-video-integration.md
 NO_FACE_WEIGHT = 15
 MULTIPLE_PERSONS_WEIGHT = 25
 
