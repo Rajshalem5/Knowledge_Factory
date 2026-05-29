@@ -326,19 +326,6 @@ async def verify_otp(data: OtpVerifyRequest, db: AsyncSession = Depends(get_db))
     }
 
 
-@router.post("/verify-otp", response_model=TokenResponse)
-async def verify_otp(data: OtpVerifyRequest, db: AsyncSession = Depends(get_db)):
-    """Verify OTP and issue tokens.
-
-    NOTE: OTP infrastructure not yet deployed — this endpoint requires
-    a stored OTP record with expiration. Contact admin to enable.
-    """
-    raise HTTPException(
-        status_code=501,
-        detail="OTP verification not yet configured. Contact your administrator.",
-    )
-
-
 @router.post("/forgot-password", status_code=status.HTTP_200_OK)
 async def forgot_password(data: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
     """Request password reset - generates token (email sending placeholder)."""

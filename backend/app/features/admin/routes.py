@@ -10,7 +10,7 @@ from app.dependencies import require_role
 from app.features.auth.models import User
 from app.core.enums import Role, UserStatus
 from app.core.security import hash_password
-from app.schemas.admin import UserCreate, UserUpdate, UserResponse, PasswordReset, UserListResponse
+from app.features.admin.schemas import UserCreate, UserUpdate, UserResponse, PasswordReset, UserListResponse
 
 router = APIRouter()
 

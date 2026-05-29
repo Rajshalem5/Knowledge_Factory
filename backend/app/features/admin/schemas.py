@@ -28,12 +28,8 @@ class UserResponse(BaseModel):
     class Config:
         from_attributes = True
 
-class PaginationInfo(BaseModel):
+class UserListResponse(BaseModel):
+    users: List[UserResponse]
+    total: int
     page: int
     limit: int
-    total: int
-    total_pages: int
-
-class UserListResponse(BaseModel):
-    data: List[UserResponse]
-    pagination: PaginationInfo
